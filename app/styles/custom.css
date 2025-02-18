@@ -1,0 +1,48 @@
+/* Custom form validation style */
+input:invalid,
+select:invalid,
+textarea:invalid {
+  border-color: hsl(var(--destructive));
+}
+
+/* Remove default validation icon and bubble */
+input::-webkit-validation-bubble,
+select::-webkit-validation-bubble,
+textarea::-webkit-validation-bubble,
+input::-webkit-validation-bubble-message,
+select::-webkit-validation-bubble-message,
+textarea::-webkit-validation-bubble-message,
+input::-webkit-validation-bubble-arrow,
+select::-webkit-validation-bubble-arrow,
+textarea::-webkit-validation-bubble-arrow {
+  display: none;
+}
+
+/* Custom validation message style */
+input:invalid:not(:focus):not(:placeholder-shown)::after,
+select:invalid:not(:focus):not(:placeholder-shown)::after,
+textarea:invalid:not(:focus):not(:placeholder-shown)::after {
+  content: "Please fill out this field";
+  position: absolute;
+  font-size: 0.875rem;
+  color: hsl(var(--destructive));
+  margin-top: 0.25rem;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* Focus state */
+input:invalid:focus,
+select:invalid:focus,
+textarea:invalid:focus {
+  outline: none;
+  border-color: hsl(var(--destructive));
+  box-shadow: 0 0 0 2px hsl(var(--destructive) / 0.1);
+}
+
+/* Hide default browser outline on focus */
+input:focus,
+select:focus,
+textarea:focus {
+  outline: none;
+}
+
