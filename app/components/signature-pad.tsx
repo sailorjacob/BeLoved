@@ -1,1 +1,58 @@
-import React, { useRef } from "react"; import SignatureCanvas from "react-signature-canvas"; import { Button } from "@/components/ui/button"; import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"; interface SignaturePadProps { onSave: (signature: string) => void; onClear: () => void; } export function SignaturePad({ onSave, onClear }: SignaturePadProps) { const signaturePadRef = useRef<SignatureCanvas>(null); const handleSave = () => { if (signaturePadRef.current) { const dataUrl = signaturePadRef.current.toDataURL(); onSave(dataUrl); } }; const handleClear = () => { if (signaturePadRef.current) { signaturePadRef.current.clear(); onClear(); } }; return ( <Card className="w-full max-w-xl mx-auto mt-4"><CardHeader><CardTitle>Member Signature</CardTitle></CardHeader><CardContent><div className="border rounded-lg p-2 bg-white"><SignatureCanvas ref={signaturePadRef} canvasProps={{ className: "w-full h-48", style: { border: "1px solid #e2e8f0", borderRadius: "0.375rem", touchAction: "none" } }} /></div><div className="flex justify-end space-x-2 mt-4"><Button variant="outline" onClick={handleClear}>Clear</Button><Button onClick={handleSave}>Save Signature</Button></div></CardContent></Card> ); }
+import React, { useRef } from "react";
+import SignatureCanvas from "react-signature-canvas";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
+interface SignaturePadProps {
+  onSave: (signature: string) => void;
+  onClear: () => void;
+}
+
+export function SignaturePad({ onSave, onClear }: SignaturePadProps) {
+  const signaturePadRef = useRef<SignatureCanvas>(null);
+
+  const handleSave = () => {
+    if (signaturePadRef.current) {
+      const dataUrl = signaturePadRef.current.toDataURL();
+      onSave(dataUrl);
+    }
+  };
+
+  const handleClear = () => {
+    if (signaturePadRef.current) {
+      signaturePadRef.current.clear();
+      onClear();
+    }
+  };
+
+  return (
+    <Card className="w-full max-w-xl mx-auto mt-4">
+      <CardHeader>
+        <CardTitle>Member Signature</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="border rounded-lg p-2 bg-white">
+          <SignatureCanvas
+            ref={signaturePadRef}
+            canvasProps={{
+              className: "w-full h-48",
+              style: { 
+                border: "1px solid #e2e8f0",
+                borderRadius: "0.375rem",
+                touchAction: "none"
+              }
+            }}
+          />
+        </div>
+        <div className="flex justify-end space-x-2 mt-4">
+          <Button variant="outline" onClick={handleClear}>
+            Clear
+          </Button>
+          <Button onClick={handleSave}>
+            Save Signature
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
