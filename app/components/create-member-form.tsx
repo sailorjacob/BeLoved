@@ -3,7 +3,7 @@
 import { useState, ChangeEvent } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { FormInput } from "../ui/form-input"
+import { FormInput } from "@/components/ui/form-input"
 
 interface Member {
   id: number
