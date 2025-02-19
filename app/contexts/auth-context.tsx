@@ -2,135 +2,124 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
+import type { User } from '@supabase/supabase-js'
+import type { Database } from '@/lib/supabase'
 
-type UserType = "user" | "driver" | "admin"
+type Profile = Database['public']['Tables']['profiles']['Row']
 
-interface User {
-  id: number
-  name: string
-  username: string
-  email: string
-  userType: UserType
+interface AuthState {
+  user: User | null
+  profile: Profile | null
+  isLoggedIn: boolean
+  isDriver: boolean
+  isAdmin: boolean
 }
 
-type AuthContextType = {
-  user: User | null
-  isLoggedIn: boolean
-  login: (username: string, password: string) => Promise<boolean>
-  logout: () => void
-  isDriver: boolean
+type AuthContextType = AuthState & {
+  login: (email: string, password: string) => Promise<{ error: Error | null }>
+  signUp: (email: string, password: string, profile: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => Promise<{ error: Error | null }>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null)
+  const [authState, setAuthState] = useState<AuthState>({
+    user: null,
+    profile: null,
+    isLoggedIn: false,
+    isDriver: false,
+    isAdmin: false
+  })
 
   useEffect(() => {
-    const storedUser = localStorage.getItem("currentUser")
-    if (storedUser) {
-      setUser(JSON.parse(storedUser))
-    }
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        updateAuthState(session.user)
+      }
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        updateAuthState(session.user)
+      } else {
+        setAuthState({
+          user: null,
+          profile: null,
+          isLoggedIn: false,
+          isDriver: false,
+          isAdmin: false
+        })
+      }
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  const login = async (username: string, password: string): Promise<boolean> => {
-    // Check for admin login
-    if (username === "admin" && password === "admin") {
-      const adminUser: User = {
-        id: 0,
-        name: "Admin",
-        username: "admin",
-        email: "admin@example.com",
-        userType: "admin",
-      }
-      setUser(adminUser)
-      localStorage.setItem("currentUser", JSON.stringify(adminUser))
-      return true
-    }
+  const updateAuthState = async (user: User) => {
+    // Fetch the user's profile
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
 
-    // Check for driver logins
-    const driverAccounts = [
-      {
-        id: 0,
-        name: "Dwayne",
-        username: "dwayne.driver",
-        password: "dwayne123",
-        email: "dwayne@beloved.com",
-        userType: "driver" as const,
-      },
-      {
-        id: 1,
-        name: "Gino",
-        username: "gino.driver",
-        password: "gino123",
-        email: "gino@beloved.com",
-        userType: "driver" as const,
-      },
-      {
-        id: 2,
-        name: "Jacob",
-        username: "jacob.driver",
-        password: "jacob123",
-        email: "jacob@beloved.com",
-        userType: "driver" as const,
-      },
-      {
-        id: 3,
-        name: "Mike",
-        username: "mike.driver",
-        password: "mike123",
-        email: "mike@beloved.com",
-        userType: "driver" as const,
-      },
-      {
-        id: 4,
-        name: "Sherry",
-        username: "sherry.driver",
-        password: "sherry123",
-        email: "sherry@beloved.com",
-        userType: "driver" as const,
-      },
-      {
-        id: 5,
-        name: "Danny",
-        username: "danny.driver",
-        password: "danny123",
-        email: "danny@beloved.com",
-        userType: "driver" as const,
-      },
-    ]
-
-    const foundDriver = driverAccounts.find(
-      (d) => d.username === username && d.password === password
-    )
-    if (foundDriver) {
-      const { password: _, ...driverWithoutPassword } = foundDriver
-      setUser(driverWithoutPassword)
-      localStorage.setItem("currentUser", JSON.stringify(driverWithoutPassword))
-      return true
-    }
-
-    // Check users in localStorage
-    const users = JSON.parse(localStorage.getItem("users") || "[]")
-    const foundUser = users.find((u: any) => u.username === username && u.password === password)
-
-    if (foundUser) {
-      const { password: _, ...userWithoutPassword } = foundUser
-      setUser(userWithoutPassword)
-      localStorage.setItem("currentUser", JSON.stringify(userWithoutPassword))
-      return true
-    }
-
-    return false
+    setAuthState({
+      user,
+      profile,
+      isLoggedIn: true,
+      isDriver: profile?.user_type === 'driver',
+      isAdmin: profile?.user_type === 'admin'
+    })
   }
 
-  const logout = () => {
-    setUser(null)
-    localStorage.removeItem("currentUser")
+  const login = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+
+    return { error }
+  }
+
+  const signUp = async (email: string, password: string, profile: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => {
+    const { error: signUpError, data } = await supabase.auth.signUp({
+      email,
+      password,
+    })
+
+    if (signUpError) return { error: signUpError }
+    if (!data.user) return { error: new Error('No user returned from sign up') }
+
+    // Create the user's profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: data.user.id,
+        ...profile
+      })
+
+    return { error: profileError }
+  }
+
+  const logout = async () => {
+    await supabase.auth.signOut()
   }
 
   return (
-    <AuthContext.Provider value={{ user, isLoggedIn: !!user, login, logout, isDriver: user?.userType === "driver" }}>
+    <AuthContext.Provider 
+      value={{ 
+        ...authState,
+        login,
+        signUp,
+        logout
+      }}
+    >
       {children}
     </AuthContext.Provider>
   )

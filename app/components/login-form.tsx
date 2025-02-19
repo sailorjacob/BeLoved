@@ -13,35 +13,39 @@ import Link from "next/link"
 import { FormInput } from "./ui/form-input"
 
 interface FormErrors {
-  username?: string
-  password?: string
   email?: string
+  password?: string
   confirmPassword?: string
+  name?: string
+  phone?: string
 }
 
 export function LoginForm() {
-  const [username, setUsername] = useState("")
+  const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
   const [name, setName] = useState("")
   const [phone, setPhone] = useState("")
-  const [email, setEmail] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [formErrors, setFormErrors] = useState<FormErrors>({})
   const router = useRouter()
-  const { login } = useAuth()
+  const { login, signUp } = useAuth()
 
   const validateForm = (type: "login" | "signup" | "admin") => {
     const errors: FormErrors = {}
     
-    if (!username) errors.username = "Username is required"
+    if (!email) errors.email = "Email is required"
+    else if (!/\S+@\S+\.\S+/.test(email)) errors.email = "Invalid email format"
+    
     if (!password) errors.password = "Password is required"
+    else if (password.length < 6) errors.password = "Password must be at least 6 characters"
     
     if (type === "signup") {
-      if (!email) errors.email = "Email is required"
-      else if (!/\S+@\S+\.\S+/.test(email)) errors.email = "Invalid email format"
       if (!confirmPassword) errors.confirmPassword = "Please confirm your password"
       else if (password !== confirmPassword) errors.confirmPassword = "Passwords do not match"
+      
+      if (!name) errors.name = "Name is required"
+      if (!phone) errors.phone = "Phone number is required"
     }
     
     setFormErrors(errors)
@@ -56,33 +60,30 @@ export function LoginForm() {
 
     try {
       if (type === "signup") {
-        // Handle signup logic here
-        const newUser = {
-          id: Date.now(),
-          name,
-          username,
-          password,
-          email,
+        const { error: signUpError } = await signUp(email, password, {
+          full_name: name,
           phone,
-          userType: "user" as const,
+          user_type: 'member'
+        })
+
+        if (signUpError) {
+          setError(signUpError.message)
+          return
         }
-        const users = JSON.parse(localStorage.getItem("users") || "[]")
-        users.push(newUser)
-        localStorage.setItem("users", JSON.stringify(users))
-        // Log in the new user
-        await login(username, password)
+
         router.push("/")
       } else {
-        // Handle login logic here
-        const success = await login(username, password)
-        if (success) {
-          if (type === "admin") {
-            router.push("/admin")
-          } else {
-            router.push("/")
-          }
+        const { error: loginError } = await login(email, password)
+        
+        if (loginError) {
+          setError(loginError.message)
+          return
+        }
+
+        if (type === "admin") {
+          router.push("/admin")
         } else {
-          setError("Invalid username or password")
+          router.push("/")
         }
       }
     } catch (err) {
@@ -106,11 +107,12 @@ export function LoginForm() {
             <TabsContent value="login">
               <form onSubmit={(e) => handleSubmit(e, "login")} className="space-y-4">
                 <FormInput
-                  id="username"
-                  label="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  error={formErrors.username}
+                  id="email"
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  error={formErrors.email}
                   required
                 />
                 
@@ -138,11 +140,11 @@ export function LoginForm() {
             <TabsContent value="signup">
               <form onSubmit={(e) => handleSubmit(e, "signup")} className="space-y-4">
                 <FormInput
-                  id="signup-username"
-                  label="Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  error={formErrors.username}
+                  id="signup-name"
+                  label="Full Name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  error={formErrors.name}
                   required
                 />
                 
@@ -153,6 +155,16 @@ export function LoginForm() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   error={formErrors.email}
+                  required
+                />
+                
+                <FormInput
+                  id="signup-phone"
+                  label="Phone"
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  error={formErrors.phone}
                   required
                 />
                 
@@ -190,17 +202,18 @@ export function LoginForm() {
             <TabsContent value="admin">
               <form onSubmit={(e) => handleSubmit(e, "admin")} className="space-y-4">
                 <FormInput
-                  id="admin-username"
-                  label="Admin Username"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  error={formErrors.username}
+                  id="admin-email"
+                  label="Email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  error={formErrors.email}
                   required
                 />
                 
                 <FormInput
                   id="admin-password"
-                  label="Admin Password"
+                  label="Password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
