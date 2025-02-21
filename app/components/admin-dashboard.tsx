@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { format, startOfWeek, endOfWeek } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { AdminScheduler } from "./admin-scheduler"
@@ -26,391 +27,331 @@ import {
   Target,
   UserCircle
 } from "lucide-react"
+import { supabase } from "@/lib/supabase"
+import type { Database } from "@/lib/supabase"
+import { RideDetailView } from "./ride-detail-view"
+import { StatsCards } from "./dashboard/stats-cards"
+import { RideTrendsChart } from "./dashboard/ride-trends-chart"
 
-// Mock data
-const mockRides = [
-  ...Array(30)
-    .fill(null)
-    .map((_, index) => ({
-      id: index + 1,
-      passengerName: `Passenger ${index + 1}`,
-      pickupTime: new Date(Date.now() + Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-      status: Math.random() > 0.5 ? "Completed" : "Scheduled",
-      assignedDriver: ["Dwayne", "Gino", "Jacob", "Mike", "Sherry"][Math.floor(Math.random() * 5)] || "",
-      paymentStatus: Math.random() > 0.5 ? "Paid" : "Unpaid",
-    })),
-]
+type Ride = Database['public']['Tables']['rides']['Row'] & {
+  member: Database['public']['Tables']['profiles']['Row']
+  driver?: Database['public']['Tables']['profiles']['Row']
+}
 
-const mockDrivers = [
-  {
-    id: 0,
-    name: "Dwayne",
-    avatar: "/avatars/dwayne.jpg",
-    status: "Active",
-    completedRides: 180,
-    ridesToday: 5,
-    ridesThisWeek: 20,
-  },
-  {
-    id: 1,
-    name: "Gino",
-    avatar: "/avatars/gino.jpg",
-    status: "Active",
-    completedRides: 150,
-    ridesToday: 3,
-    ridesThisWeek: 15,
-  },
-  {
-    id: 2,
-    name: "Jacob",
-    avatar: "/avatars/jacob.jpg",
-    status: "On Break",
-    completedRides: 120,
-    ridesToday: 2,
-    ridesThisWeek: 12,
-  },
-  {
-    id: 3,
-    name: "Mike",
-    avatar: "/avatars/mike.jpg",
-    status: "Active",
-    completedRides: 200,
-    ridesToday: 4,
-    ridesThisWeek: 18,
-  },
-  {
-    id: 4,
-    name: "Sherry",
-    avatar: "/avatars/sherry.jpg",
-    status: "Inactive",
-    completedRides: 80,
-    ridesToday: 1,
-    ridesThisWeek: 8,
-  },
-  {
-    id: 5,
-    name: "Danny",
-    avatar: "/avatars/danny.jpg",
-    status: "Active",
-    completedRides: 165,
-    ridesToday: 4,
-    ridesThisWeek: 16,
-  },
-]
+type Driver = Database['public']['Tables']['profiles']['Row'] & {
+  driver_profile: Database['public']['Tables']['driver_profiles']['Row']
+}
 
 export function AdminDashboard() {
-  const [rides, setRides] = useState(mockRides)
-  const [isNewRideDialogOpen, setIsNewRideDialogOpen] = useState(false)
+  const [rides, setRides] = useState<Ride[]>([])
+  const [drivers, setDrivers] = useState<Driver[]>([])
   const [showAssignedRides, setShowAssignedRides] = useState(false)
-  const [newRide, setNewRide] = useState({
-    passengerName: "",
-    pickupTime: "",
-    assignedDriver: "",
-    paymentStatus: "Unpaid",
-  })
-  const [expandedDriver, setExpandedDriver] = useState<number | null>(null)
-  const [showAdminScheduler, setShowAdminScheduler] = useState(false)
-  const [selectedDriver, setSelectedDriver] = useState<(typeof mockDrivers)[0] | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
   const router = useRouter()
 
-  const currentWeekStart = startOfWeek(new Date())
-  const currentWeekEnd = endOfWeek(new Date())
+  useEffect(() => {
+    fetchRides()
+    fetchDrivers()
+  }, [])
 
-  const totalRides = rides.length
-  const fulfilledRides = rides.filter((ride) => ride.status === "Completed").length
-  const unfulfilledRides = totalRides - fulfilledRides
+  const fetchRides = async () => {
+    const { data, error } = await supabase
+      .from('rides')
+      .select(`
+        *,
+        member:profiles!rides_member_id_fkey(*),
+        driver:profiles!rides_driver_id_fkey(*)
+      `)
+      .order('scheduled_pickup_time', { ascending: true })
 
-  const handleNewRideSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const newRideWithId = {
-      ...newRide,
-      id: rides.length + 1,
-      status: newRide.assignedDriver ? "Assigned" : "Scheduled",
+    if (error) {
+      console.error('Error fetching rides:', error)
+      return
     }
-    setRides([...rides, newRideWithId])
-    setIsNewRideDialogOpen(false)
-    setNewRide({
-      passengerName: "",
-      pickupTime: "",
-      assignedDriver: "",
-      paymentStatus: "Unpaid",
-    })
+
+    setRides(data)
+    setIsLoading(false)
   }
 
-  const assignDriver = (rideId: number, driverName: string) => {
-    setRides(
-      rides.map((ride) => {
-        if (ride.id === rideId) {
-          // Prevent unassigning completed rides
-          if (ride.status === "Completed" && driverName === "unassigned") {
-            return ride
-          }
-          return {
-            ...ride,
-            assignedDriver: driverName === "unassigned" ? "" : driverName,
-            status: driverName === "unassigned" ? "Scheduled" : "Assigned",
-          }
-        }
-        return ride
-      }),
-    )
+  const fetchDrivers = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        driver_profile:driver_profiles(*)
+      `)
+      .eq('user_type', 'driver')
+
+    if (error) {
+      console.error('Error fetching drivers:', error)
+      return
+    }
+
+    setDrivers(data as Driver[])
+  }
+
+  const assignDriver = async (rideId: string, driverId: string | null) => {
+    const { error } = await supabase
+      .from('rides')
+      .update({
+        driver_id: driverId,
+        status: driverId ? 'assigned' : 'pending',
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', rideId)
+
+    if (error) {
+      console.error('Error assigning driver:', error)
+      return
+    }
+
+    fetchRides()
   }
 
   const filteredRides = showAssignedRides
-    ? rides.filter((ride) => ride.assignedDriver)
-    : rides.filter((ride) => !ride.assignedDriver)
+    ? rides.filter((ride) => ride.driver_id)
+    : rides.filter((ride) => !ride.driver_id)
 
   const getDriverRides = (driverName: string) => {
-    const allRides = rides.filter((ride) => ride.assignedDriver === driverName)
-    const completedRides = allRides.filter((ride) => ride.status === "Completed")
-    const uncompletedRides = allRides.filter((ride) => ride.status !== "Completed")
+    const allRides = rides.filter((ride) => ride.driver_id === driverName)
+    const completedRides = allRides.filter((ride) => ride.status === "completed")
+    const uncompletedRides = allRides.filter((ride) => ride.status !== "completed")
     return { completedRides, uncompletedRides }
   }
 
-  const handleViewSchedule = (driver: (typeof mockDrivers)[0]) => {
-    router.push(`/driver-schedule/${driver.id}`)
+  const handleViewSchedule = (driver: Driver) => {
+    setSelectedDriver(driver)
+  }
+
+  const handleViewDetails = (ride: Ride) => {
+    setSelectedRide(ride)
+  }
+
+  const handleBackFromDetails = () => {
+    setSelectedRide(null)
+  }
+
+  const handleBackFromDriver = () => {
+    setSelectedDriver(null)
+  }
+
+  const handleRideAction = async (rideId: string, newStatus: Ride['status'], milesData?: { start?: number | null; end?: number | null }) => {
+    const { error } = await supabase
+      .from('rides')
+      .update({
+        status: newStatus,
+        ...(milesData?.start !== undefined && { start_miles: milesData.start }),
+        ...(milesData?.end !== undefined && { end_miles: milesData.end }),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', rideId)
+
+    if (error) {
+      console.error('Error updating ride:', error)
+      return
+    }
+
+    fetchRides()
+  }
+
+  const handleMilesEdit = async (rideId: string, miles: { start?: number | null; end?: number | null }) => {
+    const { error } = await supabase
+      .from('rides')
+      .update({
+        ...(miles.start !== undefined && { start_miles: miles.start }),
+        ...(miles.end !== undefined && { end_miles: miles.end }),
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', rideId)
+
+    if (error) {
+      console.error('Error updating ride miles:', error)
+    }
+  }
+
+  if (isLoading) {
+    return <div>Loading...</div>
+  }
+
+  if (selectedRide) {
+    return (
+      <RideDetailView
+        ride={selectedRide}
+        onRideAction={handleRideAction}
+        onBack={handleBackFromDetails}
+        onMilesEdit={handleMilesEdit}
+        onClose={handleBackFromDetails}
+      />
+    )
+  }
+
+  if (selectedDriver) {
+    return (
+      <DriverProfilePage
+        driverId={selectedDriver.id}
+        onBack={handleBackFromDriver}
+      />
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader>
-            <CardTitle>Total Rides This Week</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{totalRides}</p>
-            <p className="text-sm text-muted-foreground">
-              {format(currentWeekStart, "MMM d")} - {format(currentWeekEnd, "MMM d, yyyy")}
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Fulfilled Rides</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{fulfilledRides}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Unfulfilled Rides</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-3xl font-bold">{unfulfilledRides}</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="flex items-center space-x-4">
-        <h2 className="text-2xl font-bold">Admin Actions</h2>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          onClick={() => router.push("/create-driver")}
-        >
-          Create Driver
-        </Button>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          onClick={() => router.push("/create-member")}
-        >
-          Create Member
-        </Button>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          onClick={() => router.push("/create-user")}
-        >
-          Create User
-        </Button>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          onClick={() => router.push("/driver-list")}
-        >
-          View Drivers
-        </Button>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-primary-foreground"
-          onClick={() => router.push("/member-list")}
-        >
-          View Members
-        </Button>
-      </div>
-
-      <div className="flex items-center space-x-4">
-        <h2 className="text-2xl font-bold">Manage Rides</h2>
-        <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={() => setShowAdminScheduler(true)}>
-          Create New Ride
-        </Button>
-        <div className="flex items-center space-x-2">
-          <Switch id="assigned-rides" checked={showAssignedRides} onCheckedChange={setShowAssignedRides} />
-          <Label htmlFor="assigned-rides">{showAssignedRides ? "Assigned Rides" : "Unassigned Rides"}</Label>
+    <div className="space-y-8">
+      <StatsCards rides={rides} drivers={drivers} />
+      <RideTrendsChart rides={rides} />
+      <div className="space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader>
+              <CardTitle>Total Rides This Week</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">{rides.length}</p>
+              <p className="text-sm text-muted-foreground">
+                {format(startOfWeek(new Date()), "MMM d")} - {format(endOfWeek(new Date()), "MMM d, yyyy")}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Fulfilled Rides</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {rides.filter((ride) => ride.status === 'completed' || ride.status === 'return_completed').length}
+              </p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle>Unfulfilled Rides</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold">
+                {rides.length - rides.filter((ride) => ride.status === 'completed' || ride.status === 'return_completed').length}
+              </p>
+            </CardContent>
+          </Card>
         </div>
-      </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>{showAssignedRides ? "Assigned Rides" : "Unassigned Rides"}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Collapsible>
-            <div className="space-y-2">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Passenger</TableHead>
-                    <TableHead>Pickup Time</TableHead>
-                    <TableHead>Payment Status</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Assigned Driver</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredRides.slice(0, 6).map((ride) => (
-                    <TableRow key={ride.id}>
-                      <TableCell>{ride.passengerName}</TableCell>
-                      <TableCell>{format(new Date(ride.pickupTime), "MMM d, yyyy HH:mm")}</TableCell>
-                      <TableCell>{ride.paymentStatus}</TableCell>
-                      <TableCell className={ride.status === "Completed" ? "text-green-500 font-semibold" : ""}>
-                        {ride.status}
-                      </TableCell>
-                      <TableCell>
-                        {!ride.assignedDriver ? (
-                          <Select defaultValue="unassigned" onValueChange={(value) => assignDriver(ride.id, value)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Assign Driver" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {mockDrivers.map((driver) => (
-                                <SelectItem key={driver.id} value={driver.name}>
-                                  {driver.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Select
-                            defaultValue={ride.assignedDriver}
-                            onValueChange={(value) => assignDriver(ride.id, value)}
-                            disabled={ride.status === "Completed"}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Assign Driver" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ride.status !== "Completed" && <SelectItem value="unassigned">Unassign</SelectItem>}
-                              {mockDrivers.map((driver) => (
-                                <SelectItem key={driver.id} value={driver.name}>
-                                  {driver.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-              {filteredRides.length > 6 && (
-                <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="w-full">
-                    {`Show ${filteredRides.length - 6} more rides`}
-                  </Button>
-                </CollapsibleTrigger>
-              )}
-            </div>
-            <CollapsibleContent>
-              <Table>
-                <TableBody>
-                  {filteredRides.slice(6).map((ride) => (
-                    <TableRow key={ride.id}>
-                      <TableCell>{ride.passengerName}</TableCell>
-                      <TableCell>{format(new Date(ride.pickupTime), "MMM d, yyyy HH:mm")}</TableCell>
-                      <TableCell>{ride.paymentStatus}</TableCell>
-                      <TableCell className={ride.status === "Completed" ? "text-green-500 font-semibold" : ""}>
-                        {ride.status}
-                      </TableCell>
-                      <TableCell>
-                        {!ride.assignedDriver ? (
-                          <Select defaultValue="unassigned" onValueChange={(value) => assignDriver(ride.id, value)}>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Assign Driver" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {mockDrivers.map((driver) => (
-                                <SelectItem key={driver.id} value={driver.name}>
-                                  {driver.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        ) : (
-                          <Select
-                            defaultValue={ride.assignedDriver}
-                            onValueChange={(value) => assignDriver(ride.id, value)}
-                            disabled={ride.status === "Completed"}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Assign Driver" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {ride.status !== "Completed" && <SelectItem value="unassigned">Unassign</SelectItem>}
-                              {mockDrivers.map((driver) => (
-                                <SelectItem key={driver.id} value={driver.name}>
-                                  {driver.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CollapsibleContent>
-          </Collapsible>
-        </CardContent>
-      </Card>
+        <div className="flex items-center space-x-4">
+          <h2 className="text-2xl font-bold">Manage Rides</h2>
+          <div className="flex items-center space-x-2">
+            <Switch id="assigned-rides" checked={showAssignedRides} onCheckedChange={setShowAssignedRides} />
+            <Label htmlFor="assigned-rides">{showAssignedRides ? "Assigned Rides" : "Unassigned Rides"}</Label>
+          </div>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Driver Profiles</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ul className="space-y-4">
-            {mockDrivers.map((driver) => (
-              <li key={driver.id}>
-                <Collapsible>
-                  <div className="flex items-center justify-between space-x-4">
-                    <div className="flex items-center space-x-4">
-                      <Avatar>
-                        <AvatarImage src={driver.avatar} alt={driver.name} />
-                        <AvatarFallback>{driver.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
+        <Card>
+          <CardHeader>
+            <CardTitle>{showAssignedRides ? "Assigned Rides" : "Unassigned Rides"}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Member</TableHead>
+                  <TableHead>Appointment Time</TableHead>
+                  <TableHead>Pickup Time</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Driver</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredRides.map((ride) => (
+                  <TableRow key={ride.id}>
+                    <TableCell>
                       <div>
-                        <p className="font-semibold">{driver.name}</p>
-                        <p className="text-sm text-muted-foreground">Status: {driver.status}</p>
-                        <p className="text-sm text-muted-foreground">Completed Rides: {driver.completedRides}</p>
+                        <div className="font-medium">{ride.member.full_name}</div>
+                        <div className="text-sm text-muted-foreground">{ride.member.phone}</div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(ride.scheduled_pickup_time), "MMM d, yyyy h:mm a")}
+                    </TableCell>
+                    <TableCell>
+                      {format(new Date(new Date(ride.scheduled_pickup_time).getTime() - 60 * 60 * 1000), "h:mm a")}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant={ride.status === 'completed' || ride.status === 'return_completed' ? "default" : "secondary"}>
+                        {ride.status.replace(/_/g, ' ').toUpperCase()}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Select
+                        value={ride.driver_id || "unassigned"}
+                        onValueChange={(value) => assignDriver(ride.id, value === "unassigned" ? null : value)}
+                      >
+                        <SelectTrigger>
+                          <SelectValue>
+                            {ride.driver ? ride.driver.full_name : "Unassigned"}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="unassigned">Unassigned</SelectItem>
+                          {drivers.map((driver) => (
+                            <SelectItem key={driver.id} value={driver.id}>
+                              {driver.full_name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleViewDetails(ride)}
+                      >
+                        View Details
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Driver Profiles</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="space-y-4">
+              {drivers.map((driver) => (
+                <li key={driver.id}>
+                  <Collapsible>
+                    <div className="flex items-center justify-between space-x-4">
+                      <div className="flex items-center space-x-4">
+                        <Avatar>
+                          <AvatarFallback>{driver.full_name.charAt(0)}</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold">{driver.full_name}</p>
+                          <p className="text-sm text-muted-foreground">Status: {driver.driver_profile.status}</p>
+                          <p className="text-sm text-muted-foreground">Completed Rides: {driver.driver_profile.completed_rides}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <Button variant="outline" size="sm" onClick={() => handleViewSchedule(driver)}>
+                          Schedule
+                        </Button>
+                        <Button variant="outline" size="sm" onClick={() => handleViewSchedule(driver)}>
+                          View Profile
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center space-x-4">
-                      <Button variant="outline" size="sm" onClick={() => handleViewSchedule(driver)}>
-                        Schedule
-                      </Button>
-                      <Button variant="outline" size="sm" asChild>
-                        <Link href={`/driver-profile/${driver.id}`}>View Profile</Link>
-                      </Button>
-                    </div>
-                  </div>
-                  <CollapsibleContent className="mt-4"></CollapsibleContent>
-                </Collapsible>
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
+                    <CollapsibleContent className="mt-4"></CollapsibleContent>
+                  </Collapsible>
+                </li>
+              ))}
+            </ul>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Quick Access Grid - Now at the bottom */}
       <Card className="mt-8">
@@ -491,9 +432,6 @@ export function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
-
-      {showAdminScheduler && <AdminScheduler onClose={() => setShowAdminScheduler(false)} />}
-      {selectedDriver && <DriverProfilePage driver={selectedDriver} />}
     </div>
   )
 }

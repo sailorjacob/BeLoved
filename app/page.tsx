@@ -9,16 +9,16 @@ import { Scheduler } from "./components/scheduler"
 import { UserNav } from "./components/user-nav"
 
 export default function Home() {
-  const { user } = useAuth()
+  const { user, profile } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (user?.userType === "admin") {
+    if (profile?.user_type === "admin") {
       router.push("/admin")
-    } else if (user?.userType === "driver") {
+    } else if (profile?.user_type === "driver") {
       router.push("/driver-dashboard")
     }
-  }, [user, router])
+  }, [profile, router])
 
   return (
     <main className="container mx-auto p-4 min-h-screen flex flex-col">
@@ -39,7 +39,7 @@ export default function Home() {
       </div>
       <div className="flex-grow flex flex-col items-center justify-center">
         {user ? (
-          user.userType === "user" ? (
+          profile?.user_type === "member" ? (
             <Scheduler />
           ) : null
         ) : (

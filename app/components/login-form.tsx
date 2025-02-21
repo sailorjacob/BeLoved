@@ -35,7 +35,6 @@ export function LoginForm() {
     const errors: FormErrors = {}
     
     if (!email) errors.email = "Email is required"
-    else if (!/\S+@\S+\.\S+/.test(email)) errors.email = "Invalid email format"
     
     if (!password) errors.password = "Password is required"
     else if (password.length < 6) errors.password = "Password must be at least 6 characters"
@@ -67,16 +66,25 @@ export function LoginForm() {
         })
 
         if (signUpError) {
-          setError(signUpError.message)
+          if (signUpError.message.includes('email confirmation')) {
+            setError("Please check your email for a confirmation link. You'll need to confirm your email before logging in.")
+          } else {
+            setError(signUpError.message)
+          }
           return
         }
 
-        router.push("/")
+        setError("Success! Please check your email for a confirmation link before logging in.")
+        // Don't redirect yet - they need to confirm email first
       } else {
         const { error: loginError } = await login(email, password)
         
         if (loginError) {
-          setError(loginError.message)
+          if (loginError.message.includes('email not confirmed')) {
+            setError("Please confirm your email address before logging in. Check your inbox for the confirmation link.")
+          } else {
+            setError(loginError.message)
+          }
           return
         }
 

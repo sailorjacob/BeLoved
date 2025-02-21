@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react'
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { format } from 'date-fns'
 
 type RideStatus = 
 | 'pending'
+| 'assigned'
 | 'started'
 | 'picked_up'
 | 'completed'
@@ -23,14 +25,17 @@ interface RideProgressProps {
   onReturnPickup: (returnPickupMiles: number) => void
   onReturnComplete: (returnEndMiles: number) => void
   onBack: (currentStatus: RideStatus) => void
+  onStart: (startMiles: number) => void
+  onMilesEdit: (status: string, miles: number) => void
   savedMiles: {
-    started?: number
-    picked_up?: number
-    completed?: number
-    return_started?: number
-    return_picked_up?: number
-    return_completed?: number
+    started?: number | undefined
+    picked_up?: number | undefined
+    completed?: number | undefined
+    return_started?: number | undefined
+    return_picked_up?: number | undefined
+    return_completed?: number | undefined
   }
+  timestamps: {[key: string]: string}
 }
 
 export function RideProgress({ 
@@ -39,13 +44,25 @@ export function RideProgress({
   onComplete, 
   onReturnStart, 
   onReturnPickup,
-  onReturnComplete, 
+  onReturnComplete,
+  onStart,
   onBack,
-  savedMiles
+  onMilesEdit,
+  savedMiles,
+  timestamps
 }: RideProgressProps) {
   const [miles, setMiles] = useState<string>('')
+  const [currentStatus, setCurrentStatus] = useState<RideStatus>(status)
+  const [editingMiles, setEditingMiles] = useState<{[key: string]: string}>(
+    Object.entries(savedMiles).reduce((acc, [key, value]) => ({
+      ...acc,
+      [key]: value?.toString() || ''
+    }), {})
+  )
+  const [unsavedChanges, setUnsavedChanges] = useState<{[key: string]: boolean}>({})
 
   useEffect(() => {
+    setCurrentStatus(status)
     const currentMiles = savedMiles[status as keyof typeof savedMiles]
     if (currentMiles !== undefined) {
       setMiles(currentMiles.toString())
@@ -54,32 +71,93 @@ export function RideProgress({
     }
   }, [status, savedMiles])
 
-  const handleAction = (action: RideStatus) => {
+  useEffect(() => {
+    // Update editingMiles when savedMiles changes
+    setEditingMiles(
+      Object.entries(savedMiles).reduce((acc, [key, value]) => ({
+        ...acc,
+        [key]: value?.toString() || ''
+      }), {})
+    )
+    setUnsavedChanges({})
+  }, [savedMiles])
+
+  const handleAction = async (action: RideStatus) => {
     const mileage = parseFloat(miles)
-    if (isNaN(mileage)) return
-    if (action === 'picked_up') onPickup(mileage)
-    if (action === 'completed') onComplete(mileage)
-    if (action === 'return_started') onReturnStart(mileage)
-    if (action === 'return_picked_up') onReturnPickup(mileage)
-    if (action === 'return_completed') onReturnComplete(mileage)
-    setMiles('')
+    if (isNaN(mileage)) {
+      alert('Please enter a valid mileage number')
+      return
+    }
+    
+    try {
+      setEditingMiles(prev => ({ ...prev, [action]: mileage.toString() }))
+      
+      switch (action) {
+        case 'started':
+          await onStart(mileage)
+          setCurrentStatus('started')
+          break
+        case 'picked_up':
+          await onPickup(mileage)
+          setCurrentStatus('picked_up')
+          break
+        case 'completed':
+          await onComplete(mileage)
+          setCurrentStatus('completed')
+          break
+        case 'return_started':
+          await onReturnStart(mileage)
+          setCurrentStatus('return_started')
+          break
+        case 'return_picked_up':
+          await onReturnPickup(mileage)
+          setCurrentStatus('return_picked_up')
+          break
+        case 'return_completed':
+          await onReturnComplete(mileage)
+          setCurrentStatus('return_completed')
+          break
+      }
+      setMiles('')
+    } catch (error) {
+      console.error('Failed to update ride status:', error)
+      alert('Failed to update ride status. Please try again.')
+    }
   }
 
-  const isFirstLeg = ['started', 'picked_up', 'completed'].includes(status)
-  const isFirstLegCompleted = status === 'completed' || !isFirstLeg
+  const handleMilesEdit = (status: string, value: string) => {
+    setEditingMiles(prev => ({ ...prev, [status]: value }))
+    setUnsavedChanges(prev => ({ ...prev, [status]: true }))
+  }
+
+  const handleSaveMiles = async (status: string) => {
+    const mileage = parseFloat(editingMiles[status])
+    if (isNaN(mileage)) {
+      alert('Please enter a valid mileage number')
+      return
+    }
+
+    try {
+      await onMilesEdit(status, mileage)
+      setUnsavedChanges(prev => ({ ...prev, [status]: false }))
+    } catch (error) {
+      console.error('Failed to save mileage:', error)
+      alert('Failed to save mileage. Please try again.')
+    }
+  }
 
   const handleProgressBarClick = (clickedStatus: RideStatus) => {
-    if (clickedStatus !== status) {
+    if (clickedStatus !== currentStatus) {
       onBack(clickedStatus)
     }
   }
 
   const renderMilesInput = () => {
-    if (status === 'return_completed') return null;
+    if (currentStatus === 'return_completed') return null;
     return (
       <Input
-        type="text"
-        placeholder="Miles"
+        type="number"
+        placeholder="Mileage"
         value={miles}
         onChange={(e) => setMiles(e.target.value)}
         className="w-24"
@@ -88,34 +166,41 @@ export function RideProgress({
   }
 
   const renderActionButton = () => {
-    switch (status) {
+    switch (currentStatus) {
+      case 'pending':
+      case 'assigned':
+        return (
+          <Button onClick={() => handleAction('started')} className="bg-blue-500 hover:bg-blue-600">
+            Start
+          </Button>
+        )
       case 'started':
         return (
-          <Button onClick={() => handleAction('picked_up')} className="bg-red-500 hover:bg-red-600">
+          <Button onClick={() => handleAction('picked_up')} className="bg-blue-500 hover:bg-blue-600">
             Pickup
           </Button>
         )
       case 'picked_up':
         return (
-          <Button onClick={() => handleAction('completed')} className="bg-red-500 hover:bg-red-600">
+          <Button onClick={() => handleAction('completed')} className="bg-blue-500 hover:bg-blue-600">
             End
           </Button>
         )
-      case 'return_pending':
+      case 'completed':
         return (
-          <Button onClick={() => handleAction('return_started')} className="bg-red-500 hover:bg-red-600">
+          <Button onClick={() => handleAction('return_started')} className="bg-blue-500 hover:bg-blue-600">
             Start Return
           </Button>
         )
       case 'return_started':
         return (
-          <Button onClick={() => handleAction('return_picked_up')} className="bg-red-500 hover:bg-red-600">
+          <Button onClick={() => handleAction('return_picked_up')} className="bg-blue-500 hover:bg-blue-600">
             Pickup Return
           </Button>
         )
       case 'return_picked_up':
         return (
-          <Button onClick={() => handleAction('return_completed')} className="bg-red-500 hover:bg-red-600">
+          <Button onClick={() => handleAction('return_completed')} className="bg-blue-500 hover:bg-blue-600">
             End Return
           </Button>
         )
@@ -124,36 +209,115 @@ export function RideProgress({
     }
   }
 
+  const getProgressBarColor = (segment: string, isReturn: boolean = false) => {
+    const mainStatusOrder = ['started', 'picked_up', 'completed']
+    const returnStatusOrder = ['return_started', 'return_picked_up', 'return_completed']
+    
+    if (isReturn) {
+      if (currentStatus === 'return_completed') {
+        return 'bg-green-500' // All green when return is completed
+      }
+      
+      const currentIndex = returnStatusOrder.indexOf(currentStatus)
+      const segmentIndex = returnStatusOrder.indexOf(segment)
+      
+      if (currentIndex >= 0 && segmentIndex <= currentIndex) {
+        return 'bg-red-500' // Red for in-progress segments
+      }
+      
+      return 'bg-gray-200' // Gray for upcoming segments
+    } else {
+      if (currentStatus === 'completed' || currentStatus.startsWith('return_')) {
+        return 'bg-green-500' // All green when initial trip is completed
+      }
+      
+      const currentIndex = mainStatusOrder.indexOf(currentStatus)
+      const segmentIndex = mainStatusOrder.indexOf(segment)
+      
+      if (currentIndex >= 0 && segmentIndex <= currentIndex) {
+        return 'bg-red-500' // Red for in-progress segments
+      }
+      
+      return 'bg-gray-200' // Gray for upcoming segments
+    }
+  }
+
+  const renderMilesHistory = (isReturn: boolean = false) => {
+    const segments = isReturn 
+      ? ['return_started', 'return_picked_up', 'return_completed']
+      : ['started', 'picked_up', 'completed']
+    
+    return segments.map(segment => {
+      const hasData = editingMiles[segment] !== undefined && editingMiles[segment] !== ''
+      if (!hasData) return null
+      
+      return (
+        <div key={segment} className="flex items-center gap-2 mt-1">
+          <div className="text-sm text-gray-500">
+            {segment.replace(/_/g, ' ')}:
+          </div>
+          <Input
+            type="number"
+            value={editingMiles[segment] || ''}
+            onChange={(e) => handleMilesEdit(segment, e.target.value)}
+            className="w-24 h-6 text-sm"
+            placeholder="Mileage"
+          />
+          {timestamps[segment] && (
+            <div className="text-sm text-gray-500">
+              {format(new Date(timestamps[segment]), 'h:mm a')}
+            </div>
+          )}
+          {unsavedChanges[segment] && (
+            <Button
+              onClick={() => handleSaveMiles(segment)}
+              size="sm"
+              className="h-6 px-2 bg-green-500 hover:bg-green-600 text-white text-xs"
+            >
+              Save
+            </Button>
+          )}
+        </div>
+      )
+    })
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center space-x-2">
-        {['started', 'picked_up', 'completed'].map((s, index) => (
-          <div
-            key={s}
-            className={cn(
-              "w-1/3 h-4 rounded-full cursor-pointer transition-colors",
-              isFirstLegCompleted ? 'bg-green-500' :
-              isFirstLeg ? (status === s || index < ['started', 'picked_up', 'completed'].indexOf(status) ? 'bg-red-500' : 'bg-gray-200') : 'bg-gray-200'
-            )}
-            onClick={() => handleProgressBarClick(s as RideStatus)}
-          />
-        ))}
-      </div>
-      {!isFirstLeg && (
+      <div className="space-y-1">
+        <div className="text-sm font-medium text-gray-500">Initial Trip</div>
         <div className="flex items-center space-x-2">
-          {['return_pending', 'return_started', 'return_picked_up'].map((s, index) => (
+          {['started', 'picked_up', 'completed'].map((s) => (
             <div
               key={s}
               className={cn(
                 "w-1/3 h-4 rounded-full cursor-pointer transition-colors",
-                status === 'return_completed' ? 'bg-green-500' :
-                status === s || index < ['return_pending', 'return_started', 'return_picked_up'].indexOf(status) ? 'bg-red-500' : 'bg-gray-200'
+                getProgressBarColor(s)
               )}
               onClick={() => handleProgressBarClick(s as RideStatus)}
             />
           ))}
         </div>
-      )}
+        {renderMilesHistory()}
+      </div>
+      
+      <div className="space-y-1">
+        <div className="text-sm font-medium text-gray-500">Return Trip</div>
+        <div className="flex items-center space-x-2">
+          {['return_started', 'return_picked_up', 'return_completed'].map((s) => (
+            <div
+              key={s}
+              className={cn(
+                "w-1/3 h-4 rounded-full cursor-pointer transition-colors",
+                getProgressBarColor(s, true)
+              )}
+              onClick={() => handleProgressBarClick(s as RideStatus)}
+            />
+          ))}
+        </div>
+        {renderMilesHistory(true)}
+      </div>
+      
       <div className="flex items-center space-x-2">
         {renderActionButton()}
         {renderActionButton() && renderMilesInput()}

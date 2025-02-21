@@ -1,412 +1,542 @@
+"use client"
+
+import * as React from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { CalendarIcon, MapPinIcon, PhoneIcon, ArrowLeftIcon, DownloadIcon } from 'lucide-react'
 import { RideProgress } from './ride-progress'
 import { Input } from "@/components/ui/input"
 import { format } from 'date-fns'
 import { SignaturePad } from './signature-pad'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import jsPDF from 'jspdf'
+import type { BadgeProps } from "@/components/ui/badge"
 
-interface RideDetailViewProps {
-  ride: Ride
-  onRideAction: (rideId: string, action: RideStatus, miles: number) => void
-  onBack: (rideId: string, newStatus: RideStatus) => void
-  onMilesEdit: (rideId: string, field: string, value: string) => void
-  onClose: () => void
+interface Address {
+  address: string
+  city: string
+  state: string
+  zip: string
 }
 
 interface Ride {
   id: string
-  passengerName: string
-  pickupAddress: string
-  dropoffAddress: string
-  pickupTime: string
-  status: RideStatus
-  phoneNumber: string
-  startMiles?: number
-  pickupMiles?: number
-  endMiles?: number
-  returnStartMiles?: number
-  returnPickupMiles?: number
-  returnEndMiles?: number
-  startTime?: string
-  endTime?: string
-  returnStartTime?: string
-  returnPickupTime?: string
-  returnEndTime?: string
-  scheduledPickupTime: string
-  order: number
-  signature?: string
+  member_id: string
+  driver_id: string | null
+  pickup_address: Address
+  dropoff_address: Address
+  scheduled_pickup_time: string
+  status: 'pending' | 'assigned' | 'started' | 'picked_up' | 'completed' | 'return_pending' | 'return_started' | 'return_picked_up' | 'return_completed'
+  start_miles: number | null
+  end_miles: number | null
+  start_time: string | null
+  end_time: string | null
+  notes: string | null
+  payment_method: string
+  payment_status: 'pending' | 'paid'
+  recurring: 'none' | 'daily' | 'weekly' | 'monthly'
+  created_at: string
+  updated_at: string
+  member: {
+    id: string
+    full_name: string
+    phone: string
+  }
 }
 
-type RideStatus = 
-  | 'pending'
-  | 'started'
-  | 'picked_up'
-  | 'completed'
-  | 'return_pending'
-  | 'return_started'
-  | 'return_picked_up'
-  | 'return_completed'
+interface RideDetailViewProps {
+  ride: Ride
+  onRideAction: (rideId: string, newStatus: Ride['status'], milesData?: { start?: number | null; end?: number | null }) => Promise<void>
+  onBack: () => void
+  onMilesEdit: (rideId: string, miles: { start?: number | null; end?: number | null }) => Promise<void>
+  onClose: () => void
+}
 
-export function RideDetailView({
-  ride,
-  onRideAction,
-  onBack,
-  onMilesEdit,
-  onClose,
-}: RideDetailViewProps) {
-  const [signature, setSignature] = useState<string | undefined>(ride.signature);
+const formatAddress = (address: Address) => {
+  return `${address.address}, ${address.city}, ${address.state} ${address.zip}`
+}
+
+export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMilesEdit, onClose }: RideDetailViewProps) {
+  // Load persisted data immediately during initialization
+  const loadInitialData = () => {
+    try {
+      const persistedData = localStorage.getItem(`ride_${initialRide.id}`)
+      if (persistedData) {
+        const data = JSON.parse(persistedData)
+        return {
+          ride: { ...initialRide, status: data.status },
+          savedMiles: data.savedMiles,
+          timestamps: data.timestamps,
+          signature: data.signature,
+          isSignatureSaved: data.isSignatureSaved
+        }
+      }
+    } catch (error) {
+      console.error('Failed to load persisted ride data:', error)
+    }
+    return {
+      ride: initialRide,
+      savedMiles: {
+        started: initialRide.start_miles ?? undefined,
+        picked_up: undefined,
+        completed: initialRide.end_miles ?? undefined,
+        return_started: undefined,
+        return_picked_up: undefined,
+        return_completed: undefined
+      },
+      timestamps: {
+        ...(initialRide.start_time ? { started: initialRide.start_time } : {}),
+        ...(initialRide.end_time ? { completed: initialRide.end_time } : {})
+      },
+      signature: null,
+      isSignatureSaved: false
+    }
+  }
+
+  const initialData = loadInitialData()
+  const [ride, setRide] = useState<Ride>(initialData.ride)
+  const [signature, setSignature] = useState<string | null>(initialData.signature)
+  const [isSignatureSaved, setIsSignatureSaved] = useState(initialData.isSignatureSaved)
+  const [savedMiles, setSavedMiles] = useState(initialData.savedMiles)
+  const [timestamps, setTimestamps] = useState(initialData.timestamps)
+
+  // Update state when initialRide changes (e.g., when navigating between rides)
+  useEffect(() => {
+    const newData = loadInitialData()
+    setRide(newData.ride)
+    setSavedMiles(newData.savedMiles)
+    setTimestamps(newData.timestamps)
+    setSignature(newData.signature)
+    setIsSignatureSaved(newData.isSignatureSaved)
+  }, [initialRide.id])
+
+  // Persist ride data when component unmounts or when navigating away
+  useEffect(() => {
+    const persistRideData = async () => {
+      try {
+        // Save the current state to localStorage as backup
+        const rideData = {
+          id: ride.id,
+          status: ride.status,
+          savedMiles,
+          timestamps,
+          signature,
+          isSignatureSaved
+        }
+        localStorage.setItem(`ride_${ride.id}`, JSON.stringify(rideData))
+        
+        // Here you would typically also make an API call to persist the data
+        // await updateRideData(rideData)
+      } catch (error) {
+        console.error('Failed to persist ride data:', error)
+      }
+    }
+
+    window.addEventListener('beforeunload', persistRideData)
+    return () => {
+      persistRideData()
+      window.removeEventListener('beforeunload', persistRideData)
+    }
+  }, [ride, savedMiles, timestamps, signature, isSignatureSaved])
 
   const handleSignatureSave = (signatureData: string) => {
-    setSignature(signatureData);
-    // Here you would typically save the signature to your backend
-    console.log('Signature saved:', signatureData);
-  };
+    setSignature(signatureData)
+    setIsSignatureSaved(true)
+    
+    // Persist signature immediately when saved
+    const persistedData = {
+      id: ride.id,
+      status: ride.status,
+      savedMiles,
+      timestamps,
+      signature: signatureData,
+      isSignatureSaved: true
+    }
+    localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
+  }
 
   const handleSignatureClear = () => {
-    setSignature(undefined);
-  };
+    setSignature(null)
+    setIsSignatureSaved(false)
+    
+    // Update persisted data when signature is cleared
+    const persistedData = {
+      id: ride.id,
+      status: ride.status,
+      savedMiles,
+      timestamps,
+      signature: null,
+      isSignatureSaved: false
+    }
+    localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
+  }
+
+  const handleRideAction = async (status: Ride['status'], miles: number) => {
+    const milesData: { start?: number | null; end?: number | null } = {}
+    const now = new Date().toISOString()
+    
+    // Update timestamps
+    const newTimestamps = { ...timestamps, [status]: now }
+    setTimestamps(newTimestamps)
+    
+    switch (status) {
+      case 'started':
+        milesData.start = miles
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, started: miles }))
+        break
+      case 'picked_up':
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, picked_up: miles }))
+        break
+      case 'completed':
+        milesData.end = miles
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, completed: miles }))
+        break
+      case 'return_started':
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_started: miles }))
+        break
+      case 'return_picked_up':
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_picked_up: miles }))
+        break
+      case 'return_completed':
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_completed: miles }))
+        break
+    }
+    
+    try {
+      await onRideAction(ride.id, status, milesData)
+      
+      const updatedRide = {
+        ...ride,
+        status,
+        ...(status === 'started' ? { start_time: now, start_miles: miles } : {}),
+        ...(status === 'completed' ? { end_time: now, end_miles: miles } : {})
+      }
+      
+      // Update local ride state
+      setRide(updatedRide)
+      
+      // Persist updated state
+      const persistedData = {
+        id: ride.id,
+        status: updatedRide.status,
+        savedMiles: {
+          ...savedMiles,
+          [status]: miles
+        },
+        timestamps: newTimestamps,
+        signature,
+        isSignatureSaved
+      }
+      localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
+    } catch (error) {
+      console.error('Failed to update ride:', error)
+      alert('Failed to update ride status. Please try again.')
+    }
+  }
+
+  const handleMilesEdit = async (status: string, miles: number) => {
+    try {
+      // Update local state
+      const newSavedMiles = { ...savedMiles, [status]: miles }
+      setSavedMiles(newSavedMiles)
+
+      // If this is a start or end miles update, we need to call onMilesEdit
+      if (status === 'started') {
+        await onMilesEdit(ride.id, { start: miles })
+      } else if (status === 'completed') {
+        await onMilesEdit(ride.id, { end: miles })
+      }
+
+      // Update the ride object if needed
+      const updatedRide = {
+        ...ride,
+        ...(status === 'started' ? { start_miles: miles } : {}),
+        ...(status === 'completed' ? { end_miles: miles } : {})
+      }
+      setRide(updatedRide)
+
+      // Persist to localStorage
+      const persistedData = {
+        id: ride.id,
+        status: ride.status,
+        savedMiles: newSavedMiles,
+        timestamps,
+        signature,
+        isSignatureSaved
+      }
+      localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
+    } catch (error) {
+      console.error('Failed to update mileage:', error)
+      alert('Failed to save mileage. Please try again.')
+    }
+  }
 
   const generatePDF = () => {
-    const doc = new jsPDF();
-    
-    // Add BeLoved Transportation header with logo
-    const logoUrl = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png";
-    
-    // Add logo with proper dimensions and positioning
-    // Original logo is wider than tall, so adjust dimensions to match header text height (approximately 12px)
-    doc.addImage(logoUrl, 'PNG', 20, 15, 24, 12);
-    
-    // Add header text with adjusted positioning - all on one line
-    doc.setFontSize(24);
-    doc.setFont('helvetica', 'bold');
-    doc.text("BeLoved Transportation", 50, 25);
-    
-    // Reset font for rest of document
-    doc.setFont('helvetica', 'normal');
-    doc.setFontSize(12);
-    
-    // Add trip details - moved up by 5 pixels
-    doc.text(`Trip ID: ${ride.id}`, 20, 45);
-    doc.text(`Member Name: ${ride.passengerName}`, 20, 55);
-    
-    // Format and separate times
-    const scheduledTime = format(new Date(ride.scheduledPickupTime), 'h:mm a');
-    // Calculate "To Be Ready Time" (45 minutes before scheduled time)
-    const toBeReadyDate = new Date(ride.scheduledPickupTime);
-    toBeReadyDate.setMinutes(toBeReadyDate.getMinutes() - 45);
-    const toBeReadyTime = format(toBeReadyDate, 'h:mm a');
-    
-    // Add times side by side - moved up by 5 pixels
-    doc.text("To Be Ready Time:", 20, 75);
-    doc.text(`${toBeReadyTime}`, 20, 82);
-    doc.text("Appointment Time:", 105, 75);
-    doc.text(`${scheduledTime}`, 105, 82);
-    
-    // Add addresses side by side - moved up by 5 pixels
-    doc.text("Pickup Address:", 20, 95);
-    doc.text("Drop-off Address:", 105, 95);
-    const pickupLines = doc.splitTextToSize(ride.pickupAddress, 75);
-    const dropoffLines = doc.splitTextToSize(ride.dropoffAddress, 75);
-    doc.text(pickupLines, 20, 102);
-    doc.text(dropoffLines, 105, 102);
+    if (!isSignatureSaved) {
+      alert('Please add and save a signature before generating the PDF')
+      return
+    }
 
-    // Adjust all subsequent Y positions
-    const yOffset = 30; // Reduced from 35
-
-    // Initial Trip Completion Information Table
-    doc.setFont('helvetica', 'bold');
-    doc.text("Initial Trip Completion Information:", 20, 120 + yOffset);
+    const doc = new jsPDF()
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const margin = 20
+    const contentWidth = pageWidth/2.5
     
-    // Draw table for initial trip - more compact
-    const initialTableY = 125 + yOffset;
-    const rowHeight = 18; // Increased from 16
-    const tableWidth = 120;
-    const colWidth = tableWidth / 3;
+    // Logo and header
+    doc.setFontSize(24)
+    doc.addImage('/bloved-2.png', 'PNG', margin, 10, 24, 12)
+    doc.setFont('helvetica', 'bold')
+    doc.text('BeLoved Transportation', margin + 30, 20)
     
-    // Calculate table positions
-    const tableStartX = 20;
-    const tableEndX = tableStartX + tableWidth;
-    const col1X = tableStartX + colWidth;
-    const col2X = tableStartX + (colWidth * 2);
+    // Trip ID and Member Info - more compact
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'normal')
+    doc.text(`Trip ID: ${ride.id}`, margin, 32)
+    doc.text(`Member Name: ${ride.member.full_name}`, margin, 40)
     
-    // Draw table background for headers
-    doc.setFillColor(240, 240, 240);
-    doc.rect(tableStartX, initialTableY, colWidth, 8, 'F');
-    doc.rect(col1X, initialTableY, colWidth, 8, 'F');
-    doc.rect(col2X, initialTableY, colWidth, 8, 'F');
+    // Times and Addresses in two columns - tighter spacing
+    const col1X = margin
+    const col2X = pageWidth/2
     
-    // Horizontal lines for main table structure
-    doc.line(tableStartX, initialTableY, tableEndX, initialTableY);
-    doc.line(tableStartX, initialTableY + 8, tableEndX, initialTableY + 8);
-    doc.line(tableStartX, initialTableY + rowHeight, tableEndX, initialTableY + rowHeight);
+    // Column 1 - reduced spacing
+    doc.text('To Be Ready Time:', col1X, 52)
+    doc.text(format(new Date(new Date(ride.scheduled_pickup_time).getTime() - 60 * 60 * 1000), 'h:mm a'), col1X, 60)
+    doc.text('Pickup Address:', col1X, 68)
+    doc.text(formatAddress(ride.pickup_address), col1X, 76)
     
-    // Add separator lines between time and mileage in each column
-    doc.line(tableStartX, initialTableY + 12, tableEndX, initialTableY + 12);
+    // Column 2 - aligned with column 1
+    doc.text('Appointment Time:', col2X, 52)
+    doc.text(format(new Date(ride.scheduled_pickup_time), 'h:mm a'), col2X, 60)
+    doc.text('Drop-off Address:', col2X, 68)
+    doc.text(formatAddress(ride.dropoff_address), col2X, 76)
     
-    // Vertical lines
-    doc.line(tableStartX, initialTableY, tableStartX, initialTableY + rowHeight);
-    doc.line(col1X, initialTableY, col1X, initialTableY + rowHeight);
-    doc.line(col2X, initialTableY, col2X, initialTableY + rowHeight);
-    doc.line(tableEndX, initialTableY, tableEndX, initialTableY + rowHeight);
+    // Initial Trip Table
+    const tableY = 90
+    doc.setFont('helvetica', 'bold')
+    doc.text('Initial Trip Completion Information:', margin, tableY)
     
-    // Headers - centered and bold with background
-    doc.setFont('helvetica', 'bold');
-    doc.text("Start", tableStartX + 15, initialTableY + 6);
-    doc.text("Pickup", col1X + 15, initialTableY + 6);
-    doc.text("End", col2X + 15, initialTableY + 6);
+    // Table setup - adjusted dimensions
+    const rowHeight = 8 // Reduced to match header height
+    const headerHeight = 8
+    const labelColumnWidth = contentWidth/4 // Width for Time/Miles labels
     
-    // Initial trip data
-    const startTime = ride.startTime ? format(new Date(ride.startTime), 'h:mm a') : 'N/A';
-    const pickupTime = ride.pickupTime ? format(new Date(ride.pickupTime), 'h:mm a') : 'N/A';
-    const endTime = ride.endTime ? format(new Date(ride.endTime), 'h:mm a') : 'N/A';
+    // Draw initial trip table
+    doc.setFillColor(240, 240, 240)
+    doc.rect(margin, tableY + 5, contentWidth, headerHeight, 'F') // Header background
+    doc.rect(margin, tableY + 5, contentWidth, rowHeight * 2 + headerHeight) // Full table
     
-    // Data with clear separation between time and miles - normal text
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Time: ${startTime}`, tableStartX + 2, initialTableY + 12.5);
-    doc.text(`Miles: ${ride.startMiles || 'N/A'}`, tableStartX + 2, initialTableY + 16.8);
-    doc.text(`Time: ${pickupTime}`, col1X + 2, initialTableY + 12.5);
-    doc.text(`Miles: ${ride.pickupMiles || 'N/A'}`, col1X + 2, initialTableY + 16.8);
-    doc.text(`Time: ${endTime}`, col2X + 2, initialTableY + 12.5);
-    doc.text(`Miles: ${ride.endMiles || 'N/A'}`, col2X + 2, initialTableY + 16.8);
-
-    // Return Trip Completion Information Table
-    doc.setFont('helvetica', 'bold');
-    doc.text("Return Trip Completion Information:", 20, 155 + yOffset);
+    // Vertical lines - including label column
+    const labelCol = margin + labelColumnWidth
+    const col1 = margin + labelColumnWidth + (contentWidth - labelColumnWidth) / 3
+    const col2 = margin + labelColumnWidth + ((contentWidth - labelColumnWidth) * 2/3)
+    doc.line(labelCol, tableY + 5, labelCol, tableY + 5 + rowHeight * 2 + headerHeight)
+    doc.line(col1, tableY + 5, col1, tableY + 5 + rowHeight * 2 + headerHeight)
+    doc.line(col2, tableY + 5, col2, tableY + 5 + rowHeight * 2 + headerHeight)
     
-    // Draw table for return trip - more compact
-    const returnTableY = 160 + yOffset;
+    // Horizontal lines
+    doc.line(margin, tableY + 5 + headerHeight, margin + contentWidth, tableY + 5 + headerHeight) // Below header
+    doc.line(margin, tableY + 5 + headerHeight + rowHeight, margin + contentWidth, tableY + 5 + headerHeight + rowHeight) // Between time and miles
     
-    // Draw table background for headers
-    doc.setFillColor(240, 240, 240);
-    doc.rect(tableStartX, returnTableY, colWidth, 8, 'F');
-    doc.rect(col1X, returnTableY, colWidth, 8, 'F');
-    doc.rect(col2X, returnTableY, colWidth, 8, 'F');
+    // Headers
+    doc.setFont('helvetica', 'bold')
+    doc.text('Start', labelCol + (contentWidth - labelColumnWidth)/6, tableY + 10, { align: 'center' })
+    doc.text('Pickup', labelCol + (contentWidth - labelColumnWidth)/2, tableY + 10, { align: 'center' })
+    doc.text('End', labelCol + (contentWidth - labelColumnWidth) * 5/6, tableY + 10, { align: 'center' })
     
-    // Horizontal lines for main table structure
-    doc.line(tableStartX, returnTableY, tableEndX, returnTableY);
-    doc.line(tableStartX, returnTableY + 8, tableEndX, returnTableY + 8);
-    doc.line(tableStartX, returnTableY + rowHeight, tableEndX, returnTableY + rowHeight);
+    // Data rows
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
     
-    // Add separator lines between time and mileage in each column
-    doc.line(tableStartX, returnTableY + 12, tableEndX, returnTableY + 12);
+    // Time row - center between header and middle line
+    const timeY = tableY + 5 + headerHeight + (rowHeight/2)
+    doc.text('Time', margin + labelColumnWidth/2, timeY, { align: 'center', baseline: 'middle' })
+    doc.text(timestamps.started ? format(new Date(timestamps.started), 'h:mm a') : 'N/A', labelCol + (contentWidth - labelColumnWidth)/6, timeY, { align: 'center', baseline: 'middle' })
+    doc.text(timestamps.picked_up ? format(new Date(timestamps.picked_up), 'h:mm a') : 'N/A', labelCol + (contentWidth - labelColumnWidth)/2, timeY, { align: 'center', baseline: 'middle' })
+    doc.text(timestamps.completed ? format(new Date(timestamps.completed), 'h:mm a') : 'N/A', labelCol + (contentWidth - labelColumnWidth) * 5/6, timeY, { align: 'center', baseline: 'middle' })
     
-    // Vertical lines
-    doc.line(tableStartX, returnTableY, tableStartX, returnTableY + rowHeight);
-    doc.line(col1X, returnTableY, col1X, returnTableY + rowHeight);
-    doc.line(col2X, returnTableY, col2X, returnTableY + rowHeight);
-    doc.line(tableEndX, returnTableY, tableEndX, returnTableY + rowHeight);
+    // Miles row - center between middle line and bottom
+    const milesY = tableY + 5 + headerHeight + rowHeight + (rowHeight/2)
+    doc.text('Mileage', margin + labelColumnWidth/2, milesY, { align: 'center', baseline: 'middle' })
+    doc.text(savedMiles.started?.toString() || 'N/A', labelCol + (contentWidth - labelColumnWidth)/6, milesY, { align: 'center', baseline: 'middle' })
+    doc.text(savedMiles.picked_up?.toString() || 'N/A', labelCol + (contentWidth - labelColumnWidth)/2, milesY, { align: 'center', baseline: 'middle' })
+    doc.text(savedMiles.completed?.toString() || 'N/A', labelCol + (contentWidth - labelColumnWidth) * 5/6, milesY, { align: 'center', baseline: 'middle' })
     
-    // Headers - centered and bold with background
-    doc.setFont('helvetica', 'bold');
-    doc.text("Start", tableStartX + 15, returnTableY + 6);
-    doc.text("Pickup", col1X + 15, returnTableY + 6);
-    doc.text("End", col2X + 15, returnTableY + 6);
+    // Initial trip total
+    const initialTripMiles = savedMiles.completed && savedMiles.started ? savedMiles.completed - savedMiles.started : 0
+    doc.setFontSize(12)
+    doc.text(`Initial Trip Total Mileage: ${initialTripMiles}`, margin, tableY + rowHeight * 2 + headerHeight + 10)
+    
+    // Return Trip Table
+    const returnY = tableY + rowHeight * 2 + headerHeight + 20
+    doc.setFont('helvetica', 'bold')
+    doc.text('Return Trip Completion Information:', margin, returnY)
+    
+    // Draw return trip table
+    doc.setFillColor(240, 240, 240)
+    doc.rect(margin, returnY + 5, contentWidth, headerHeight, 'F')
+    doc.rect(margin, returnY + 5, contentWidth, rowHeight * 2 + headerHeight)
+    
+    // Return trip vertical lines
+    doc.line(labelCol, returnY + 5, labelCol, returnY + 5 + rowHeight * 2 + headerHeight)
+    doc.line(col1, returnY + 5, col1, returnY + 5 + rowHeight * 2 + headerHeight)
+    doc.line(col2, returnY + 5, col2, returnY + 5 + rowHeight * 2 + headerHeight)
+    
+    // Return trip horizontal lines
+    doc.line(margin, returnY + 5 + headerHeight, margin + contentWidth, returnY + 5 + headerHeight)
+    doc.line(margin, returnY + 5 + headerHeight + rowHeight, margin + contentWidth, returnY + 5 + headerHeight + rowHeight)
+    
+    // Return trip headers
+    doc.text('Start', labelCol + (contentWidth - labelColumnWidth)/6, returnY + 10, { align: 'center' })
+    doc.text('Pickup', labelCol + (contentWidth - labelColumnWidth)/2, returnY + 10, { align: 'center' })
+    doc.text('End', labelCol + (contentWidth - labelColumnWidth) * 5/6, returnY + 10, { align: 'center' })
     
     // Return trip data
-    const returnStartTime = ride.returnStartTime ? format(new Date(ride.returnStartTime), 'h:mm a') : 'N/A';
-    const returnPickupTime = ride.returnPickupTime ? format(new Date(ride.returnPickupTime), 'h:mm a') : 'N/A';
-    const returnEndTime = ride.returnEndTime ? format(new Date(ride.returnEndTime), 'h:mm a') : 'N/A';
+    doc.setFont('helvetica', 'normal')
+    doc.setFontSize(10)
     
-    // Data with clear separation between time and miles - normal text
-    doc.setFont('helvetica', 'normal');
-    doc.text(`Time: ${returnStartTime}`, tableStartX + 2, returnTableY + 12.5);
-    doc.text(`Miles: ${ride.returnStartMiles || 'N/A'}`, tableStartX + 2, returnTableY + 16.8);
-    doc.text(`Time: ${returnPickupTime}`, col1X + 2, returnTableY + 12.5);
-    doc.text(`Miles: ${ride.returnPickupMiles || 'N/A'}`, col1X + 2, returnTableY + 16.8);
-    doc.text(`Time: ${returnEndTime}`, col2X + 2, returnTableY + 12.5);
-    doc.text(`Miles: ${ride.returnEndMiles || 'N/A'}`, col2X + 2, returnTableY + 16.8);
-
-    // Total Trip Information
-    if (ride.startMiles !== undefined && ride.returnEndMiles !== undefined) {
-      doc.text(`Total Trip Miles: ${ride.returnEndMiles - ride.startMiles}`, 20, 195 + yOffset);
-    }
+    // Return time row - center between header and middle line
+    const returnTimeY = returnY + 5 + headerHeight + (rowHeight/2)
+    doc.text('Time', margin + labelColumnWidth/2, returnTimeY, { align: 'center', baseline: 'middle' })
+    doc.text(timestamps.return_started ? format(new Date(timestamps.return_started), 'h:mm a') : 'N/A', labelCol + (contentWidth - labelColumnWidth)/6, returnTimeY, { align: 'center', baseline: 'middle' })
+    doc.text(timestamps.return_picked_up ? format(new Date(timestamps.return_picked_up), 'h:mm a') : 'N/A', labelCol + (contentWidth - labelColumnWidth)/2, returnTimeY, { align: 'center', baseline: 'middle' })
+    doc.text(timestamps.return_completed ? format(new Date(timestamps.return_completed), 'h:mm a') : 'N/A', labelCol + (contentWidth - labelColumnWidth) * 5/6, returnTimeY, { align: 'center', baseline: 'middle' })
     
-    // Add signature if available
+    // Return miles row - center between middle line and bottom
+    const returnMilesY = returnY + 5 + headerHeight + rowHeight + (rowHeight/2)
+    doc.text('Mileage', margin + labelColumnWidth/2, returnMilesY, { align: 'center', baseline: 'middle' })
+    doc.text(savedMiles.return_started?.toString() || 'N/A', labelCol + (contentWidth - labelColumnWidth)/6, returnMilesY, { align: 'center', baseline: 'middle' })
+    doc.text(savedMiles.return_picked_up?.toString() || 'N/A', labelCol + (contentWidth - labelColumnWidth)/2, returnMilesY, { align: 'center', baseline: 'middle' })
+    doc.text(savedMiles.return_completed?.toString() || 'N/A', labelCol + (contentWidth - labelColumnWidth) * 5/6, returnMilesY, { align: 'center', baseline: 'middle' })
+    
+    // Return trip total
+    const returnTripMiles = savedMiles.return_completed && savedMiles.return_started ? savedMiles.return_completed - savedMiles.return_started : 0
+    doc.setFontSize(12)
+    doc.text(`Return Trip Total Mileage: ${returnTripMiles}`, margin, returnY + rowHeight * 2 + headerHeight + 10)
+    
+    // Total trip miles
+    const totalMiles = initialTripMiles + returnTripMiles
+    doc.text(`Total Trip Mileage: ${totalMiles}`, margin, returnY + rowHeight * 2 + headerHeight + 20)
+    
+    // Member Signature
     if (signature) {
-      doc.text("Member Signature:", 20, 210 + yOffset);
-      doc.addImage(signature, 'PNG', 20, 220 + yOffset, 50, 20);
+      doc.text('Member Signature:', margin, returnY + rowHeight * 2 + headerHeight + 35)
+      doc.addImage(signature, 'PNG', margin, returnY + rowHeight * 2 + headerHeight + 40, 70, 25)
+      doc.text(format(new Date(), 'EEEE, MMMM d, yyyy'), margin, returnY + rowHeight * 2 + headerHeight + 70)
     }
     
-    // Format date for bottom left of page
-    const fullDate = format(new Date(ride.scheduledPickupTime), 'EEEE, MMMM d, yyyy');
-    doc.text(fullDate, 20, 275);
-    
-    // Save the PDF
-    doc.save(`trip-log-${ride.id}.pdf`);
-  };
-
-  const renderRideActions = () => {
-    if (ride.status === 'pending') {
-      return (
-        <div className="mt-4 flex items-center space-x-2">
-          <Button 
-            onClick={() => onRideAction(ride.id, 'started', ride.startMiles || 0)} 
-            className="bg-red-500 hover:bg-red-600"
-          >
-            Start
-          </Button>
-          <Input
-            type="text"
-            placeholder="Starting Miles"
-            value={ride.startMiles || ''}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === '' || /^\d+$/.test(value)) {
-                onMilesEdit(ride.id, 'startMiles', value);
-              }
-            }}
-            className="w-32"
-          />
-        </div>
-      );
-    }
-
-    return (
-      <div className="mt-4">
-        <RideProgress
-          status={ride.status}
-          onPickup={(miles: number) => onRideAction(ride.id, 'picked_up', miles)}
-          onComplete={(miles: number) => onRideAction(ride.id, 'completed', miles)}
-          onReturnStart={(miles: number) => onRideAction(ride.id, 'return_started', miles)}
-          onReturnPickup={(miles: number) => onRideAction(ride.id, 'return_picked_up', miles)}
-          onReturnComplete={(miles: number) => onRideAction(ride.id, 'return_completed', miles)}
-          onBack={(newStatus: RideStatus) => onBack(ride.id, newStatus)}
-          savedMiles={{
-            started: ride.startMiles,
-            picked_up: ride.pickupMiles,
-            completed: ride.endMiles,
-            return_started: ride.returnStartMiles,
-            return_picked_up: ride.returnPickupMiles,
-            return_completed: ride.returnEndMiles
-          }}
-        />
-      </div>
-    );
-  };
-
-  const renderTripSummary = () => {
-    const isFirstLegComplete = ride.status === 'completed' || ride.status === 'return_pending' || 
-                              ride.status === 'return_completed';
-    const isSecondLegComplete = ride.status === 'return_completed';
-
-    if (!isFirstLegComplete && !isSecondLegComplete) return null;
-
-    return (
-      <div className="mt-6 space-y-4 bg-gray-50 p-4 rounded-lg">
-        {isFirstLegComplete && (
-          <div>
-            <h4 className="font-semibold mb-2">Initial Trip:</h4>
-            <div className="space-y-2">
-              <p>Start Time: {ride.startTime ? format(new Date(ride.startTime), 'HH:mm') : 'N/A'}</p>
-              <p>Start Miles: {ride.startMiles || 'N/A'}</p>
-              <p>Pickup Time: {ride.pickupTime ? format(new Date(ride.pickupTime), 'HH:mm') : 'N/A'}</p>
-              <p>Pickup Miles: {ride.pickupMiles || 'N/A'}</p>
-              <p>End Time: {ride.endTime ? format(new Date(ride.endTime), 'HH:mm') : 'N/A'}</p>
-              <p>End Miles: {ride.endMiles || 'N/A'}</p>
-              {ride.startMiles !== undefined && ride.endMiles !== undefined && (
-                <p className="font-bold">Initial Trip Miles: {ride.endMiles - ride.startMiles}</p>
-              )}
-            </div>
-          </div>
-        )}
-        
-        {isSecondLegComplete && (
-          <div>
-            <h4 className="font-semibold mb-2">Return Trip:</h4>
-            <div className="space-y-2">
-              <p>Start Time: {ride.returnStartTime ? format(new Date(ride.returnStartTime), 'HH:mm') : 'N/A'}</p>
-              <p>Start Miles: {ride.returnStartMiles || 'N/A'}</p>
-              <p>Pickup Time: {ride.returnPickupTime ? format(new Date(ride.returnPickupTime), 'HH:mm') : 'N/A'}</p>
-              <p>Pickup Miles: {ride.returnPickupMiles || 'N/A'}</p>
-              <p>End Time: {ride.returnEndTime ? format(new Date(ride.returnEndTime), 'HH:mm') : 'N/A'}</p>
-              <p>End Miles: {ride.returnEndMiles || 'N/A'}</p>
-              {ride.returnStartMiles !== undefined && ride.returnEndMiles !== undefined && (
-                <p className="font-bold">Return Trip Miles: {ride.returnEndMiles - ride.returnStartMiles}</p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {isSecondLegComplete && ride.startMiles !== undefined && ride.returnEndMiles !== undefined && (
-          <p className="font-bold text-lg">Total Trip Miles: {ride.returnEndMiles - ride.startMiles}</p>
-        )}
-
-        {isSecondLegComplete && (
-          <SignaturePad
-            onSave={handleSignatureSave}
-            onClear={handleSignatureClear}
-          />
-        )}
-        {signature && (
-          <div className="mt-4">
-            <p className="font-semibold mb-2">Member Signature:</p>
-            <img src={signature} alt="Member signature" className="border rounded-lg p-2 bg-white" />
-          </div>
-        )}
-      </div>
-    );
-  };
+    doc.save(`ride-${ride.id}.pdf`)
+  }
 
   return (
-    <div className="space-y-6 p-6 max-w-4xl mx-auto">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Ride Details</h1>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={generatePDF} className="flex items-center gap-2">
-            <DownloadIcon className="h-4 w-4" />
+        <Button variant="ghost" onClick={onBack}>
+          <ArrowLeftIcon className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Button>
+        <div className="flex items-center gap-2">
+        <Badge variant={ride.status === 'completed' ? "default" : "secondary"}>
+          {ride.status.replace(/_/g, ' ').toUpperCase()}
+        </Badge>
+          <Button variant="outline" onClick={generatePDF}>
+            <DownloadIcon className="mr-2 h-4 w-4" />
             Download PDF
-          </Button>
-          <Button variant="outline" onClick={onClose} className="flex items-center gap-2">
-            <ArrowLeftIcon className="h-4 w-4" />
-            Back to Dashboard
           </Button>
         </div>
       </div>
       
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-xl font-semibold">{ride.passengerName}</h3>
-              <div className="flex items-center mt-2">
-                <PhoneIcon className="h-4 w-4 mr-2" />
-                <span>{ride.phoneNumber}</span>
-              </div>
-            </div>
-            <Badge className="text-sm" variant={ride.status === 'pending' ? 'secondary' : 'outline'}>
-              {ride.status.replace('_', ' ').toUpperCase()}
-            </Badge>
-          </div>
-
+        <CardHeader>
+          <CardTitle>Ride Details</CardTitle>
+        </CardHeader>
+        <CardContent>
           <div className="space-y-4">
-            <div className="flex items-center">
-              <CalendarIcon className="h-4 w-4 mr-2" />
-              <span>Scheduled Pickup: {format(new Date(ride.scheduledPickupTime), 'MMM d, yyyy HH:mm')}</span>
+            <div>
+              <div className="text-sm text-gray-500">Member</div>
+              <div className="flex items-center gap-2">
+                <div className="font-medium">{ride.member.full_name}</div>
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <PhoneIcon className="h-4 w-4" />
+                </Button>
+              </div>
+              <div className="text-sm text-gray-500">{ride.member.phone}</div>
             </div>
-            <div className="flex items-start">
-              <MapPinIcon className="h-4 w-4 mr-2 mt-1" />
-              <div>
-                <p className="font-medium">Pickup Location</p>
-                <p>{ride.pickupAddress}</p>
+
+            <div>
+              <div className="text-sm text-gray-500">Driver Pickup Time</div>
+              <div className="font-medium text-lg">
+                {format(new Date(new Date(ride.scheduled_pickup_time).getTime() - 60 * 60 * 1000), 'h:mm a')}
+              </div>
+              <div className="text-sm text-gray-500 mt-2">Appointment Time</div>
+              <div className="font-medium">
+                {format(new Date(ride.scheduled_pickup_time), 'PPP p')}
               </div>
             </div>
-            <div className="flex items-start">
-              <MapPinIcon className="h-4 w-4 mr-2 mt-1" />
-              <div>
-                <p className="font-medium">Dropoff Location</p>
-                <p>{ride.dropoffAddress}</p>
+
+            <div>
+              <div className="text-sm text-gray-500">Pickup Location</div>
+              <div className="flex items-start gap-2">
+                <MapPinIcon className="mt-1 h-4 w-4 text-gray-400" />
+                <div className="font-medium">{formatAddress(ride.pickup_address)}</div>
               </div>
+            </div>
+
+            <div>
+              <div className="text-sm text-gray-500">Dropoff Location</div>
+              <div className="flex items-start gap-2">
+                <MapPinIcon className="mt-1 h-4 w-4 text-gray-400" />
+                <div className="font-medium">{formatAddress(ride.dropoff_address)}</div>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm text-gray-500">Notes</div>
+              <div className="font-medium">{ride.notes || 'No notes provided'}</div>
+            </div>
+
+            <div>
+              <div className="text-sm text-gray-500">Payment Details</div>
+              <div className="font-medium">
+                Method: {ride.payment_method.toUpperCase()}
+                <br />
+                Status: {ride.payment_status.toUpperCase()}
+              </div>
+            </div>
+
+            <div>
+              <div className="text-sm text-gray-500">Recurring Schedule</div>
+              <div className="font-medium">{ride.recurring.toUpperCase()}</div>
+            </div>
+
+            <div className="pt-4 border-t">
+              <div className="text-sm text-gray-500 mb-4">Trip Progress</div>
+              <RideProgress
+                status={ride.status}
+                onStart={(miles) => handleRideAction('started', miles)}
+                onPickup={(miles) => handleRideAction('picked_up', miles)}
+                onComplete={(miles) => handleRideAction('completed', miles)}
+                onReturnStart={(miles) => handleRideAction('return_started', miles)}
+                onReturnPickup={(miles) => handleRideAction('return_picked_up', miles)}
+                onReturnComplete={(miles) => handleRideAction('return_completed', miles)}
+                onBack={(status) => handleRideAction(status, 0)}
+                onMilesEdit={handleMilesEdit}
+                savedMiles={savedMiles}
+                timestamps={timestamps}
+              />
+            </div>
+
+            <div className="pt-4 border-t">
+              <SignaturePad 
+                onSave={handleSignatureSave} 
+                onClear={handleSignatureClear}
+                savedSignature={signature}
+                isSignatureSaved={isSignatureSaved}
+              />
             </div>
           </div>
         </CardContent>
       </Card>
-
-      {renderRideActions()}
-      {renderTripSummary()}
     </div>
-  );
+  )
 } 

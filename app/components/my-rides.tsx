@@ -2,71 +2,75 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useAuth } from "../contexts/auth-context"
+import { supabase } from "@/lib/supabase"
+import type { Database } from "@/lib/supabase"
+import { format } from "date-fns"
 
-interface Ride {
-  id: string
-  userId: number
-  date: string
-  time: string
-  pickupAddress: {
-    address: string
-    city: string
-    state: string
-    zip: string
-  }
-  appointmentAddress: {
-    address: string
-    city: string
-    state: string
-    zip: string
-  }
-  contactInfo: {
-    name: string
-    phone: string
-    email: string
-  }
-  notes: string
-  recurring: string
-  paymentMethod: string
-  status: string
-}
+type Ride = Database['public']['Tables']['rides']['Row']
 
 export function MyRides() {
   const [rides, setRides] = useState<Ride[]>([])
+  const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
 
   useEffect(() => {
-    // Load rides from local storage
-    const storedRides = JSON.parse(localStorage.getItem("rides") || "[]")
-    // Filter rides for the current user
-    const userRides = storedRides.filter((ride: Ride) => ride.userId === user?.id)
-    setRides(userRides)
+    if (!user) return
+
+    const fetchRides = async () => {
+      setIsLoading(true)
+      try {
+        const { data: rides, error } = await supabase
+          .from('rides')
+          .select('*')
+          .eq('member_id', user.id)
+          .order('scheduled_pickup_time', { ascending: true })
+
+        if (error) {
+          console.error('Error fetching rides:', error)
+          return
+        }
+
+        setRides(rides)
+      } catch (err) {
+        console.error('Error fetching rides:', err)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    fetchRides()
   }, [user])
+
+  if (isLoading) {
+    return <div>Loading your rides...</div>
+  }
 
   return (
     <div className="space-y-4">
       {rides.map((ride) => (
         <Card key={ride.id}>
           <CardHeader>
-            <CardTitle>
-              {new Date(ride.date).toLocaleDateString()} at {ride.time}
-            </CardTitle>
+            <div className="flex justify-between items-center">
+              <CardTitle>
+                {format(new Date(ride.scheduled_pickup_time), "MMMM d, yyyy 'at' h:mm a")}
+              </CardTitle>
+              <Badge variant={ride.status === 'completed' ? "default" : "secondary"}>
+                {ride.status.replace(/_/g, ' ').toUpperCase()}
+              </Badge>
+            </div>
             <CardDescription>Ride ID: {ride.id}</CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
               <p>
                 <strong>Pickup:</strong>{" "}
-                {`${ride.pickupAddress.address}, ${ride.pickupAddress.city}, ${ride.pickupAddress.state} ${ride.pickupAddress.zip}`}
+                {`${ride.pickup_address.address}, ${ride.pickup_address.city}, ${ride.pickup_address.state} ${ride.pickup_address.zip}`}
               </p>
               <p>
-                <strong>Appointment:</strong>{" "}
-                {`${ride.appointmentAddress.address}, ${ride.appointmentAddress.city}, ${ride.appointmentAddress.state} ${ride.appointmentAddress.zip}`}
-              </p>
-              <p>
-                <strong>Contact:</strong>{" "}
-                {`${ride.contactInfo.name}, ${ride.contactInfo.phone}, ${ride.contactInfo.email}`}
+                <strong>Dropoff:</strong>{" "}
+                {`${ride.dropoff_address.address}, ${ride.dropoff_address.city}, ${ride.dropoff_address.state} ${ride.dropoff_address.zip}`}
               </p>
               <p>
                 <strong>Notes:</strong> {ride.notes || "N/A"}
@@ -75,10 +79,10 @@ export function MyRides() {
                 <strong>Recurring:</strong> {ride.recurring}
               </p>
               <p>
-                <strong>Payment Method:</strong> {ride.paymentMethod}
+                <strong>Payment Method:</strong> {ride.payment_method}
               </p>
               <p>
-                <strong>Status:</strong> {ride.status}
+                <strong>Payment Status:</strong> {ride.payment_status}
               </p>
             </div>
           </CardContent>

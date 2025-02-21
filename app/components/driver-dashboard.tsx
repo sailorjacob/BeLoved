@@ -11,211 +11,191 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format, isToday, isFuture, isPast, addDays, subDays, startOfDay } from 'date-fns'
 import { RideDetailView } from './ride-detail-view'
+import { supabase } from '@/lib/supabase'
+import { useAuth } from '../contexts/auth-context'
+import type { Database } from '@/lib/supabase'
 
-type RideStatus = 
-  | 'pending'
-  | 'started'
-  | 'picked_up'
-  | 'completed'
-  | 'return_pending'
-  | 'return_started'
-  | 'return_picked_up'
-  | 'return_completed'
+interface Address {
+  address: string
+  city: string
+  state: string
+  zip: string
+}
 
-interface Ride {
-  id: string
-  passengerName: string
-  pickupAddress: string
-  dropoffAddress: string
-  pickupTime: string
-  status: RideStatus
-  phoneNumber: string
-  startMiles?: number
-  pickupMiles?: number
-  endMiles?: number
-  returnStartMiles?: number
-  returnPickupMiles?: number
-  returnEndMiles?: number
-  startTime?: string
-  endTime?: string
-  returnStartTime?: string
-  returnPickupTime?: string
-  returnEndTime?: string
-  scheduledPickupTime: string
-  order: number
+type Ride = Database['public']['Tables']['rides']['Row'] & {
+  member: Database['public']['Tables']['profiles']['Row']
+}
+
+interface DriverStats {
+  completed_rides: number
+  total_miles: number
+}
+
+interface RideDetailViewProps {
+  ride: Ride
+  onRideAction: (rideId: string, newStatus: Ride['status'], milesData?: { start?: number | null; end?: number | null }) => Promise<void>
+  onBack: () => void
+  onMilesEdit: (rideId: string, miles: { start?: number | null; end?: number | null }) => Promise<void>
+  onClose: () => void
 }
 
 function formatTime(dateString: string): string {
   return new Date(dateString).toLocaleString([], { hour: '2-digit', minute: '2-digit' })
 }
 
-function generateRandomRides(date: Date): Ride[] {
-  const numRides = Math.floor(Math.random() * 5) + 1;
-  const rides: Ride[] = [];
-  const today = startOfDay(new Date());
-
-  for (let i = 0; i < numRides; i++) {
-    const pickupTime = new Date(date);
-    pickupTime.setHours(6 + Math.floor(i * (12 / numRides)));
-    pickupTime.setMinutes(Math.floor(Math.random() * 4) * 15);
-    pickupTime.setSeconds(0);
-    pickupTime.setMilliseconds(0);
-
-    let status: RideStatus = 'pending';
-    let startMiles, endMiles;
-
-    if (isPast(date) && !isToday(date)) {
-      status = 'completed';
-      startMiles = Math.floor(Math.random() * 1000);
-      endMiles = startMiles + Math.floor(Math.random() * 100) + 10;
-    }
-
-    rides.push({
-      id: `ride-${date.toISOString()}-${i}`,
-      passengerName: `Passenger ${i + 1}`,
-      pickupAddress: `${Math.floor(Math.random() * 1000) + 1} Main St, Bloomington`,
-      dropoffAddress: `${Math.floor(Math.random() * 1000) + 1} Oak St, Bloomington`,
-      pickupTime: pickupTime.toISOString(),
-      status: status,
-      phoneNumber: `(555) ${Math.floor(Math.random() * 900) + 100}-${Math.floor(Math.random() * 9000) + 1000}`,
-      startMiles: startMiles,
-      endMiles: endMiles,
-      scheduledPickupTime: pickupTime.toISOString(),
-      order: i
-    });
-  }
-
-  return rides.sort((a, b) => a.order - b.order);
-}
-
 export function DriverDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [rides, setRides] = useState<Ride[]>([])
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
+  const [driverStats, setDriverStats] = useState<DriverStats>({ completed_rides: 0, total_miles: 0 })
+  const [isLoading, setIsLoading] = useState(true)
+  const { user } = useAuth()
 
   useEffect(() => {
-    const newRides = generateRandomRides(selectedDate);
-    setRides(newRides);
-  }, [selectedDate]);
+    if (!user) return
 
-  const handleRideAction = (rideId: string, action: RideStatus, miles: number) => {
-    const updatedRides = rides.map(ride => {
-      if (ride.id === rideId) {
-        const now = new Date().toISOString()
-        let updatedRide;
-        switch (action) {
-          case 'started':
-            updatedRide = { ...ride, status: 'started', startMiles: miles, startTime: now }
-            break;
-          case 'picked_up':
-            updatedRide = { ...ride, status: 'picked_up', pickupMiles: miles }
-            break;
-          case 'completed':
-            updatedRide = { ...ride, status: 'return_pending', endMiles: miles, endTime: now }
-            break;
-          case 'return_started':
-            updatedRide = { ...ride, status: 'return_started', returnStartMiles: miles, returnStartTime: now }
-            break;
-          case 'return_picked_up':
-            updatedRide = { ...ride, status: 'return_picked_up', returnPickupMiles: miles, returnPickupTime: now }
-            break;
-          case 'return_completed':
-            updatedRide = { ...ride, status: 'return_completed', returnEndMiles: miles, returnEndTime: now }
-            break;
-          default:
-            return ride;
-        }
-        // Update the selected ride if this is the one being viewed
-        if (selectedRide?.id === rideId) {
-          setSelectedRide(updatedRide);
-        }
-        return updatedRide;
-      }
-      return ride;
-    });
-    setRides(updatedRides);
-  }
+    const fetchRides = async () => {
+      setIsLoading(true)
+      try {
+        const { data: rides, error } = await supabase
+          .from('rides')
+          .select(`
+            *,
+            member:profiles!rides_member_id_fkey(*)
+          `)
+          .eq('driver_id', user.id)
+          .order('scheduled_pickup_time', { ascending: true })
 
-  const handleBack = (rideId: string, newStatus: RideStatus) => {
-    const updatedRides = rides.map(ride => {
-      if (ride.id === rideId) {
-        const updatedRide = { ...ride, status: newStatus };
-        let finalRide;
-        switch (newStatus) {
-          case 'pending':
-            finalRide = { ...updatedRide, startMiles: undefined, startTime: undefined };
-            break;
-          case 'started':
-            finalRide = { ...updatedRide, pickupMiles: undefined };
-            break;
-          case 'picked_up':
-            finalRide = { ...updatedRide, endMiles: undefined, endTime: undefined };
-            break;
-          case 'return_pending':
-            finalRide = { ...updatedRide, returnStartMiles: undefined, returnStartTime: undefined };
-            break;
-          case 'return_started':
-            finalRide = { ...updatedRide, returnPickupMiles: undefined, returnPickupTime: undefined };
-            break;
-          case 'return_picked_up':
-            finalRide = { ...updatedRide, returnEndMiles: undefined, returnEndTime: undefined };
-            break;
-          default:
-            finalRide = updatedRide;
+        if (error) {
+          console.error('Error fetching rides:', error)
+          return
         }
-        // Update the selected ride if this is the one being viewed
-        if (selectedRide?.id === rideId) {
-          setSelectedRide(finalRide);
-        }
-        return finalRide;
-      }
-      return ride;
-    });
-    setRides(updatedRides);
-  };
 
-  const handleMilesEdit = (rideId: string, field: string, value: string) => {
-    const updatedRides = rides.map(ride => {
-      if (ride.id === rideId) {
-        const updatedRide = { ...ride, [field]: value ? parseFloat(value) : undefined };
-        // Update the selected ride if this is the one being viewed
-        if (selectedRide?.id === rideId) {
-          setSelectedRide(updatedRide);
-        }
-        return updatedRide;
+        setRides(rides)
+      } catch (err) {
+        console.error('Error fetching rides:', err)
+      } finally {
+        setIsLoading(false)
       }
-      return ride;
-    });
-    setRides(updatedRides);
-  }
+    }
+
+    const fetchStats = async () => {
+      try {
+        const { data: stats, error } = await supabase
+          .from('driver_profiles')
+          .select('completed_rides, total_miles')
+          .eq('id', user.id)
+          .single()
+
+        if (error) {
+          console.error('Error fetching driver stats:', error)
+          return
+        }
+
+        setDriverStats(stats)
+      } catch (err) {
+        console.error('Error fetching driver stats:', err)
+      }
+    }
+
+    // Fetch initial data
+    fetchRides()
+    fetchStats()
+
+    // Set up real-time subscription for rides
+    const ridesSubscription = supabase
+      .channel('rides_changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'rides',
+          filter: `driver_id=eq.${user.id}`
+        },
+        () => {
+          // Refresh rides when changes occur
+          fetchRides()
+        }
+      )
+      .subscribe()
+
+    // Cleanup subscription
+    return () => {
+      ridesSubscription.unsubscribe()
+    }
+  }, [user])
 
   const handleRideClick = (ride: Ride) => {
-    setSelectedRide(ride);
-  };
+    setSelectedRide(ride)
+  }
+
+  const handleBack = () => {
+    setSelectedRide(null)
+  }
+
+  const handleRideAction = async (rideId: string, newStatus: Ride['status'], milesData?: { start?: number | null; end?: number | null }) => {
+    const updatedRide = rides.find(r => r.id === rideId)
+    if (!updatedRide) return
+
+    let finalRide = { ...updatedRide }
+
+    if (milesData) {
+      finalRide = {
+        ...finalRide,
+        ...(milesData.start !== undefined && { start_miles: milesData.start }),
+        ...(milesData.end !== undefined && { end_miles: milesData.end })
+      }
+    }
+
+    finalRide.status = newStatus
+
+    const { error } = await supabase
+      .from('rides')
+      .update(finalRide)
+      .eq('id', rideId)
+
+    if (error) {
+      console.error('Error updating ride:', error)
+      return
+    }
+
+    setSelectedRide(finalRide)
+    setRides(rides.map(r => r.id === rideId ? finalRide : r))
+  }
+
+  const handleMilesEdit = async (rideId: string, miles: { start?: number | null; end?: number | null }) => {
+    await handleRideAction(rideId, selectedRide?.status || 'pending', miles)
+  }
 
   const handleCloseRideDetail = () => {
-    setSelectedRide(null);
-  };
+    setSelectedRide(null)
+  }
 
-  const sortedRides = [...rides].sort((a, b) => a.order - b.order);
+  const sortedRides = [...rides].sort((a, b) => 
+    new Date(a.scheduled_pickup_time).getTime() - new Date(b.scheduled_pickup_time).getTime()
+  )
 
-  const today = startOfDay(new Date())
-  const todaysRides = rides.filter(ride => isToday(new Date(ride.pickupTime)))
-  const completedRides = todaysRides.filter(ride => ride.status === 'return_completed').length
-  const totalMiles = todaysRides.reduce((total, ride) => {
-    if (ride.status === 'return_completed' && ride.startMiles && ride.returnEndMiles) {
-      return total + (ride.returnEndMiles - ride.startMiles)
-    }
-    return total
-  }, 0)
-  const hoursWorked = todaysRides.reduce((total, ride) => {
-    if (ride.startTime && ride.returnEndTime) {
-      const start = new Date(ride.startTime)
-      const end = new Date(ride.returnEndTime)
-      return total + (end.getTime() - start.getTime()) / (1000 * 60 * 60)
-    }
-    return total
-  }, 0)
+  // Filter rides for selected date
+  const ridesForSelectedDate = sortedRides.filter(ride => {
+    const rideDate = new Date(ride.scheduled_pickup_time)
+    return (
+      rideDate.getFullYear() === selectedDate.getFullYear() &&
+      rideDate.getMonth() === selectedDate.getMonth() &&
+      rideDate.getDate() === selectedDate.getDate()
+    )
+  })
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <div className="text-lg font-semibold mb-2">Loading your dashboard...</div>
+          <div className="text-sm text-gray-500">Please wait while we fetch your assigned rides</div>
+        </div>
+      </div>
+    )
+  }
 
   if (selectedRide) {
     return (
@@ -226,7 +206,7 @@ export function DriverDashboard() {
         onMilesEdit={handleMilesEdit}
         onClose={handleCloseRideDetail}
       />
-    );
+    )
   }
 
   return (
@@ -250,14 +230,19 @@ export function DriverDashboard() {
                     mode="single"
                     selected={selectedDate}
                     onSelect={(date) => date && setSelectedDate(date)}
-                    initialFocus
                   />
                 </PopoverContent>
               </Popover>
             </div>
-            <div>
-              <p className="text-2xl font-bold">{rides.length}</p>
-              <p className="text-sm text-muted-foreground">Trips</p>
+            <div className="flex gap-4">
+              <div>
+                <div className="text-sm text-gray-500">Completed Rides</div>
+                <div className="text-2xl font-bold">{driverStats.completed_rides}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500">Total Miles</div>
+                <div className="text-2xl font-bold">{driverStats.total_miles}</div>
+              </div>
             </div>
           </div>
         </CardContent>
@@ -268,10 +253,10 @@ export function DriverDashboard() {
           <CardTitle>Rides for {format(selectedDate, 'MMMM d, yyyy')}</CardTitle>
         </CardHeader>
         <CardContent>
-          {sortedRides.length === 0 ? (
+          {ridesForSelectedDate.length === 0 ? (
             <p>No rides scheduled for this date.</p>
           ) : (
-            sortedRides.map(ride => (
+            ridesForSelectedDate.map(ride => (
               <Card 
                 key={ride.id} 
                 className="mb-4 cursor-pointer hover:shadow-md transition-shadow"
@@ -279,20 +264,20 @@ export function DriverDashboard() {
               >
                 <CardHeader>
                   <div className="flex justify-between items-center">
-                    <CardTitle className="text-lg">{ride.passengerName}</CardTitle>
-                    <Badge variant={ride.status === 'pending' ? 'secondary' : ride.status === 'started' ? 'default' : 'outline'}>
-                      {ride.status.replace('_', ' ').toUpperCase()}
+                    <CardTitle className="text-lg">{ride.member.full_name}</CardTitle>
+                    <Badge variant={ride.status === 'completed' || ride.status === 'return_completed' ? "default" : "secondary"}>
+                      {ride.status.replace(/_/g, ' ').toUpperCase()}
                     </Badge>
                   </div>
                   <CardDescription>
                     <div className="space-y-1">
                       <div className="flex items-center">
                         <CalendarIcon className="mr-2 h-4 w-4" />
-                        <span>{new Date(ride.scheduledPickupTime).toLocaleString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                        <span>{formatTime(ride.scheduled_pickup_time)}</span>
                       </div>
                       <div className="flex items-center">
                         <PhoneIcon className="mr-2 h-4 w-4" />
-                        <span>{ride.phoneNumber}</span>
+                        <span>{ride.member.phone}</span>
                       </div>
                     </div>
                   </CardDescription>
@@ -301,11 +286,11 @@ export function DriverDashboard() {
                   <div className="space-y-2">
                     <div className="flex items-center">
                       <MapPinIcon className="mr-2 h-4 w-4" />
-                      <span>Pickup: {ride.pickupAddress.replace(', USA', '')}</span>
+                      <span>Pickup: {formatAddress(ride.pickup_address)}</span>
                     </div>
                     <div className="flex items-center">
                       <MapPinIcon className="mr-2 h-4 w-4" />
-                      <span>Dropoff: {ride.dropoffAddress.replace(', USA', '')}</span>
+                      <span>Dropoff: {formatAddress(ride.dropoff_address)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -314,29 +299,11 @@ export function DriverDashboard() {
           )}
         </CardContent>
       </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Today's Statistics</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <p className="text-2xl font-bold">{completedRides}</p>
-              <p className="text-sm text-muted-foreground">Completed Rides</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{totalMiles.toFixed(1)}</p>
-              <p className="text-sm text-muted-foreground">Total Miles</p>
-            </div>
-            <div>
-              <p className="text-2xl font-bold">{hoursWorked.toFixed(1)}</p>
-              <p className="text-sm text-muted-foreground">Hours Worked</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
-  );
+  )
+}
+
+function formatAddress(address: Address): string {
+  return `${address.address}, ${address.city}, ${address.state} ${address.zip}`
 }
 

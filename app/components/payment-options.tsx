@@ -1,9 +1,11 @@
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
 
+type PaymentMethod = 'cash' | 'insurance' | 'pay_now'
+
 interface PaymentOptionsProps {
-  value: string
-  onChange: (value: string) => void
+  value: PaymentMethod
+  onChange: (value: PaymentMethod) => void
 }
 
 export function PaymentOptions({ value, onChange }: PaymentOptionsProps) {

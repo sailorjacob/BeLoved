@@ -1,9 +1,12 @@
 import { Label } from "@/components/ui/label"
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group"
+import type { Database } from "@/lib/supabase"
+
+type RecurringType = Database['public']['Tables']['rides']['Row']['recurring']
 
 interface RecurringOptionsProps {
-  value: string
-  onChange: (value: string) => void
+  value: RecurringType
+  onChange: (value: RecurringType) => void
 }
 
 export function RecurringOptions({ value, onChange }: RecurringOptionsProps) {

@@ -5,7 +5,11 @@ import { Calendar } from './calendar'
 import { RideForm } from './ride-form'
 import { startOfDay } from 'date-fns'
 
-export function Scheduler() {
+interface SchedulerProps {
+  isAdmin?: boolean
+}
+
+export function Scheduler({ isAdmin = false }: SchedulerProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(startOfDay(new Date()))
 
   const handleDateSelect = (date: Date | undefined) => {
@@ -19,7 +23,7 @@ export function Scheduler() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-      <RideForm selectedDate={selectedDate} />
+      <RideForm selectedDate={selectedDate} isAdmin={isAdmin} />
       <Calendar selectedDate={selectedDate} onSelect={handleDateSelect} />
     </div>
   )
