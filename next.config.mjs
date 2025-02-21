@@ -20,7 +20,15 @@ const nextConfig = {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,
     parallelServerCompiles: true,
+    appDir: true
   },
+  webpack: (config) => {
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@': '.',
+    }
+    return config
+  }
 }
 
 mergeConfig(nextConfig, userConfig)
