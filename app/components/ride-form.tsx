@@ -11,7 +11,7 @@ import { RecurringOptions } from "./recurring-options"
 import { PaymentOptions } from "./payment-options"
 import { format, isBefore, startOfDay } from "date-fns"
 import { useAuth } from "../contexts/auth-context"
-import { supabase } from "@/lib/supabase"
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
 import type { Database } from "@/lib/supabase"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { PlusCircle } from 'lucide-react'
@@ -48,6 +48,7 @@ export function RideForm({ selectedDate, isAdmin = false }: RideFormProps) {
   })
   const router = useRouter()
   const { user } = useAuth()
+  const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
     if (isAdmin) {

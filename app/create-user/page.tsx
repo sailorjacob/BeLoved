@@ -1,21 +1,28 @@
+"use client"
+
 import { CreateUserForm } from "../components/create-user-form"
 import { UserNav } from "../components/user-nav"
-import Image from "next/image"
+import { Button } from "@/components/ui/button"
+import { ArrowLeft } from "lucide-react"
+import { useRouter } from "next/navigation"
+
+export const dynamic = 'force-dynamic'
 
 export default function CreateUserPage() {
+  const router = useRouter()
+
   return (
     <main className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-2">
-          <div className="relative w-12 h-12">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
-              alt="BeLoved Transportation Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="ghost" 
+            onClick={() => router.push("/admin-dashboard")}
+            className="flex items-center gap-2"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to Dashboard
+          </Button>
           <h1 className="text-4xl font-bold">Create User</h1>
         </div>
         <UserNav />

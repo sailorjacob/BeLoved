@@ -11,7 +11,7 @@ import {
   Legend
 } from 'recharts';
 import { format, subDays, startOfDay } from 'date-fns';
-import type { Database } from "../../../lib/supabase";
+import type { Database } from "../../lib/supabase";
 
 type Ride = Database['public']['Tables']['rides']['Row'];
 

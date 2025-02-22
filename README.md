@@ -1,15 +1,15 @@
-# BeLoved Transportation Scheduler
+# Be Loved Scheduler
 
-A ride scheduling system for BeLoved Transportation, built with Next.js and Supabase.
+A Next.js application for managing ride scheduling and coordination for Be Loved organization.
 
 ## Features
 
-- Member ride scheduling
-- Driver ride management
-- Admin dashboard
-- Real-time ride status updates
-- Recurring ride scheduling
-- Driver assignment system
+- User Authentication (Admin, Driver, Member)
+- Ride Scheduling and Management
+- Driver Assignment and Tracking
+- Real-time Updates
+- Member Management
+- Administrative Dashboard
 
 ## Tech Stack
 
@@ -17,70 +17,71 @@ A ride scheduling system for BeLoved Transportation, built with Next.js and Supa
 - TypeScript
 - Supabase (Authentication & Database)
 - Tailwind CSS
-- Shadcn UI
+- Shadcn/ui Components
 
 ## Prerequisites
 
-- Node.js 18+ 
+- Node.js 18.x or later
 - npm or yarn
-- A Supabase account
+- Supabase account
 
-## Getting Started
+## Local Development
 
 1. Clone the repository:
-```bash
-git clone https://github.com/your-username/be-loved-scheduler.git
-cd be-loved-scheduler
-```
+   ```bash
+   git clone https://github.com/yourusername/be-loved-scheduler.git
+   cd be-loved-scheduler
+   ```
 
 2. Install dependencies:
-```bash
-npm install
-# or
-yarn install
-```
+   ```bash
+   npm install
+   # or
+   yarn install
+   ```
 
-3. Set up Supabase:
-   - Create a new project at [Supabase](https://supabase.com)
-   - Copy the SQL from `supabase/migrations/20240320000000_initial_schema.sql` and run it in the Supabase SQL editor
-   - Get your project URL and anon key from the project settings
+3. Copy the environment variables:
+   ```bash
+   cp .env.example .env.local
+   ```
 
-4. Set up environment variables:
-   - Copy `.env.example` to `.env.local`
-   - Fill in your Supabase project URL and anon key
+4. Update the `.env.local` file with your Supabase credentials:
+   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
 
 5. Run the development server:
-```bash
-npm run dev
-# or
-yarn dev
-```
+   ```bash
+   npm run dev
+   # or
+   yarn dev
+   ```
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Database Schema
+## Deployment
 
-### Profiles
-- User profiles for members, drivers, and admins
-- Linked to Supabase Auth
+### Vercel Deployment
 
-### Rides
-- Ride scheduling information
-- Status tracking
-- Payment tracking
-- Recurring ride settings
+1. Push your code to GitHub.
 
-### Driver Profiles
-- Driver-specific information
-- Ride completion statistics
-- Status tracking
+2. Connect your GitHub repository to Vercel.
 
-## Authentication
+3. Configure the following environment variables in Vercel:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+   - `NEXT_PUBLIC_SITE_URL`
 
-The app uses Supabase Authentication with the following user types:
-- Members (can schedule rides)
-- Drivers (can manage assigned rides)
-- Admins (can manage all rides and users)
+4. Deploy!
+
+### Supabase Setup
+
+1. Create a new Supabase project.
+
+2. Run the migrations in `supabase/migrations/` to set up the database schema.
+
+3. Configure authentication providers in the Supabase dashboard.
+
+4. Update the site URL in the Supabase authentication settings.
 
 ## Contributing
 

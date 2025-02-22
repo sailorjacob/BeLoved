@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import { StatsCards } from "./components/stats-cards";
-import { supabase } from "@/lib/supabase";
-import type { Database } from "@/lib/supabase";
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import type { Database } from "../lib/supabase";
+
+export const dynamic = 'force-dynamic'
 
 type Ride = Database['public']['Tables']['rides']['Row'];
 type Driver = Database['public']['Tables']['profiles']['Row'] & {
@@ -14,21 +16,39 @@ export default function DashboardPage() {
   const [rides, setRides] = useState<Ride[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const supabase = createClientComponentClient<Database>();
 
   useEffect(() => {
-    fetchData();
+    const fetchRides = async () => {
+      setIsLoading(true);
+      try {
+        const { data: rides, error } = await supabase
+          .from('rides')
+          .select('*')
+          .order('scheduled_pickup_time', { ascending: true });
+
+        if (error) {
+          console.error('Error fetching rides:', error);
+          return;
+        }
+
+        setRides(rides);
+      } catch (err) {
+        console.error('Error fetching rides:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchRides();
+  }, [supabase]);
+
+  useEffect(() => {
+    fetchDrivers();
   }, []);
 
-  const fetchData = async () => {
+  const fetchDrivers = async () => {
     try {
-      // Fetch rides
-      const { data: ridesData, error: ridesError } = await supabase
-        .from('rides')
-        .select('*');
-
-      if (ridesError) throw ridesError;
-      setRides(ridesData);
-
       // Fetch drivers
       const { data: driversData, error: driversError } = await supabase
         .from('profiles')
@@ -41,9 +61,7 @@ export default function DashboardPage() {
       if (driversError) throw driversError;
       setDrivers(driversData as Driver[]);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-    } finally {
-      setIsLoading(false);
+      console.error('Error fetching drivers:', error);
     }
   };
 
