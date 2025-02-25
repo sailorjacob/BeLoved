@@ -1,15 +1,15 @@
-# Be Loved Scheduler
+# Be-Loved Scheduler
 
-A Next.js application for managing ride scheduling and coordination for Be Loved organization.
+A ride scheduling application built with Next.js, Supabase, and TypeScript.
 
 ## Features
 
-- User Authentication (Admin, Driver, Member)
-- Ride Scheduling and Management
-- Driver Assignment and Tracking
-- Real-time Updates
-- Member Management
-- Administrative Dashboard
+- Member ride scheduling
+- Driver ride management
+- Admin dashboard
+- Real-time ride status updates
+- Recurring ride scheduling
+- Driver assignment system
 
 ## Tech Stack
 
@@ -17,71 +17,70 @@ A Next.js application for managing ride scheduling and coordination for Be Loved
 - TypeScript
 - Supabase (Authentication & Database)
 - Tailwind CSS
-- Shadcn/ui Components
+- Shadcn UI
 
 ## Prerequisites
 
-- Node.js 18.x or later
+- Node.js 18+ 
 - npm or yarn
-- Supabase account
+- A Supabase account
 
-## Local Development
+## Getting Started
 
 1. Clone the repository:
-   ```bash
-   git clone https://github.com/yourusername/be-loved-scheduler.git
-   cd be-loved-scheduler
-   ```
+```bash
+git clone https://github.com/your-username/be-loved-scheduler.git
+cd be-loved-scheduler
+```
 
 2. Install dependencies:
-   ```bash
-   npm install
-   # or
-   yarn install
-   ```
+```bash
+npm install
+# or
+yarn install
+```
 
-3. Copy the environment variables:
-   ```bash
-   cp .env.example .env.local
-   ```
+3. Set up Supabase:
+   - Create a new project at [Supabase](https://supabase.com)
+   - Copy the SQL from `supabase/migrations/20240320000000_initial_schema.sql` and run it in the Supabase SQL editor
+   - Get your project URL and anon key from the project settings
 
-4. Update the `.env.local` file with your Supabase credentials:
-   - `NEXT_PUBLIC_SUPABASE_URL`: Your Supabase project URL
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`: Your Supabase anonymous key
+4. Set up environment variables:
+   - Copy `.env.example` to `.env.local`
+   - Fill in your Supabase project URL and anon key
 
 5. Run the development server:
-   ```bash
-   npm run dev
-   # or
-   yarn dev
-   ```
+```bash
+npm run dev
+# or
+yarn dev
+```
 
 6. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Deployment
+## Database Schema
 
-### Vercel Deployment
+### Profiles
+- User profiles for members, drivers, and admins
+- Linked to Supabase Auth
 
-1. Push your code to GitHub.
+### Rides
+- Ride scheduling information
+- Status tracking
+- Payment tracking
+- Recurring ride settings
 
-2. Connect your GitHub repository to Vercel.
+### Driver Profiles
+- Driver-specific information
+- Ride completion statistics
+- Status tracking
 
-3. Configure the following environment variables in Vercel:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `NEXT_PUBLIC_SITE_URL`
+## Authentication
 
-4. Deploy!
-
-### Supabase Setup
-
-1. Create a new Supabase project.
-
-2. Run the migrations in `supabase/migrations/` to set up the database schema.
-
-3. Configure authentication providers in the Supabase dashboard.
-
-4. Update the site URL in the Supabase authentication settings.
+The app uses Supabase Authentication with the following user types:
+- Members (can schedule rides)
+- Drivers (can manage assigned rides)
+- Admins (can manage all rides and users)
 
 ## Contributing
 
@@ -93,4 +92,109 @@ A Next.js application for managing ride scheduling and coordination for Be Loved
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details. 
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Environment Setup
+
+### Development
+
+1. Copy `.env.local.example` to `.env.local`:
+```bash
+cp .env.local.example .env.local
+```
+
+2. Update the environment variables in `.env.local`:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_dev_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_dev_anon_key
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+NEXT_PUBLIC_ENV=development
+```
+
+### Production
+
+1. Set up environment variables in your Vercel project settings:
+```
+NEXT_PUBLIC_SUPABASE_URL=your_prod_project_url
+NEXT_PUBLIC_SUPABASE_ANON_KEY=your_prod_anon_key
+NEXT_PUBLIC_APP_URL=https://your-domain.com
+NEXT_PUBLIC_ENV=production
+```
+
+## Supabase Configuration
+
+### Development
+
+1. Create a new Supabase project for development
+2. Enable Email Auth provider
+3. Configure Auth Redirect URLs:
+   - `http://localhost:3000/auth/callback`
+4. Set up Row Level Security (RLS) policies
+5. Add CORS origins:
+   - `http://localhost:3000`
+
+### Production
+
+1. Create a new Supabase project for production
+2. Enable Email Auth provider
+3. Configure Auth Redirect URLs:
+   - `https://your-domain.com/auth/callback`
+4. Set up Row Level Security (RLS) policies
+5. Add CORS origins:
+   - `https://your-domain.com`
+
+## Development
+
+```bash
+# Install dependencies
+npm install
+
+# Run development server
+npm run dev
+```
+
+## Testing
+
+```bash
+# Run tests
+npm test
+
+# Run tests in watch mode
+npm run test:watch
+```
+
+## Deployment
+
+1. Push your changes to the main branch
+2. Vercel will automatically deploy your changes
+3. Ensure environment variables are set in Vercel
+4. Verify Supabase production configuration
+
+## Type Generation
+
+To update TypeScript types for your Supabase database:
+
+1. Install Supabase CLI
+2. Login to Supabase
+3. Generate types:
+```bash
+supabase gen types typescript --project-id your-project-id > types/supabase.ts
+```
+
+## Common Issues
+
+### Authentication Issues
+- Verify environment variables are set correctly
+- Check Supabase Auth configuration
+- Ensure redirect URLs are configured
+- Check CORS settings in Supabase
+
+### Database Issues
+- Verify RLS policies
+- Check database connection
+- Ensure types are up to date
+
+### Deployment Issues
+- Verify production environment variables
+- Check build logs in Vercel
+- Ensure all dependencies are installed 

@@ -1,186 +1,276 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { RecurringOptions } from './recurring-options'
-import { PaymentOptions } from './payment-options'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import { FormContainer } from '@/components/ui/form-container'
+import { AddressInput } from '@/components/ui/address-input'
+import { FormInput } from '@/components/ui/form-input'
+import { useFormHandling } from '@/hooks/useFormHandling'
+import { supabase } from '@/lib/supabase'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { format } from 'date-fns'
+
+interface Address {
+  address: string
+  city: string
+  state: string
+  zip: string
+}
+
+interface RideFormData {
+  pickup_address: Address
+  dropoff_address: Address
+  scheduled_pickup_time: string
+  notes: string
+  payment_method: string
+  recurring: 'none' | 'daily' | 'weekly' | 'monthly'
+  status: 'pending' | 'assigned' | 'started' | 'picked_up' | 'completed' | 'return_pending' | 'return_started' | 'return_picked_up' | 'return_completed'
+}
+
+const initialValues: RideFormData = {
+  pickup_address: { address: '', city: '', state: '', zip: '' },
+  dropoff_address: { address: '', city: '', state: '', zip: '' },
+  scheduled_pickup_time: '',
+  notes: '',
+  payment_method: 'cash',
+  recurring: 'none',
+  status: 'pending'
+}
 
 interface EditRideFormProps {
   id: string
 }
 
+const validationRules = {
+  pickup_address: (value: Address) => {
+    if (!value.address) return 'Street address is required'
+    if (!value.city) return 'City is required'
+    if (!value.state) return 'State is required'
+    if (!value.zip) return 'ZIP code is required'
+    return undefined
+  },
+  dropoff_address: (value: Address) => {
+    if (!value.address) return 'Street address is required'
+    if (!value.city) return 'City is required'
+    if (!value.state) return 'State is required'
+    if (!value.zip) return 'ZIP code is required'
+    return undefined
+  },
+  scheduled_pickup_time: (value: string) => {
+    if (!value) return 'Pickup time is required'
+    return undefined
+  },
+  payment_method: (value: string) => {
+    if (!value) return 'Payment method is required'
+    return undefined
+  }
+}
+
+const timeOptions = Array.from({ length: 48 }, (_, i) => {
+  const hour = Math.floor(i / 2)
+  const minute = (i % 2) * 30
+  return `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+})
+
+const statusOptions = [
+  { value: 'pending', label: 'Pending' },
+  { value: 'assigned', label: 'Assigned' },
+  { value: 'started', label: 'Started' },
+  { value: 'picked_up', label: 'Picked Up' },
+  { value: 'completed', label: 'Completed' },
+  { value: 'return_pending', label: 'Return Pending' },
+  { value: 'return_started', label: 'Return Started' },
+  { value: 'return_picked_up', label: 'Return Picked Up' },
+  { value: 'return_completed', label: 'Return Completed' }
+]
+
 export function EditRideForm({ id }: EditRideFormProps) {
-  // This is a placeholder. In a real application, you would fetch the ride data based on the ID.
-  const [ride, setRide] = useState({
-    date: '2023-06-01',
-    time: '10:00',
-    pickupAddress: { address: '123 Main St', city: 'Anytown', state: 'ST', zip: '12345' },
-    appointmentAddress: { address: '456 Hospital Ave', city: 'Medtown', state: 'ST', zip: '67890' },
-    contactInfo: { name: 'John Doe', phone: '123-456-7890', email: 'john@example.com' },
-    notes: '',
-    recurring: 'none',
-    paymentMethod: 'cash'
+  const router = useRouter()
+
+  const {
+    values,
+    errors,
+    isSubmitting,
+    submitError,
+    handleChange,
+    handleSubmit,
+    setValues
+  } = useFormHandling({
+    initialValues,
+    validationRules,
+    onSubmit: handleUpdateRide
   })
 
   useEffect(() => {
-    // Fetch ride data here based on the ID
-    console.log('Fetching ride data for ID:', id)
-  }, [id])
+    const fetchRide = async () => {
+      const { data: ride, error } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('id', id)
+        .single()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    // Handle form submission here
-    console.log('Updating ride:', ride)
+      if (error) {
+        console.error('Error fetching ride:', error)
+        return
+      }
+
+      if (ride) {
+        const scheduledTime = new Date(ride.scheduled_pickup_time)
+        setValues({
+          pickup_address: ride.pickup_address,
+          dropoff_address: ride.dropoff_address,
+          scheduled_pickup_time: format(scheduledTime, 'HH:mm'),
+          notes: ride.notes || '',
+          payment_method: ride.payment_method,
+          recurring: ride.recurring,
+          status: ride.status
+        })
+      }
+    }
+
+    fetchRide()
+  }, [id, setValues])
+
+  async function handleUpdateRide(values: RideFormData) {
+    const { error } = await supabase
+      .from('rides')
+      .update({
+        pickup_address: values.pickup_address,
+        dropoff_address: values.dropoff_address,
+        notes: values.notes,
+        payment_method: values.payment_method,
+        recurring: values.recurring,
+        status: values.status
+      })
+      .eq('id', id)
+
+    if (error) throw error
+
+    router.push('/my-rides')
+    router.refresh()
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 border rounded-lg p-4">
-      <h2 className="text-2xl font-semibold mb-4">Edit Ride</h2>
-      
-      <div>
-        <Label htmlFor="date">Date</Label>
-        <Input 
-          id="date" 
-          type="date" 
-          value={ride.date} 
-          onChange={(e) => setRide({...ride, date: e.target.value})}
-          required 
+    <FormContainer
+      title="Edit Ride"
+      onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
+      submitError={submitError}
+      submitButtonText="Update Ride"
+    >
+      <div className="space-y-6">
+        <AddressInput
+          id="pickup"
+          label="Pickup Address"
+          value={values.pickup_address}
+          onChange={(address) => handleChange('pickup_address', address)}
+          errors={errors.pickup_address as any}
+          required
         />
-      </div>
-      
-      <div>
-        <Label htmlFor="time">Appointment Time</Label>
-        <Input 
-          id="time" 
-          type="time" 
-          value={ride.time} 
-          onChange={(e) => setRide({...ride, time: e.target.value})}
-          required 
+
+        <AddressInput
+          id="dropoff"
+          label="Dropoff Address"
+          value={values.dropoff_address}
+          onChange={(address) => handleChange('dropoff_address', address)}
+          errors={errors.dropoff_address as any}
+          required
         />
-      </div>
-      
-      {/* Pickup Address */}
-      <div className="space-y-2">
-        <Label htmlFor="pickup">Pickup Address</Label>
-        <Input 
-          id="pickup-address" 
-          placeholder="Address" 
-          value={ride.pickupAddress.address} 
-          onChange={(e) => setRide({...ride, pickupAddress: {...ride.pickupAddress, address: e.target.value}})}
-          required 
-        />
-        <Input 
-          id="pickup-city" 
-          placeholder="City" 
-          value={ride.pickupAddress.city} 
-          onChange={(e) => setRide({...ride, pickupAddress: {...ride.pickupAddress, city: e.target.value}})}
-          required 
-        />
-        <div className="flex space-x-2">
-          <Input 
-            id="pickup-state" 
-            placeholder="State" 
-            value={ride.pickupAddress.state} 
-            onChange={(e) => setRide({...ride, pickupAddress: {...ride.pickupAddress, state: e.target.value}})}
-            required 
-          />
-          <Input 
-            id="pickup-zip" 
-            placeholder="ZIP Code" 
-            value={ride.pickupAddress.zip} 
-            onChange={(e) => setRide({...ride, pickupAddress: {...ride.pickupAddress, zip: e.target.value}})}
-            required 
-          />
+
+        <div className="space-y-2">
+          <Label htmlFor="time">Pickup Time</Label>
+          <Select
+            value={values.scheduled_pickup_time}
+            onValueChange={(value) => handleChange('scheduled_pickup_time', value)}
+          >
+            <SelectTrigger id="time">
+              <SelectValue placeholder="Select pickup time" />
+            </SelectTrigger>
+            <SelectContent>
+              {timeOptions.map((time) => (
+                <SelectItem key={time} value={time}>
+                  {new Date(`2000-01-01T${time}`).toLocaleTimeString([], {
+                    hour: 'numeric',
+                    minute: '2-digit'
+                  })}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.scheduled_pickup_time && (
+            <p className="text-sm text-red-500">{errors.scheduled_pickup_time}</p>
+          )}
         </div>
-      </div>
-      
-      {/* Appointment Address */}
-      <div className="space-y-2">
-        <Label htmlFor="appointment">Appointment Address</Label>
-        <Input 
-          id="appointment-address" 
-          placeholder="Address" 
-          value={ride.appointmentAddress.address} 
-          onChange={(e) => setRide({...ride, appointmentAddress: {...ride.appointmentAddress, address: e.target.value}})}
-          required 
-        />
-        <Input 
-          id="appointment-city" 
-          placeholder="City" 
-          value={ride.appointmentAddress.city} 
-          onChange={(e) => setRide({...ride, appointmentAddress: {...ride.appointmentAddress, city: e.target.value}})}
-          required 
-        />
-        <div className="flex space-x-2">
-          <Input 
-            id="appointment-state" 
-            placeholder="State" 
-            value={ride.appointmentAddress.state} 
-            onChange={(e) => setRide({...ride, appointmentAddress: {...ride.appointmentAddress, state: e.target.value}})}
-            required 
-          />
-          <Input 
-            id="appointment-zip" 
-            placeholder="ZIP Code" 
-            value={ride.appointmentAddress.zip} 
-            onChange={(e) => setRide({...ride, appointmentAddress: {...ride.appointmentAddress, zip: e.target.value}})}
-            required 
-          />
+
+        <div className="space-y-2">
+          <Label htmlFor="status">Ride Status</Label>
+          <Select
+            value={values.status}
+            onValueChange={(value: any) => handleChange('status', value)}
+          >
+            <SelectTrigger id="status">
+              <SelectValue placeholder="Select status" />
+            </SelectTrigger>
+            <SelectContent>
+              {statusOptions.map((status) => (
+                <SelectItem key={status.value} value={status.value}>
+                  {status.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-      </div>
-      
-      {/* Contact Information */}
-      <div className="space-y-2">
-        <Label>Contact Information</Label>
-        <Input 
-          id="contact-name" 
-          placeholder="Full Name" 
-          value={ride.contactInfo.name} 
-          onChange={(e) => setRide({...ride, contactInfo: {...ride.contactInfo, name: e.target.value}})} 
-          required 
+
+        <div className="space-y-2">
+          <Label htmlFor="payment">Payment Method</Label>
+          <Select
+            value={values.payment_method}
+            onValueChange={(value) => handleChange('payment_method', value)}
+          >
+            <SelectTrigger id="payment">
+              <SelectValue placeholder="Select payment method" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="cash">Cash</SelectItem>
+              <SelectItem value="credit">Credit Card</SelectItem>
+              <SelectItem value="insurance">Insurance</SelectItem>
+            </SelectContent>
+          </Select>
+          {errors.payment_method && (
+            <p className="text-sm text-red-500">{errors.payment_method}</p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="recurring">Recurring Ride</Label>
+          <Select
+            value={values.recurring}
+            onValueChange={(value: any) => handleChange('recurring', value)}
+          >
+            <SelectTrigger id="recurring">
+              <SelectValue placeholder="Select frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="none">One-time</SelectItem>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <FormInput
+          id="notes"
+          label="Notes"
+          value={values.notes}
+          onChange={(e) => handleChange('notes', e.target.value)}
+          placeholder="Any special instructions or requirements"
+          className="h-24"
+          containerClassName="col-span-2"
         />
-        <Input 
-          id="contact-phone" 
-          type="tel" 
-          placeholder="Phone Number" 
-          value={ride.contactInfo.phone} 
-          onChange={(e) => setRide({...ride, contactInfo: {...ride.contactInfo, phone: e.target.value}})} 
-          required 
-        />
-        <Input 
-          id="contact-email" 
-          type="email" 
-          placeholder="Email Address" 
-          value={ride.contactInfo.email} 
-          onChange={(e) => setRide({...ride, contactInfo: {...ride.contactInfo, email: e.target.value}})} 
-          required 
-        />
       </div>
-      
-      <div>
-        <Label htmlFor="notes">Notes</Label>
-        <Textarea 
-          id="notes" 
-          value={ride.notes} 
-          onChange={(e) => setRide({...ride, notes: e.target.value})} 
-          placeholder="(Do you require assistance to the door? Use a walker, cane? Blind? or require an extra rider?)"
-        />
-      </div>
-      
-      <RecurringOptions value={ride.recurring} onChange={(value) => setRide({...ride, recurring: value})} />
-      
-      <PaymentOptions value={ride.paymentMethod} onChange={(value) => setRide({...ride, paymentMethod: value})} />
-      
-      <div className="text-sm text-red-600">
-        Please note that rides cannot be edited within 24 hours of the scheduled pickup time.
-      </div>
-      
-      <Button type="submit" className="w-full">Update Ride</Button>
-    </form>
+    </FormContainer>
   )
 }
 

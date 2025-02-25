@@ -1,8 +1,8 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
 import { useInView } from 'react-intersection-observer';
-import type { Database } from "../../lib/supabase";
+import type { Database } from "@/lib/supabase";
 
 type Ride = Database['public']['Tables']['rides']['Row'];
 type Driver = Database['public']['Tables']['profiles']['Row'] & {

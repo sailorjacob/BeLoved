@@ -6,8 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { useAuth } from '../contexts/auth-context'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +30,6 @@ export function ProfileForm() {
     average_miles_per_ride: 0,
     rides_this_month: 0
   })
-  const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
     if (profile) {

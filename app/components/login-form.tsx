@@ -1,254 +1,222 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { useRouter } from "next/navigation"
-import { useAuth } from "../contexts/auth-context"
-import Link from "next/link"
-import { FormInput } from "./ui/form-input"
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { FormContainer } from '@/components/ui/form-container'
+import { FormInput } from '@/components/ui/form-input'
+import { useFormHandling } from '@/hooks/useFormHandling'
+import { useAuth } from '@/hooks/useAuth'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
-interface FormErrors {
-  email?: string
-  password?: string
-  confirmPassword?: string
-  name?: string
-  phone?: string
+interface LoginFormData {
+  email: string
+  password: string
+}
+
+interface SignUpFormData extends LoginFormData {
+  full_name: string
+  phone: string
+  confirm_password: string
+}
+
+const loginInitialValues: LoginFormData = {
+  email: '',
+  password: ''
+}
+
+const signUpInitialValues: SignUpFormData = {
+  email: '',
+  password: '',
+  confirm_password: '',
+  full_name: '',
+  phone: ''
+}
+
+const loginValidationRules = {
+  email: (value: string) => {
+    if (!value) return 'Email is required'
+    if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format'
+    return undefined
+  },
+  password: (value: string) => {
+    if (!value) return 'Password is required'
+    return undefined
+  }
+}
+
+const signUpValidationRules = {
+  email: (value: string) => {
+    if (!value) return 'Email is required'
+    if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format'
+    return undefined
+  },
+  password: (value: string) => {
+    if (!value) return 'Password is required'
+    return undefined
+  },
+  full_name: (value: string) => {
+    if (!value) return 'Full name is required'
+    if (value.length < 2) return 'Name must be at least 2 characters'
+    return undefined
+  },
+  phone: (value: string) => {
+    if (!value) return 'Phone number is required'
+    if (!/^\+?[\d\s-]{10,}$/.test(value)) return 'Invalid phone number format'
+    return undefined
+  },
+  confirm_password: (value: string, formValues: SignUpFormData) => {
+    if (!value) return 'Please confirm your password'
+    if (value !== formValues.password) return 'Passwords do not match'
+    return undefined
+  }
 }
 
 export function LoginForm() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [error, setError] = useState<string | null>(null)
-  const [formErrors, setFormErrors] = useState<FormErrors>({})
   const router = useRouter()
-  const { login, signUp } = useAuth()
+  const { signIn, signUp } = useAuth()
 
-  const validateForm = (type: "login" | "signup" | "admin") => {
-    const errors: FormErrors = {}
-    
-    if (!email) errors.email = "Email is required"
-    
-    if (!password) errors.password = "Password is required"
-    else if (password.length < 6) errors.password = "Password must be at least 6 characters"
-    
-    if (type === "signup") {
-      if (!confirmPassword) errors.confirmPassword = "Please confirm your password"
-      else if (password !== confirmPassword) errors.confirmPassword = "Passwords do not match"
-      
-      if (!name) errors.name = "Name is required"
-      if (!phone) errors.phone = "Phone number is required"
+  const {
+    values: loginValues,
+    errors: loginErrors,
+    isSubmitting: isLoggingIn,
+    submitError: loginError,
+    handleChange: handleLoginChange,
+    handleSubmit: handleLoginSubmit
+  } = useFormHandling({
+    initialValues: loginInitialValues,
+    validationRules: loginValidationRules,
+    onSubmit: async (values) => {
+      const { error } = await signIn(values.email, values.password)
+      if (error) throw error
+      router.push('/dashboard')
     }
-    
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+  })
 
-  const handleSubmit = async (e: React.FormEvent, type: "login" | "signup" | "admin") => {
-    e.preventDefault()
-    setError(null)
-    
-    if (!validateForm(type)) return
-
-    try {
-      if (type === "signup") {
-        const { error: signUpError } = await signUp(email, password, {
-          full_name: name,
-          phone,
-          user_type: 'member'
-        })
-
-        if (signUpError) {
-          if (signUpError.message.includes('email confirmation')) {
-            setError("Please check your email for a confirmation link. You'll need to confirm your email before logging in.")
-          } else {
-            setError(signUpError.message)
-          }
-          return
-        }
-
-        setError("Success! Please check your email for a confirmation link before logging in.")
-        // Don't redirect yet - they need to confirm email first
-      } else {
-        const { error: loginError } = await login(email, password)
-        
-        if (loginError) {
-          if (loginError.message.includes('email not confirmed')) {
-            setError("Please confirm your email address before logging in. Check your inbox for the confirmation link.")
-          } else {
-            setError(loginError.message)
-          }
-          return
-        }
-
-        if (type === "admin") {
-          router.push("/admin")
-        } else {
-          router.push("/")
-        }
-      }
-    } catch (err) {
-      setError("An error occurred. Please try again.")
+  const {
+    values: signUpValues,
+    errors: signUpErrors,
+    isSubmitting: isSigningUp,
+    submitError: signUpError,
+    handleChange: handleSignUpChange,
+    handleSubmit: handleSignUpSubmit
+  } = useFormHandling({
+    initialValues: signUpInitialValues,
+    validationRules: signUpValidationRules,
+    onSubmit: async (values) => {
+      const { error } = await signUp(values.email, values.password, {
+        full_name: values.full_name,
+        phone: values.phone,
+        user_type: 'member'
+      })
+      if (error) throw error
+      // Don't redirect - they need to confirm email first
     }
-  }
+  })
 
   return (
-    <>
-      <Card className="w-[350px]">
-        <CardHeader>
-          <CardTitle>BeLoved Scheduler</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Tabs defaultValue="login">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="login">Login</TabsTrigger>
-              <TabsTrigger value="signup">Sign Up</TabsTrigger>
-              <TabsTrigger value="admin">Admin</TabsTrigger>
-            </TabsList>
-            <TabsContent value="login">
-              <form onSubmit={(e) => handleSubmit(e, "login")} className="space-y-4">
-                <FormInput
-                  id="email"
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={formErrors.email}
-                  required
-                />
-                
-                <FormInput
-                  id="password"
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={formErrors.password}
-                  required
-                />
+    <div className="w-full max-w-md mx-auto">
+      <Tabs defaultValue="login">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="signup">Sign Up</TabsTrigger>
+        </TabsList>
 
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
+        <TabsContent value="login">
+          <FormContainer
+            title="Welcome Back"
+            onSubmit={handleLoginSubmit}
+            isSubmitting={isLoggingIn}
+            submitError={loginError}
+            submitButtonText="Login"
+          >
+            <FormInput
+              id="login-email"
+              label="Email"
+              type="email"
+              value={loginValues.email}
+              onChange={(e) => handleLoginChange('email', e.target.value)}
+              error={loginErrors.email}
+              required
+            />
 
-                <Button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white">
-                  Login
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="signup">
-              <form onSubmit={(e) => handleSubmit(e, "signup")} className="space-y-4">
-                <FormInput
-                  id="signup-name"
-                  label="Full Name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  error={formErrors.name}
-                  required
-                />
-                
-                <FormInput
-                  id="signup-email"
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={formErrors.email}
-                  required
-                />
-                
-                <FormInput
-                  id="signup-phone"
-                  label="Phone"
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  error={formErrors.phone}
-                  required
-                />
-                
-                <FormInput
-                  id="signup-password"
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={formErrors.password}
-                  required
-                />
-                
-                <FormInput
-                  id="signup-confirm-password"
-                  label="Confirm Password"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  error={formErrors.confirmPassword}
-                  required
-                />
+            <FormInput
+              id="login-password"
+              label="Password"
+              type="password"
+              value={loginValues.password}
+              onChange={(e) => handleLoginChange('password', e.target.value)}
+              error={loginErrors.password}
+              required
+            />
+          </FormContainer>
+        </TabsContent>
 
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
+        <TabsContent value="signup">
+          <FormContainer
+            title="Create Account"
+            onSubmit={handleSignUpSubmit}
+            isSubmitting={isSigningUp}
+            submitError={signUpError}
+            submitButtonText="Sign Up"
+          >
+            <FormInput
+              id="signup-name"
+              label="Full Name"
+              value={signUpValues.full_name}
+              onChange={(e) => handleSignUpChange('full_name', e.target.value)}
+              error={signUpErrors.full_name}
+              required
+            />
 
-                <Button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white">
-                  Sign Up
-                </Button>
-              </form>
-            </TabsContent>
-            <TabsContent value="admin">
-              <form onSubmit={(e) => handleSubmit(e, "admin")} className="space-y-4">
-                <FormInput
-                  id="admin-email"
-                  label="Email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  error={formErrors.email}
-                  required
-                />
-                
-                <FormInput
-                  id="admin-password"
-                  label="Password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  error={formErrors.password}
-                  required
-                />
+            <FormInput
+              id="signup-email"
+              label="Email"
+              type="email"
+              value={signUpValues.email}
+              onChange={(e) => handleSignUpChange('email', e.target.value)}
+              error={signUpErrors.email}
+              required
+            />
 
-                {error && (
-                  <Alert variant="destructive">
-                    <AlertDescription>{error}</AlertDescription>
-                  </Alert>
-                )}
+            <FormInput
+              id="signup-phone"
+              label="Phone"
+              type="tel"
+              value={signUpValues.phone}
+              onChange={(e) => handleSignUpChange('phone', e.target.value)}
+              error={signUpErrors.phone}
+              required
+            />
 
-                <Button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white">
-                  Admin Login
-                </Button>
-              </form>
-            </TabsContent>
-          </Tabs>
-        </CardContent>
-      </Card>
+            <FormInput
+              id="signup-password"
+              label="Password"
+              type="password"
+              value={signUpValues.password}
+              onChange={(e) => handleSignUpChange('password', e.target.value)}
+              error={signUpErrors.password}
+              required
+            />
+
+            <FormInput
+              id="signup-confirm-password"
+              label="Confirm Password"
+              type="password"
+              value={signUpValues.confirm_password}
+              onChange={(e) => handleSignUpChange('confirm_password', e.target.value)}
+              error={signUpErrors.confirm_password}
+              required
+            />
+          </FormContainer>
+        </TabsContent>
+      </Tabs>
+
       <div className="mt-4 text-center">
         <Link href="/driver-login" className="text-sm text-blue-600 hover:underline">
-          Driver?
+          Driver Login
         </Link>
       </div>
-    </>
+    </div>
   )
 }
 

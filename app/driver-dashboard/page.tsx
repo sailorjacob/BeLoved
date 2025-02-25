@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
@@ -7,19 +7,17 @@ import { UserNav } from '../components/user-nav'
 import { DriverDashboard } from '../components/driver-dashboard'
 import Image from 'next/image'
 
-export const dynamic = 'force-dynamic'
-
 export default function DriverDashboardPage() {
-  const { user, isDriver } = useAuth()
+  const { isLoggedIn, isDriver } = useAuth()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    if (!user || !isDriver) {
+    if (!isLoggedIn || !isDriver) {
       router.push('/driver-login')
     }
-  }, [user, isDriver, router])
+  }, [isLoggedIn, isDriver, router])
 
   if (!mounted) {
     return null

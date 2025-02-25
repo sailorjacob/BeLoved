@@ -1,11 +1,10 @@
-'use client'
 
 import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '../lib/supabase'
-import { format } from "date-fns"
+import { format } from 'date-fns'
+import { supabase } from '@/lib/supabase'
+import type { Database } from '@/lib/supabase'
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
   member: Database['public']['Tables']['profiles']['Row']
@@ -19,44 +18,50 @@ export function DriverHistoryView({ driverId }: DriverHistoryViewProps) {
   const [pastRides, setPastRides] = useState<Ride[]>([])
   const [upcomingRides, setUpcomingRides] = useState<Ride[]>([])
   const [isLoading, setIsLoading] = useState(true)
-  const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
-    const fetchRides = async () => {
-      setIsLoading(true)
-      try {
-        const { data: rides, error } = await supabase
-          .from('rides')
-          .select(`
-            *,
-            member:profiles!rides_member_id_fkey(*)
-          `)
-          .eq('driver_id', driverId)
-          .order('scheduled_pickup_time', { ascending: false })
+    fetchDriverRides()
+  }, [driverId])
 
-        if (error) {
-          console.error('Error fetching rides:', error)
-          return
-        }
+  const fetchDriverRides = async () => {
+    const now = new Date().toISOString()
+    
+    // Fetch past rides
+    const { data: pastData, error: pastError } = await supabase
+      .from('rides')
+      .select(`
+        *,
+        member:profiles!rides_member_id_fkey(*)
+      `)
+      .eq('driver_id', driverId)
+      .lt('scheduled_pickup_time', now)
+      .order('scheduled_pickup_time', { ascending: false })
 
-        const now = new Date().toISOString()
-        
-        // Fetch past rides
-        const pastData = rides.filter(ride => new Date(ride.scheduled_pickup_time) < new Date(now))
-        setPastRides(pastData)
-
-        // Fetch upcoming rides
-        const upcomingData = rides.filter(ride => new Date(ride.scheduled_pickup_time) >= new Date(now))
-        setUpcomingRides(upcomingData)
-      } catch (err) {
-        console.error('Error fetching rides:', err)
-      } finally {
-        setIsLoading(false)
-      }
+    if (pastError) {
+      console.error('Error fetching past rides:', pastError)
+    } else {
+      setPastRides(pastData)
     }
 
-    fetchRides()
-  }, [driverId, supabase])
+    // Fetch upcoming rides
+    const { data: upcomingData, error: upcomingError } = await supabase
+      .from('rides')
+      .select(`
+        *,
+        member:profiles!rides_member_id_fkey(*)
+      `)
+      .eq('driver_id', driverId)
+      .gte('scheduled_pickup_time', now)
+      .order('scheduled_pickup_time', { ascending: true })
+
+    if (upcomingError) {
+      console.error('Error fetching upcoming rides:', upcomingError)
+    } else {
+      setUpcomingRides(upcomingData)
+    }
+
+    setIsLoading(false)
+  }
 
   if (isLoading) {
     return <div>Loading...</div>

@@ -27,8 +27,8 @@ import {
   Target,
   UserCircle
 } from "lucide-react"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from "../lib/supabase"
+import { supabase } from "@/lib/supabase"
+import type { Database } from "@/lib/supabase"
 import { RideDetailView } from "./ride-detail-view"
 import { StatsCards } from "./dashboard/stats-cards"
 import { RideTrendsChart } from "./dashboard/ride-trends-chart"
@@ -43,7 +43,6 @@ type Driver = Database['public']['Tables']['profiles']['Row'] & {
 }
 
 export function AdminDashboard() {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [rides, setRides] = useState<Ride[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [showAssignedRides, setShowAssignedRides] = useState(false)
@@ -51,78 +50,30 @@ export function AdminDashboard() {
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
   const router = useRouter()
-  const supabase = createClientComponentClient<Database>()
-
-  const fetchRides = async () => {
-    setIsLoading(true)
-    try {
-      const { data: rides, error } = await supabase
-        .from('rides')
-        .select(`
-          *,
-          member:profiles!rides_member_id_fkey(*),
-          driver:profiles!rides_driver_id_fkey(*)
-        `)
-        .order('scheduled_pickup_time', { ascending: true })
-
-      if (error) {
-        console.error('Error fetching rides:', error)
-        return
-      }
-
-      setRides(rides)
-    } catch (err) {
-      console.error('Error fetching rides:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }
 
   useEffect(() => {
-    // Fetch initial data
     fetchRides()
     fetchDrivers()
+  }, [])
 
-    // Set up real-time subscription for rides
-    const ridesSubscription = supabase
-      .channel('rides_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'rides'
-        },
-        () => {
-          // Refresh rides when changes occur
-          fetchRides()
-        }
-      )
-      .subscribe()
+  const fetchRides = async () => {
+    const { data, error } = await supabase
+      .from('rides')
+      .select(`
+        *,
+        member:profiles!rides_member_id_fkey(*),
+        driver:profiles!rides_driver_id_fkey(*)
+      `)
+      .order('scheduled_pickup_time', { ascending: true })
 
-    // Set up real-time subscription for drivers
-    const driversSubscription = supabase
-      .channel('drivers_changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'profiles',
-          filter: `user_type=eq.driver`
-        },
-        () => {
-          // Refresh drivers when changes occur
-          fetchDrivers()
-        }
-      )
-      .subscribe()
-
-    return () => {
-      ridesSubscription.unsubscribe()
-      driversSubscription.unsubscribe()
+    if (error) {
+      console.error('Error fetching rides:', error)
+      return
     }
-  }, [supabase])
+
+    setRides(data)
+    setIsLoading(false)
+  }
 
   const fetchDrivers = async () => {
     const { data, error } = await supabase

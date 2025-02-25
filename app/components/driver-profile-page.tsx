@@ -10,8 +10,8 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, ChevronUp } from 'lucide-react'
 import { Badge } from "@/components/ui/badge"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from '../lib/supabase'
+import { supabase } from '@/lib/supabase'
+import type { Database } from '@/lib/supabase'
 import { DriverHistoryView } from './driver-history-view'
 
 type Driver = Database['public']['Tables']['profiles']['Row'] & {
@@ -26,59 +26,47 @@ interface DriverProfilePageProps {
 export function DriverProfilePage({ driverId, onBack }: DriverProfilePageProps) {
   const [driver, setDriver] = useState<Driver | null>(null)
   const [isLoading, setIsLoading] = useState(true)
-  const [status, setStatus] = useState<'active' | 'inactive' | 'on_break'>('inactive')
-  const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
-    const fetchDriver = async () => {
-      setIsLoading(true)
-      try {
-        const { data: driver, error } = await supabase
-          .from('profiles')
-          .select(`
-            *,
-            driver_profile:driver_profiles(*)
-          `)
-          .eq('id', driverId)
-          .single()
+    fetchDriverProfile()
+  }, [driverId])
 
-        if (error) {
-          console.error('Error fetching driver:', error)
-          return
-        }
+  const fetchDriverProfile = async () => {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        driver_profile:driver_profiles(*)
+      `)
+      .eq('id', driverId)
+      .single()
 
-        setDriver(driver)
-        if (driver?.driver_profile?.status) {
-          setStatus(driver.driver_profile.status)
-        }
-      } catch (err) {
-        console.error('Error fetching driver:', err)
-      } finally {
-        setIsLoading(false)
-      }
+    if (error) {
+      console.error('Error fetching driver profile:', error)
+      return
     }
 
-    fetchDriver()
-  }, [driverId, supabase])
+    setDriver(data as Driver)
+    setIsLoading(false)
+  }
 
-  const handleStatusChange = async (newStatus: 'active' | 'inactive' | 'on_break') => {
+  const updateDriverStatus = async (status: 'active' | 'inactive' | 'on_break') => {
     if (!driver) return
 
-    try {
-      const { error } = await supabase
-        .from('driver_profiles')
-        .update({ status: newStatus })
-        .eq('id', driverId)
+    const { error } = await supabase
+      .from('driver_profiles')
+      .update({
+        status: status,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', driverId)
 
-      if (error) {
-        console.error('Error updating status:', error)
-        return
-      }
-
-      setStatus(newStatus)
-    } catch (err) {
-      console.error('Error updating status:', err)
+    if (error) {
+      console.error('Error updating driver status:', error)
+      return
     }
+
+    fetchDriverProfile()
   }
 
   if (isLoading) {
@@ -121,7 +109,7 @@ export function DriverProfilePage({ driverId, onBack }: DriverProfilePageProps) 
                 </Badge>
                 <Select
                   value={driver.driver_profile.status}
-                  onValueChange={(value: 'active' | 'inactive' | 'on_break') => handleStatusChange(value)}
+                  onValueChange={(value: 'active' | 'inactive' | 'on_break') => updateDriverStatus(value)}
                 >
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Change status" />

@@ -1,4 +1,4 @@
-"use client"
+'use client'
 
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -8,12 +8,12 @@ import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/hooks/useAuth'
 import { supabase } from '@/lib/supabase'
 
-interface DriverLoginFormData {
+interface AdminLoginFormData {
   email: string
   password: string
 }
 
-const initialValues: DriverLoginFormData = {
+const initialValues: AdminLoginFormData = {
   email: '',
   password: ''
 }
@@ -30,7 +30,7 @@ const validationRules = {
   }
 }
 
-export function DriverLoginForm() {
+export function AdminLoginForm() {
   const router = useRouter()
   const { signIn } = useAuth()
 
@@ -48,7 +48,7 @@ export function DriverLoginForm() {
       const { error } = await signIn(values.email, values.password)
       if (error) throw error
 
-      // After successful login, verify the user is actually a driver
+      // After successful login, verify the user is actually an admin
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('user_type')
@@ -57,18 +57,18 @@ export function DriverLoginForm() {
 
       if (profileError) throw profileError
 
-      if (profile.user_type !== 'driver') {
-        throw new Error('This login is for drivers only. Please use the regular login page.')
+      if (profile.user_type !== 'admin') {
+        throw new Error('This login is for administrators only. Please use the appropriate login page.')
       }
 
-      router.push('/driver-dashboard')
+      router.push('/admin-dashboard')
     }
   })
 
   return (
     <div className="w-full max-w-md mx-auto">
       <FormContainer
-        title="Driver Login"
+        title="Administrator Login"
         onSubmit={handleSubmit}
         isSubmitting={isSubmitting}
         submitError={submitError}
@@ -95,12 +95,18 @@ export function DriverLoginForm() {
         />
       </FormContainer>
 
-      <div className="mt-4 text-center">
-        <Link href="/login" className="text-sm text-blue-600 hover:underline">
-          Member Login
-        </Link>
+      <div className="mt-4 text-center space-y-2">
+        <div>
+          <Link href="/login" className="text-sm text-blue-600 hover:underline">
+            Member Login
+          </Link>
+        </div>
+        <div>
+          <Link href="/driver-login" className="text-sm text-blue-600 hover:underline">
+            Driver Login
+          </Link>
+        </div>
       </div>
     </div>
   )
-}
-
+} 

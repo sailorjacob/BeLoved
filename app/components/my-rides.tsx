@@ -4,8 +4,8 @@ import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { useAuth } from "../contexts/auth-context"
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
-import type { Database } from "../lib/supabase"
+import { supabase } from "@/lib/supabase"
+import type { Database } from "@/lib/supabase"
 import { format } from "date-fns"
 
 type Ride = Database['public']['Tables']['rides']['Row']
@@ -14,7 +14,6 @@ export function MyRides() {
   const [rides, setRides] = useState<Ride[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
-  const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
     if (!user) return
@@ -42,7 +41,7 @@ export function MyRides() {
     }
 
     fetchRides()
-  }, [user, supabase])
+  }, [user])
 
   if (isLoading) {
     return <div>Loading your rides...</div>

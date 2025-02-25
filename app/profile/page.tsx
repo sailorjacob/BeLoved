@@ -1,10 +1,6 @@
-"use client"
-
 import Image from 'next/image'
 import { ProfileForm } from '../components/profile-form'
 import { UserNav } from '../components/user-nav'
-
-export const dynamic = 'force-dynamic'
 
 export default function ProfilePage() {
   return (

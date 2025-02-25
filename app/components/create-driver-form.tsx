@@ -1,101 +1,142 @@
 "use client"
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useRouter } from 'next/navigation'
+import { FormContainer } from '@/components/ui/form-container'
+import { FormInput } from '@/components/ui/form-input'
+import { useFormHandling } from '@/hooks/useFormHandling'
+import { supabase } from '@/lib/supabase'
 
-interface Driver {
-  id: number
-  name: string
-  username: string
-  password: string
+interface DriverFormData {
+  full_name: string
   email: string
   phone: string
-  status: "Active" | "Inactive"
+}
+
+const initialValues: DriverFormData = {
+  full_name: '',
+  email: '',
+  phone: ''
+}
+
+const validationRules = {
+  full_name: (value: string) => {
+    if (!value) return 'Name is required'
+    if (value.length < 2) return 'Name must be at least 2 characters'
+    return undefined
+  },
+  email: (value: string) => {
+    if (!value) return 'Email is required'
+    if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format'
+    return undefined
+  },
+  phone: (value: string) => {
+    if (!value) return 'Phone number is required'
+    if (!/^\+?[\d\s-]{10,}$/.test(value)) return 'Invalid phone number format'
+    return undefined
+  }
 }
 
 export function CreateDriverForm() {
-  const [driver, setDriver] = useState<Driver>({
-    id: Date.now(),
-    name: "",
-    username: "",
-    password: "",
-    email: "",
-    phone: "",
-    status: "Active",
-  })
+  const router = useRouter()
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    const drivers = JSON.parse(localStorage.getItem("drivers") || "[]")
-    drivers.push(driver)
-    localStorage.setItem("drivers", JSON.stringify(drivers))
-    console.log("New driver added:", driver)
-    // Redirect to admin dashboard or show success message
+  const handleCreateDriver = async (values: DriverFormData) => {
+    // Generate a random initial password for the driver
+    const tempPassword = Math.random().toString(36).slice(-8)
+
+    // Create auth user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: values.email,
+      password: tempPassword,
+      options: {
+        data: {
+          full_name: values.full_name,
+          user_type: 'driver'
+        }
+      }
+    })
+
+    if (authError) throw authError
+    if (!authData.user) throw new Error('Failed to create driver account')
+
+    // Create profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        full_name: values.full_name,
+        email: values.email,
+        phone: values.phone,
+        user_type: 'driver'
+      })
+
+    if (profileError) throw profileError
+
+    // Create driver profile with initial stats
+    const { error: driverProfileError } = await supabase
+      .from('driver_profiles')
+      .insert({
+        id: authData.user.id,
+        status: 'inactive',
+        completed_rides: 0,
+        total_miles: 0
+      })
+
+    if (driverProfileError) throw driverProfileError
+
+    // Redirect to driver list
+    router.push('/driver-list')
   }
 
+  const {
+    values,
+    errors,
+    isSubmitting,
+    submitError,
+    handleChange,
+    handleSubmit
+  } = useFormHandling({
+    initialValues,
+    validationRules,
+    onSubmit: handleCreateDriver
+  })
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create New Driver</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <Label htmlFor="name">Name</Label>
-            <Input
-              id="name"
-              value={driver.name}
-              onChange={(e) => setDriver({ ...driver, name: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="username">Username</Label>
-            <Input
-              id="username"
-              value={driver.username}
-              onChange={(e) => setDriver({ ...driver, username: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="password">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={driver.password}
-              onChange={(e) => setDriver({ ...driver, password: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="email">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={driver.email}
-              onChange={(e) => setDriver({ ...driver, email: e.target.value })}
-              required
-            />
-          </div>
-          <div>
-            <Label htmlFor="phone">Phone</Label>
-            <Input
-              id="phone"
-              value={driver.phone}
-              onChange={(e) => setDriver({ ...driver, phone: e.target.value })}
-              required
-            />
-          </div>
-          <div className="flex justify-end space-x-4">
-            <Button type="submit">Create Driver</Button>
-          </div>
-        </form>
-      </CardContent>
-    </Card>
+    <FormContainer
+      title="Create New Driver"
+      onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
+      submitError={submitError}
+      submitButtonText="Create Driver"
+    >
+      <FormInput
+        id="full_name"
+        label="Full Name"
+        value={values.full_name}
+        onChange={(e) => handleChange('full_name', e.target.value)}
+        error={errors.full_name}
+        required
+      />
+      
+      <FormInput
+        id="email"
+        label="Email"
+        type="email"
+        value={values.email}
+        onChange={(e) => handleChange('email', e.target.value)}
+        error={errors.email}
+        required
+      />
+      
+      <FormInput
+        id="phone"
+        label="Phone"
+        type="tel"
+        value={values.phone}
+        onChange={(e) => handleChange('phone', e.target.value)}
+        error={errors.phone}
+        required
+      />
+    </FormContainer>
   )
 }
 

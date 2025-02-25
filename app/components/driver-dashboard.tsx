@@ -11,9 +11,9 @@ import { Calendar } from "@/components/ui/calendar"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format, isToday, isFuture, isPast, addDays, subDays, startOfDay } from 'date-fns'
 import { RideDetailView } from './ride-detail-view'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '../contexts/auth-context'
-import type { Database } from '../lib/supabase'
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs'
+import type { Database } from '@/lib/supabase'
 
 interface Address {
   address: string
@@ -50,7 +50,6 @@ export function DriverDashboard() {
   const [driverStats, setDriverStats] = useState<DriverStats>({ completed_rides: 0, total_miles: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
-  const supabase = createClientComponentClient<Database>()
 
   useEffect(() => {
     if (!user) return
@@ -121,10 +120,11 @@ export function DriverDashboard() {
       )
       .subscribe()
 
+    // Cleanup subscription
     return () => {
       ridesSubscription.unsubscribe()
     }
-  }, [user, supabase])
+  }, [user])
 
   const handleRideClick = (ride: Ride) => {
     setSelectedRide(ride)

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "../../../components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   LineChart,
   Line,
@@ -11,7 +11,7 @@ import {
   Legend
 } from 'recharts';
 import { format, subDays, startOfDay } from 'date-fns';
-import type { Database } from "../../lib/supabase";
+import type { Database } from "@/lib/supabase";
 
 type Ride = Database['public']['Tables']['rides']['Row'];
 

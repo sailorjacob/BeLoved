@@ -1,120 +1,130 @@
 "use client"
 
-import { useState, ChangeEvent } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { FormInput } from "@/components/ui/form-input"
+import { useRouter } from 'next/navigation'
+import { FormContainer } from '@/components/ui/form-container'
+import { FormInput } from '@/components/ui/form-input'
+import { useFormHandling } from '@/hooks/useFormHandling'
+import { supabase } from '@/lib/supabase'
 
-interface Member {
-  id: number
-  name: string
-  username: string
-  password: string
+interface MemberFormData {
+  full_name: string
   email: string
   phone: string
 }
 
+const initialValues: MemberFormData = {
+  full_name: '',
+  email: '',
+  phone: ''
+}
+
+const validationRules = {
+  full_name: (value: string) => {
+    if (!value) return 'Name is required'
+    if (value.length < 2) return 'Name must be at least 2 characters'
+    return undefined
+  },
+  email: (value: string) => {
+    if (!value) return 'Email is required'
+    if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format'
+    return undefined
+  },
+  phone: (value: string) => {
+    if (!value) return 'Phone number is required'
+    if (!/^\+?[\d\s-]{10,}$/.test(value)) return 'Invalid phone number format'
+    return undefined
+  }
+}
+
 export function CreateMemberForm() {
-  const [member, setMember] = useState<Member>({
-    id: Date.now(),
-    name: "",
-    username: "",
-    password: "",
-    email: "",
-    phone: "",
+  const router = useRouter()
+
+  const handleCreateMember = async (values: MemberFormData) => {
+    // Generate a random password for the new member
+    const tempPassword = Math.random().toString(36).slice(-8)
+
+    // Create auth user
+    const { data: authData, error: authError } = await supabase.auth.signUp({
+      email: values.email,
+      password: tempPassword,
+      options: {
+        data: {
+          full_name: values.full_name,
+          user_type: 'member'
+        }
+      }
+    })
+
+    if (authError) throw authError
+    if (!authData.user) throw new Error('Failed to create member account')
+
+    // Create profile
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .insert({
+        id: authData.user.id,
+        full_name: values.full_name,
+        email: values.email,
+        phone: values.phone,
+        user_type: 'member'
+      })
+
+    if (profileError) throw profileError
+
+    // Redirect to member list
+    router.push('/member-list')
+  }
+
+  const {
+    values,
+    errors,
+    isSubmitting,
+    submitError,
+    handleChange,
+    handleSubmit
+  } = useFormHandling({
+    initialValues,
+    validationRules,
+    onSubmit: handleCreateMember
   })
-  const [errors, setErrors] = useState<Partial<Member>>({})
-
-  const validateForm = () => {
-    const newErrors: Partial<Member> = {}
-    
-    if (!member.name) newErrors.name = "Name is required"
-    if (!member.username) newErrors.username = "Username is required"
-    if (!member.password) newErrors.password = "Password is required"
-    if (!member.email) newErrors.email = "Email is required"
-    else if (!/\S+@\S+\.\S+/.test(member.email)) newErrors.email = "Invalid email format"
-    if (!member.phone) newErrors.phone = "Phone number is required"
-    
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!validateForm()) return
-
-    const members = JSON.parse(localStorage.getItem("members") || "[]")
-    members.push(member)
-    localStorage.setItem("members", JSON.stringify(members))
-    console.log("New member added:", member)
-    // Redirect to admin dashboard or show success message
-  }
-
-  const handleInputChange = (e: ChangeEvent<HTMLInputElement>, field: keyof Member) => {
-    setMember({ ...member, [field]: e.target.value })
-  }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Create New Member</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <FormInput
-            id="name"
-            label="Name"
-            value={member.name}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange(e, "name")}
-            error={errors.name}
-            required
-          />
-          
-          <FormInput
-            id="username"
-            label="Username"
-            value={member.username}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange(e, "username")}
-            error={errors.username}
-            required
-          />
-          
-          <FormInput
-            id="password"
-            label="Password"
-            type="password"
-            value={member.password}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange(e, "password")}
-            error={errors.password}
-            required
-          />
-          
-          <FormInput
-            id="email"
-            label="Email"
-            type="email"
-            value={member.email}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange(e, "email")}
-            error={errors.email}
-            required
-          />
-          
-          <FormInput
-            id="phone"
-            label="Phone"
-            type="tel"
-            value={member.phone}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => handleInputChange(e, "phone")}
-            error={errors.phone}
-            required
-          />
-
-          <Button type="submit" className="w-full bg-red-500 hover:bg-red-600 text-white">
-            Create Member
-          </Button>
-        </form>
-      </CardContent>
-    </Card>
+    <FormContainer
+      title="Create New Member"
+      onSubmit={handleSubmit}
+      isSubmitting={isSubmitting}
+      submitError={submitError}
+      submitButtonText="Create Member"
+    >
+      <FormInput
+        id="full_name"
+        label="Full Name"
+        value={values.full_name}
+        onChange={(e) => handleChange('full_name', e.target.value)}
+        error={errors.full_name}
+        required
+      />
+      
+      <FormInput
+        id="email"
+        label="Email"
+        type="email"
+        value={values.email}
+        onChange={(e) => handleChange('email', e.target.value)}
+        error={errors.email}
+        required
+      />
+      
+      <FormInput
+        id="phone"
+        label="Phone"
+        type="tel"
+        value={values.phone}
+        onChange={(e) => handleChange('phone', e.target.value)}
+        error={errors.phone}
+        required
+      />
+    </FormContainer>
   )
 }
 

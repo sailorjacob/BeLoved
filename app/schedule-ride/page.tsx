@@ -6,8 +6,6 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 
-export const dynamic = 'force-dynamic'
-
 export default function ScheduleRidePage() {
   const router = useRouter()
 

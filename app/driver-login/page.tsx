@@ -1,9 +1,5 @@
-"use client"
-
 import { DriverLoginForm } from '../components/driver-login-form'
 import Image from 'next/image'
-
-export const dynamic = 'force-dynamic'
 
 export default function DriverLoginPage() {
   return (

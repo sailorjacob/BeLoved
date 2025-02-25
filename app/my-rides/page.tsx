@@ -1,10 +1,6 @@
-"use client"
-
 import Image from "next/image"
 import { MyRides } from "../components/my-rides"
 import { UserNav } from "../components/user-nav"
-
-export const dynamic = 'force-dynamic'
 
 export default function MyRidesPage() {
   return (
