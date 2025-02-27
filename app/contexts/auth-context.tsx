@@ -65,95 +65,116 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const router = useRouter()
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
+  const [isInitialized, setIsInitialized] = useState(false)
 
   useEffect(() => {
     let mounted = true
 
     const initializeAuth = async () => {
       try {
+        console.log('Initializing auth...')
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (session?.user && mounted) {
-          // Fetch the user's profile
-          const { data: profile, error: profileError } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
+        if (!mounted) return
 
-          if (profileError || !profile) {
-            // If no profile exists but we have a session, sign out
-            console.error('User session exists but no profile found:', profileError)
-            await supabase.auth.signOut()
-            if (mounted) {
-              setAuthState({
-                ...defaultAuthState,
-                isLoading: false
-              })
-            }
-            router.push('/login')
-            return
-          }
-
-          if (mounted) {
-            setAuthState({
-              user: session.user,
-              profile,
-              isLoggedIn: true,
-              isDriver: profile?.user_type === 'driver',
-              isAdmin: profile?.user_type === 'admin',
-              isSuperAdmin: profile?.user_type === 'super_admin',
-              isLoading: false
-            })
-          }
-        } else if (mounted) {
-          setAuthState(state => ({ ...state, isLoading: false }))
+        if (!session?.user) {
+          console.log('No session found')
+          setAuthState({
+            ...defaultAuthState,
+            isLoading: false
+          })
+          setIsInitialized(true)
+          return
         }
-      } catch (error) {
-        console.error('Error initializing auth:', error)
-        if (mounted) {
-          setAuthState(state => ({ ...state, isLoading: false }))
-        }
-      }
-    }
 
-    initializeAuth()
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (session?.user && mounted) {
-        // Fetch the user's profile
+        console.log('Session found, fetching profile...')
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
 
+        if (!mounted) return
+
         if (profileError || !profile) {
-          // If no profile exists but we have a session, sign out
-          console.error('User session exists but no profile found:', profileError)
+          console.error('Profile fetch error or no profile found:', profileError)
           await supabase.auth.signOut()
-          if (mounted) {
-            setAuthState({
-              ...defaultAuthState,
-              isLoading: false
-            })
-          }
-          router.push('/login')
+          setAuthState({
+            ...defaultAuthState,
+            isLoading: false
+          })
+          setIsInitialized(true)
           return
         }
 
+        console.log('Profile found:', profile.user_type)
+        setAuthState({
+          user: session.user,
+          profile,
+          isLoggedIn: true,
+          isDriver: profile.user_type === 'driver',
+          isAdmin: profile.user_type === 'admin',
+          isSuperAdmin: profile.user_type === 'super_admin',
+          isLoading: false
+        })
+        setIsInitialized(true)
+      } catch (error) {
+        console.error('Auth initialization error:', error)
         if (mounted) {
           setAuthState({
-            user: session.user,
-            profile,
-            isLoggedIn: true,
-            isDriver: profile?.user_type === 'driver',
-            isAdmin: profile?.user_type === 'admin',
-            isSuperAdmin: profile?.user_type === 'super_admin',
+            ...defaultAuthState,
             isLoading: false
           })
+          setIsInitialized(true)
         }
-      } else if (mounted) {
+      }
+    }
+
+    initializeAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      if (!mounted) return
+
+      console.log('Auth state change:', event, session?.user?.id)
+      
+      try {
+        if (!session?.user) {
+          setAuthState({
+            ...defaultAuthState,
+            isLoading: false
+          })
+          return
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (!mounted) return
+
+        if (profileError || !profile) {
+          console.error('Profile fetch error on auth change:', profileError)
+          await supabase.auth.signOut()
+          setAuthState({
+            ...defaultAuthState,
+            isLoading: false
+          })
+          return
+        }
+
+        setAuthState({
+          user: session.user,
+          profile,
+          isLoggedIn: true,
+          isDriver: profile.user_type === 'driver',
+          isAdmin: profile.user_type === 'admin',
+          isSuperAdmin: profile.user_type === 'super_admin',
+          isLoading: false
+        })
+      } catch (error) {
+        console.error('Error handling auth state change:', error)
         setAuthState({
           ...defaultAuthState,
           isLoading: false
@@ -162,10 +183,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
+      console.log('Cleaning up auth provider')
       mounted = false
       subscription.unsubscribe()
     }
   }, [router])
+
+  // Don't render children until auth is initialized
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
 
   const login = async (email: string, password: string): Promise<AuthResponse> => {
     console.log('Login attempt for email:', email)
