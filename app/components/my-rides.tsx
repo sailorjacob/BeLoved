@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { useAuth } from "../contexts/auth-context"
+import { useAuth } from "@/app/contexts/auth-context"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
 import { format } from "date-fns"

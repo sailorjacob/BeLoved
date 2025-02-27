@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '../contexts/auth-context'
+import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '../components/user-nav'
 import { DriverDashboard } from '../components/driver-dashboard'
 import Image from 'next/image'

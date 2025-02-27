@@ -12,7 +12,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { format, isToday, isFuture, isPast, addDays, subDays, startOfDay } from 'date-fns'
 import { RideDetailView } from './ride-detail-view'
 import { supabase } from '@/lib/supabase'
-import { useAuth } from '../contexts/auth-context'
+import { useAuth } from '@/app/contexts/auth-context'
 import type { Database } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 

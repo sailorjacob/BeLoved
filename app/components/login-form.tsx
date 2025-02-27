@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { FormContainer } from '@/components/ui/form-container'
 import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useState } from 'react'
 
