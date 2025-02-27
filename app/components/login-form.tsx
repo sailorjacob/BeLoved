@@ -5,19 +5,24 @@ import Link from 'next/link'
 import { FormContainer } from '@/components/ui/form-container'
 import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import type { Database } from '@/types/supabase'
 
 interface LoginFormData {
   email: string
   password: string
 }
 
-interface SignUpFormData extends LoginFormData {
+interface SignUpFormData {
+  email: string
+  password: string
+  confirm_password: string
   full_name: string
   phone: string
-  confirm_password: string
 }
+
+type Profile = Database['public']['Tables']['profiles']['Row']
 
 const loginInitialValues: LoginFormData = {
   email: '',
@@ -73,7 +78,13 @@ const signUpValidationRules = {
 
 export function LoginForm() {
   const router = useRouter()
-  const { signIn, signUp } = useAuth()
+  const auth = useAuth()
+  
+  console.log('Auth context:', {
+    isLoggedIn: auth.isLoggedIn,
+    isLoading: auth.isLoading,
+    hasUser: !!auth.user
+  })
 
   const {
     values: loginValues,
@@ -86,9 +97,20 @@ export function LoginForm() {
     initialValues: loginInitialValues,
     validationRules: loginValidationRules,
     onSubmit: async (values) => {
-      const { error } = await signIn(values.email, values.password)
-      if (error) throw error
-      router.push('/dashboard')
+      console.log('Starting login attempt...')
+      try {
+        const result = await auth.login(values.email, values.password)
+        console.log('Login result:', result)
+        if (result.error) {
+          console.error('Login error:', result.error)
+          throw result.error
+        }
+        console.log('Login successful, redirecting...')
+        router.push('/dashboard')
+      } catch (error) {
+        console.error('Login error caught:', error)
+        throw error
+      }
     }
   })
 
@@ -103,13 +125,23 @@ export function LoginForm() {
     initialValues: signUpInitialValues,
     validationRules: signUpValidationRules,
     onSubmit: async (values) => {
-      const { error } = await signUp(values.email, values.password, {
-        full_name: values.full_name,
-        phone: values.phone,
-        user_type: 'member'
-      })
-      if (error) throw error
-      // Don't redirect - they need to confirm email first
+      console.log('Starting signup attempt...')
+      try {
+        const result = await auth.signUp(values.email, values.password, {
+          full_name: values.full_name,
+          phone: values.phone,
+          user_type: 'member'
+        })
+        console.log('Signup result:', result)
+        if (result.error) {
+          console.error('Signup error:', result.error)
+          throw result.error
+        }
+        console.log('Signup successful')
+      } catch (error) {
+        console.error('Signup error caught:', error)
+        throw error
+      }
     }
   })
 
