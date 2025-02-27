@@ -60,30 +60,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
 
   useEffect(() => {
-    console.log('AuthProvider useEffect running')
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      console.log('Initial session check:', { hasSession: !!session })
-      if (session?.user) {
-        updateAuthState(session.user)
-      } else {
-        setAuthState(state => ({ ...state, isLoading: false }))
+    let mounted = true
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (session?.user && mounted) {
+          await updateAuthState(session.user)
+        } else if (mounted) {
+          setAuthState(state => ({ ...state, isLoading: false }))
+        }
+      } catch (error) {
+        console.error('Error initializing auth:', error)
+        if (mounted) {
+          setAuthState(state => ({ ...state, isLoading: false }))
+        }
+      }
+    }
+
+    initializeAuth()
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      if (session?.user && mounted) {
+        await updateAuthState(session.user)
+      } else if (mounted) {
+        setAuthState({
+          ...defaultAuthState,
+          isLoading: false
+        })
       }
     })
 
-    // Listen for auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('Auth state changed:', { event: _event, hasSession: !!session })
-      if (session?.user) {
-        updateAuthState(session.user)
-      } else {
-        setAuthState(defaultAuthState)
-      }
-    })
-
-    return () => subscription.unsubscribe()
+    return () => {
+      mounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   const updateAuthState = async (user: User) => {

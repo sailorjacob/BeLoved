@@ -8,7 +8,7 @@ interface LayoutProps {
   children: React.ReactNode
 }
 
-const publicPaths = ['/login', '/driver-login', '/admin-login']
+const publicPaths = ['/login', '/driver-login', '/admin-login', '/']
 
 export function Layout({ children }: LayoutProps) {
   const { user, isLoading } = useAuth()
