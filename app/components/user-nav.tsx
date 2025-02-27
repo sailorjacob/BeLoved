@@ -16,7 +16,7 @@ import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter } from "next/navigation"
 
 export function UserNav() {
-  const { user, profile, logout, isDriver } = useAuth()
+  const { user, profile, logout, isDriver, isAdmin, isSuperAdmin } = useAuth()
   const router = useRouter()
 
   if (!user) return null
@@ -29,27 +29,50 @@ export function UserNav() {
         </Avatar>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{user.email}</DropdownMenuLabel>
+        <DropdownMenuLabel>{profile?.full_name || user.email}</DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {isDriver ? (
-          // Driver navigation options
-          <DropdownMenuItem onClick={() => router.push("/driver-dashboard")}>
-            Dashboard
-          </DropdownMenuItem>
-        ) : (
-          // Member navigation options
-          <>
-            <DropdownMenuItem onClick={() => router.push("/schedule-ride")}>
-              Schedule Ride
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/my-rides")}>
-              My Rides
-            </DropdownMenuItem>
-          </>
-        )}
-        <DropdownMenuItem onClick={() => router.push("/profile")}>
-          Profile
-        </DropdownMenuItem>
+        <DropdownMenuGroup>
+          {isSuperAdmin ? (
+            <>
+              <DropdownMenuItem onClick={() => router.push("/super-admin-dashboard")}>
+                Super Admin Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
+                Profile
+              </DropdownMenuItem>
+            </>
+          ) : isAdmin ? (
+            <>
+              <DropdownMenuItem onClick={() => router.push("/admin-dashboard")}>
+                Admin Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
+                Profile
+              </DropdownMenuItem>
+            </>
+          ) : isDriver ? (
+            <>
+              <DropdownMenuItem onClick={() => router.push("/driver-dashboard")}>
+                Driver Dashboard
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
+                Profile
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              <DropdownMenuItem onClick={() => router.push("/schedule-ride")}>
+                Schedule Ride
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/my-rides")}>
+                My Rides
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => router.push("/profile")}>
+                Profile
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={logout}>
           Log out

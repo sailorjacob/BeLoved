@@ -22,12 +22,22 @@ export default function AuthCallbackPage() {
             .single()
 
           // Redirect based on user type
-          if (profile?.user_type === 'admin') {
-            router.push('/admin-dashboard')
-          } else if (profile?.user_type === 'driver') {
-            router.push('/driver-dashboard')
-          } else {
-            router.push('/dashboard')
+          switch (profile?.user_type) {
+            case 'super_admin':
+              router.push('/super-admin-dashboard')
+              break
+            case 'admin':
+              router.push('/admin-dashboard')
+              break
+            case 'driver':
+              router.push('/driver-dashboard')
+              break
+            case 'member':
+              router.push('/dashboard')
+              break
+            default:
+              // If no profile or unknown user type, redirect to login
+              router.push('/login')
           }
         } else {
           router.push('/login')

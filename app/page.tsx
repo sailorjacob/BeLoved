@@ -14,8 +14,10 @@ export default function Home() {
   const router = useRouter()
 
   useEffect(() => {
-    if (profile?.user_type === "admin") {
-      router.push("/admin")
+    if (profile?.user_type === "super_admin") {
+      router.push("/super-admin-dashboard")
+    } else if (profile?.user_type === "admin") {
+      router.push("/admin-dashboard")
     } else if (profile?.user_type === "driver") {
       router.push("/driver-dashboard")
     }

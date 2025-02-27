@@ -15,6 +15,7 @@ export interface AuthState {
   isLoggedIn: boolean
   isDriver: boolean
   isAdmin: boolean
+  isSuperAdmin: boolean
   isLoading: boolean
 }
 
@@ -29,6 +30,7 @@ export interface AuthContextType {
   isLoggedIn: boolean
   isDriver: boolean
   isAdmin: boolean
+  isSuperAdmin: boolean
   isLoading: boolean
   login: (email: string, password: string) => Promise<AuthResponse>
   signIn: (email: string, password: string) => Promise<AuthResponse>
@@ -43,6 +45,7 @@ const defaultAuthState: AuthState = {
   isLoggedIn: false,
   isDriver: false,
   isAdmin: false,
+  isSuperAdmin: false,
   isLoading: true
 }
 
@@ -122,6 +125,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoggedIn: true,
         isDriver: profile?.user_type === 'driver',
         isAdmin: profile?.user_type === 'admin',
+        isSuperAdmin: profile?.user_type === 'super_admin',
         isLoading: false
       })
     } catch (error) {
@@ -132,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoggedIn: true,
         isDriver: false,
         isAdmin: false,
+        isSuperAdmin: false,
         isLoading: false
       })
     }

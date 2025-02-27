@@ -69,6 +69,7 @@ export function LoginForm() {
   const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false)
   const [hasAttemptedSignup, setHasAttemptedSignup] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   
   console.log('Auth state:', {
     isLoggedIn: auth.isLoggedIn,
@@ -88,6 +89,7 @@ export function LoginForm() {
     onSubmit: async (values) => {
       setHasAttemptedLogin(true)
       setSubmitError(null)
+      setSubmitSuccess(null)
       
       const { error } = await auth.login(values.email, values.password)
       if (error) {
@@ -110,6 +112,7 @@ export function LoginForm() {
     onSubmit: async (values) => {
       setHasAttemptedSignup(true)
       setSubmitError(null)
+      setSubmitSuccess(null)
 
       if (values.password !== values.confirm_password) {
         throw new Error('Passwords do not match')
@@ -128,7 +131,7 @@ export function LoginForm() {
         throw error
       }
 
-      setSubmitError('Please check your email to confirm your account')
+      setSubmitSuccess('Account created! Please check your email to confirm your account before signing in.')
     }
   })
 
@@ -147,6 +150,7 @@ export function LoginForm() {
               onSubmit={handleLogin}
               isSubmitting={isLoggingIn}
               submitError={submitError}
+              submitSuccess={submitSuccess}
               submitButtonText="Login"
             >
               <FormInput
@@ -176,6 +180,7 @@ export function LoginForm() {
               onSubmit={handleSignUp}
               isSubmitting={isSigningUp}
               submitError={submitError}
+              submitSuccess={submitSuccess}
               submitButtonText="Sign Up"
             >
               <FormInput

@@ -15,7 +15,7 @@ export interface Database {
           full_name: string
           email: string
           phone: string
-          user_type: 'member' | 'driver' | 'admin'
+          user_type: 'member' | 'driver' | 'admin' | 'super_admin'
           home_address?: {
             address: string
             city: string
@@ -30,7 +30,7 @@ export interface Database {
           full_name: string
           email: string
           phone: string
-          user_type: 'member' | 'driver' | 'admin'
+          user_type: 'member' | 'driver' | 'admin' | 'super_admin'
           home_address?: {
             address: string
             city: string

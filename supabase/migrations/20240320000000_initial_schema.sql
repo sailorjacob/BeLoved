@@ -35,6 +35,7 @@ END $$;
 CREATE TABLE IF NOT EXISTS profiles (
   id UUID REFERENCES auth.users ON DELETE CASCADE,
   full_name TEXT NOT NULL,
+  email TEXT,
   phone TEXT,
   user_type user_type NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
