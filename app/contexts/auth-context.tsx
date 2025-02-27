@@ -74,7 +74,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await supabase.auth.getSession()
         
         if (session?.user && mounted) {
-          await updateAuthState(session.user)
+          // Fetch the user's profile
+          const { data: profile, error: profileError } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', session.user.id)
+            .single()
+
+          if (profileError || !profile) {
+            // If no profile exists but we have a session, sign out
+            console.error('User session exists but no profile found:', profileError)
+            await supabase.auth.signOut()
+            if (mounted) {
+              setAuthState({
+                ...defaultAuthState,
+                isLoading: false
+              })
+            }
+            router.push('/login')
+            return
+          }
+
+          if (mounted) {
+            setAuthState({
+              user: session.user,
+              profile,
+              isLoggedIn: true,
+              isDriver: profile?.user_type === 'driver',
+              isAdmin: profile?.user_type === 'admin',
+              isSuperAdmin: profile?.user_type === 'super_admin',
+              isLoading: false
+            })
+          }
         } else if (mounted) {
           setAuthState(state => ({ ...state, isLoading: false }))
         }
@@ -90,7 +121,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (session?.user && mounted) {
-        await updateAuthState(session.user)
+        // Fetch the user's profile
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profileError || !profile) {
+          // If no profile exists but we have a session, sign out
+          console.error('User session exists but no profile found:', profileError)
+          await supabase.auth.signOut()
+          if (mounted) {
+            setAuthState({
+              ...defaultAuthState,
+              isLoading: false
+            })
+          }
+          router.push('/login')
+          return
+        }
+
+        if (mounted) {
+          setAuthState({
+            user: session.user,
+            profile,
+            isLoggedIn: true,
+            isDriver: profile?.user_type === 'driver',
+            isAdmin: profile?.user_type === 'admin',
+            isSuperAdmin: profile?.user_type === 'super_admin',
+            isLoading: false
+          })
+        }
       } else if (mounted) {
         setAuthState({
           ...defaultAuthState,
@@ -103,44 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription.unsubscribe()
     }
-  }, [])
-
-  const updateAuthState = async (user: User) => {
-    console.log('Updating auth state for user:', user.id)
-    try {
-      // Fetch the user's profile
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-
-      if (profileError) throw profileError
-
-      console.log('Profile data:', profile)
-
-      setAuthState({
-        user,
-        profile,
-        isLoggedIn: true,
-        isDriver: profile?.user_type === 'driver',
-        isAdmin: profile?.user_type === 'admin',
-        isSuperAdmin: profile?.user_type === 'super_admin',
-        isLoading: false
-      })
-    } catch (error) {
-      console.error('Error updating auth state:', error)
-      setAuthState({
-        user,
-        profile: null,
-        isLoggedIn: true,
-        isDriver: false,
-        isAdmin: false,
-        isSuperAdmin: false,
-        isLoading: false
-      })
-    }
-  }
+  }, [router])
 
   const login = async (email: string, password: string): Promise<AuthResponse> => {
     console.log('Login attempt for email:', email)
