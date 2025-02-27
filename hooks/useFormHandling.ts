@@ -62,7 +62,13 @@ export function useFormHandling<T extends Record<string, any>>({
     try {
       await onSubmit(values)
     } catch (error) {
-      setSubmitError(error instanceof Error ? error.message : 'An error occurred')
+      if (error instanceof Error) {
+        setSubmitError(error.message)
+      } else if (typeof error === 'string') {
+        setSubmitError(error)
+      } else {
+        setSubmitError('An error occurred')
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -82,6 +88,7 @@ export function useFormHandling<T extends Record<string, any>>({
     handleChange,
     handleSubmit,
     resetForm,
-    setValues
+    setValues,
+    setSubmitError
   }
 } 

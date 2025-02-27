@@ -8,6 +8,7 @@ import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { Database } from '@/types/supabase'
+import { useState } from 'react'
 
 interface LoginFormData {
   email: string
@@ -79,6 +80,8 @@ const signUpValidationRules = {
 export function LoginForm() {
   const router = useRouter()
   const auth = useAuth()
+  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false)
+  const [hasAttemptedSignup, setHasAttemptedSignup] = useState(false)
   
   console.log('Auth context:', {
     isLoggedIn: auth.isLoggedIn,
@@ -92,13 +95,19 @@ export function LoginForm() {
     isSubmitting: isLoggingIn,
     submitError: loginError,
     handleChange: handleLoginChange,
-    handleSubmit: handleLoginSubmit
+    handleSubmit: handleLoginSubmit,
+    setSubmitError: setLoginError
   } = useFormHandling({
     initialValues: loginInitialValues,
     validationRules: loginValidationRules,
     onSubmit: async (values) => {
+      setHasAttemptedLogin(true)
       console.log('Starting login attempt...')
       try {
+        if (!values.email || !values.password) {
+          throw new Error('Email and password are required')
+        }
+        
         const result = await auth.login(values.email, values.password)
         console.log('Login result:', result)
         if (result.error) {
@@ -109,6 +118,11 @@ export function LoginForm() {
         router.push('/dashboard')
       } catch (error) {
         console.error('Login error caught:', error)
+        if (error instanceof Error) {
+          setLoginError(error.message)
+        } else {
+          setLoginError('An unexpected error occurred')
+        }
         throw error
       }
     }
@@ -120,13 +134,23 @@ export function LoginForm() {
     isSubmitting: isSigningUp,
     submitError: signUpError,
     handleChange: handleSignUpChange,
-    handleSubmit: handleSignUpSubmit
+    handleSubmit: handleSignUpSubmit,
+    setSubmitError: setSignUpError
   } = useFormHandling({
     initialValues: signUpInitialValues,
     validationRules: signUpValidationRules,
     onSubmit: async (values) => {
+      setHasAttemptedSignup(true)
       console.log('Starting signup attempt...')
       try {
+        if (!values.email || !values.password || !values.full_name || !values.phone) {
+          throw new Error('All fields are required')
+        }
+        
+        if (values.password !== values.confirm_password) {
+          throw new Error('Passwords do not match')
+        }
+
         const result = await auth.signUp(values.email, values.password, {
           full_name: values.full_name,
           phone: values.phone,
@@ -138,8 +162,14 @@ export function LoginForm() {
           throw result.error
         }
         console.log('Signup successful')
+        setSignUpError('Please check your email to confirm your account')
       } catch (error) {
         console.error('Signup error caught:', error)
+        if (error instanceof Error) {
+          setSignUpError(error.message)
+        } else {
+          setSignUpError('An unexpected error occurred')
+        }
         throw error
       }
     }
@@ -167,7 +197,7 @@ export function LoginForm() {
               type="email"
               value={loginValues.email}
               onChange={(e) => handleLoginChange('email', e.target.value)}
-              error={loginErrors.email}
+              error={hasAttemptedLogin ? loginErrors.email : undefined}
               required
             />
 
@@ -177,7 +207,7 @@ export function LoginForm() {
               type="password"
               value={loginValues.password}
               onChange={(e) => handleLoginChange('password', e.target.value)}
-              error={loginErrors.password}
+              error={hasAttemptedLogin ? loginErrors.password : undefined}
               required
             />
           </FormContainer>
@@ -196,7 +226,7 @@ export function LoginForm() {
               label="Full Name"
               value={signUpValues.full_name}
               onChange={(e) => handleSignUpChange('full_name', e.target.value)}
-              error={signUpErrors.full_name}
+              error={hasAttemptedSignup ? signUpErrors.full_name : undefined}
               required
             />
 
@@ -206,7 +236,7 @@ export function LoginForm() {
               type="email"
               value={signUpValues.email}
               onChange={(e) => handleSignUpChange('email', e.target.value)}
-              error={signUpErrors.email}
+              error={hasAttemptedSignup ? signUpErrors.email : undefined}
               required
             />
 
@@ -216,7 +246,7 @@ export function LoginForm() {
               type="tel"
               value={signUpValues.phone}
               onChange={(e) => handleSignUpChange('phone', e.target.value)}
-              error={signUpErrors.phone}
+              error={hasAttemptedSignup ? signUpErrors.phone : undefined}
               required
             />
 
@@ -226,7 +256,7 @@ export function LoginForm() {
               type="password"
               value={signUpValues.password}
               onChange={(e) => handleSignUpChange('password', e.target.value)}
-              error={signUpErrors.password}
+              error={hasAttemptedSignup ? signUpErrors.password : undefined}
               required
             />
 
@@ -236,7 +266,7 @@ export function LoginForm() {
               type="password"
               value={signUpValues.confirm_password}
               onChange={(e) => handleSignUpChange('confirm_password', e.target.value)}
-              error={signUpErrors.confirm_password}
+              error={hasAttemptedSignup ? signUpErrors.confirm_password : undefined}
               required
             />
           </FormContainer>
