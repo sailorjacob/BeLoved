@@ -1,11 +1,11 @@
 'use client'
 
-import { useRouter } from 'next/navigation'
+import * as React from 'react'
 import { createContext, useContext, useEffect, useState } from 'react'
-import { supabase } from '@/lib/supabase'
-import { getRedirectUrl, handleSupabaseError } from '@/lib/supabase'
+import { useRouter } from 'next/navigation'
+import { supabase, getRedirectUrl, handleSupabaseError } from '../lib/supabase'
 import type { User } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
+import type { Database } from '../types/supabase'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -22,23 +22,44 @@ interface AuthContextType extends AuthState {
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+const defaultState: AuthState = {
+  user: null,
+  profile: null,
+  isLoading: true,
+}
 
-export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    isLoading: true,
-  })
+const AuthContext = createContext<AuthContextType>({
+  ...defaultState,
+  signIn: async () => ({ error: new Error('Not implemented') }),
+  signUp: async () => ({ error: new Error('Not implemented') }),
+  signOut: async () => {},
+  updateProfile: async () => ({ error: new Error('Not implemented') }),
+})
 
+export function useAuth() {
+  const context = useContext(AuthContext)
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider')
+  }
+  return context
+}
+
+interface AuthProviderProps {
+  children: React.ReactNode
+}
+
+export function AuthProvider({ children }: AuthProviderProps) {
+  const [state, setState] = useState<AuthState>(defaultState)
   const router = useRouter()
 
   useEffect(() => {
+    let mounted = true
+
     const initAuth = async () => {
       try {
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (session?.user) {
+        if (session?.user && mounted) {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('*')
@@ -52,7 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             profile,
             isLoading: false,
           })
-        } else {
+        } else if (mounted) {
           setState({
             user: null,
             profile: null,
@@ -61,18 +82,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (error) {
         console.error('Error initializing auth:', error)
-        setState({
-          user: null,
-          profile: null,
-          isLoading: false,
-        })
+        if (mounted) {
+          setState({
+            user: null,
+            profile: null,
+            isLoading: false,
+          })
+        }
       }
     }
 
     initAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (session?.user) {
+      if (session?.user && mounted) {
         try {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
@@ -95,7 +118,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false,
           })
         }
-      } else {
+      } else if (mounted) {
         setState({
           user: null,
           profile: null,
@@ -105,9 +128,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
+      mounted = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [router])
 
   const signIn = async (email: string, password: string) => {
     try {
@@ -164,7 +188,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error
 
-      // Update local state
       setState(prev => ({
         ...prev,
         profile: { ...prev.profile!, ...data }
@@ -176,7 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const value = {
+  const value: AuthContextType = {
     ...state,
     signIn,
     signUp,
@@ -189,12 +212,4 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext)
-  if (context === undefined) {
-    throw new Error('useAuth must be used within an AuthProvider')
-  }
-  return context
 } 

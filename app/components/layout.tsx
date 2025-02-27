@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/app/contexts/auth-context'
 import { useRouter, usePathname } from 'next/navigation'
 
 interface LayoutProps {

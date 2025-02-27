@@ -4,11 +4,12 @@ import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from '@supabase/supabase-js'
-import type { Database } from '@/lib/supabase'
+import type { Database } from '@/types/supabase'
+import { useRouter } from 'next/navigation'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
-interface AuthState {
+export interface AuthState {
   user: User | null
   profile: Profile | null
   isLoggedIn: boolean
@@ -17,16 +18,34 @@ interface AuthState {
   isLoading: boolean
 }
 
-type AuthContextType = AuthState & {
-  login: (email: string, password: string) => Promise<{ error: Error | null }>
-  signUp: (email: string, password: string, profile: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => Promise<{ error: Error | null }>
-  logout: () => Promise<void>
-  isLoading: boolean
+export interface AuthResponse {
+  error: Error | null
+  data?: any
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined)
+export interface AuthContextType extends AuthState {
+  login: (email: string, password: string) => Promise<AuthResponse>
+  signUp: (email: string, password: string) => Promise<AuthResponse>
+  logout: () => Promise<void>
+}
+
+export const AuthContext = createContext<AuthContextType>({
+  user: null,
+  profile: null,
+  isLoggedIn: false,
+  isDriver: false,
+  isAdmin: false,
+  isLoading: true,
+  login: async () => ({ error: null }),
+  signUp: async () => ({ error: null }),
+  logout: async () => {}
+})
+
+console.log('Auth context file loaded')
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  console.log('AuthProvider rendering')
+  
   const [authState, setAuthState] = useState<AuthState>({
     user: null,
     profile: null,
@@ -37,7 +56,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   })
 
   useEffect(() => {
-    console.log('AuthProvider mounted')
+    console.log('AuthProvider useEffect running')
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('Initial session check:', { hasSession: !!session })
@@ -95,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
   }
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<AuthResponse> => {
     console.log('Login attempt for email:', email)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -107,25 +126,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error
 
-      return { error: null }
+      return { error: null, data }
     } catch (error) {
       console.error('Login error:', error)
       return { error: error as Error }
     }
   }
 
-  const signUp = async (email: string, password: string, profile: Omit<Profile, 'id' | 'created_at' | 'updated_at'>) => {
+  const signUp = async (email: string, password: string): Promise<AuthResponse> => {
     console.log('Signup attempt for email:', email)
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
-        options: {
-          data: {
-            full_name: profile.full_name,
-            user_type: profile.user_type
-          }
-        }
       })
 
       console.log('Signup response:', { hasData: !!data, error: signUpError })
@@ -138,12 +151,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .insert({
           id: data.user.id,
-          ...profile
+          full_name: '',
+          phone: '',
+          user_type: 'member'
         })
 
       if (profileError) throw profileError
 
-      return { error: null }
+      return { error: null, data }
     } catch (error) {
       console.error('Signup error:', error)
       return { error: error as Error }
@@ -154,15 +169,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await supabase.auth.signOut()
   }
 
+  const contextValue: AuthContextType = {
+    ...authState,
+    login,
+    signUp,
+    logout
+  }
+
   return (
-    <AuthContext.Provider 
-      value={{ 
-        ...authState,
-        login,
-        signUp,
-        logout
-      }}
-    >
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   )
@@ -170,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 export function useAuth() {
   const context = useContext(AuthContext)
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useAuth must be used within an AuthProvider")
   }
   return context

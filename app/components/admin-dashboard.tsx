@@ -43,12 +43,13 @@ type Driver = Database['public']['Tables']['profiles']['Row'] & {
 }
 
 export function AdminDashboard() {
+  const [selectedView, setSelectedView] = useState<'overview' | 'driver' | 'ride'>('overview')
+  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
   const [rides, setRides] = useState<Ride[]>([])
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [showAssignedRides, setShowAssignedRides] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
-  const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
   const router = useRouter()
 
   useEffect(() => {
@@ -171,8 +172,10 @@ export function AdminDashboard() {
     }
   }
 
-  if (isLoading) {
-    return <div>Loading...</div>
+  if (selectedView === 'driver' && selectedDriver) {
+    return (
+      <DriverProfilePage driver={selectedDriver} onBack={handleBackFromDriver} />
+    )
   }
 
   if (selectedRide) {
@@ -183,15 +186,6 @@ export function AdminDashboard() {
         onBack={handleBackFromDetails}
         onMilesEdit={handleMilesEdit}
         onClose={handleBackFromDetails}
-      />
-    )
-  }
-
-  if (selectedDriver) {
-    return (
-      <DriverProfilePage
-        driverId={selectedDriver.id}
-        onBack={handleBackFromDriver}
       />
     )
   }
@@ -353,85 +347,160 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Quick Access Grid - Now at the bottom */}
-      <Card className="mt-8">
-        <CardHeader>
-          <CardTitle>Quick Access</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            <Link href="/information-base">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <BookOpen className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Information Base</span>
+      {/* Quick Access Section */}
+      <div>
+        <h2 className="text-2xl font-bold mb-4">Quick Access</h2>
+        <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
+          {/* First Row */}
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <BookOpen className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/pending-acceptance">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <Clock className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Pending Acceptance</span>
+              <CardTitle className="text-sm font-medium">Information Base</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <Clock className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/schedule">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <CalendarDays className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Schedule</span>
+              <CardTitle className="text-sm font-medium">Pending Acceptance</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <CalendarDays className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/pickboard">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <Grid className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Pickboard</span>
+              <CardTitle className="text-sm font-medium">Schedule</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <Grid className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/manifest">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <Building2 className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Manifest</span>
+              <CardTitle className="text-sm font-medium">Pickboard</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <Building2 className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/invoicing">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <DollarSign className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Invoicing</span>
+              <CardTitle className="text-sm font-medium">Manifest</CardTitle>
+            </CardContent>
+          </Card>
+
+          {/* Second Row */}
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <DollarSign className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/history">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <History className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">History</span>
+              <CardTitle className="text-sm font-medium">Invoicing</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <History className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/exclude-member">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <Ban className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Exclude Member</span>
+              <CardTitle className="text-sm font-medium">History</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <Ban className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/counties">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <Target className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Counties</span>
+              <CardTitle className="text-sm font-medium">Exclude Member</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <Target className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-            
-            <Link href="/calendar">
-              <div className="flex flex-col items-center justify-center p-4 rounded-lg border border-gray-200 hover:bg-gray-50 transition-colors cursor-pointer">
-                <UserCircle className="h-8 w-8 text-red-500 mb-2" />
-                <span className="text-sm font-medium text-gray-900">Calendar</span>
+              <CardTitle className="text-sm font-medium">Counties</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <UserCircle className="w-8 h-8 text-red-500" />
               </div>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
+              <CardTitle className="text-sm font-medium">Calendar</CardTitle>
+            </CardContent>
+          </Card>
+
+          {/* Third Row - Additional Buttons */}
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                </svg>
+              </div>
+              <CardTitle className="text-sm font-medium">Driver Info</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M7 17h10v-4H7v4zm12-4h-1v4h1v-4zm-14 0H4v4h1v-4zM17.5 5h-11L4 11h16l-2.5-6z" />
+                </svg>
+              </div>
+              <CardTitle className="text-sm font-medium">Vehicles</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <CardTitle className="text-sm font-medium">Compliance</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                </svg>
+              </div>
+              <CardTitle className="text-sm font-medium">Upload Trips</CardTitle>
+            </CardContent>
+          </Card>
+
+          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
+            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
+              <div className="mb-2">
+                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+              </div>
+              <CardTitle className="text-sm font-medium">Account</CardTitle>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   )
 }

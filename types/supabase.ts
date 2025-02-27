@@ -114,6 +114,9 @@ export interface Database {
           recurring: 'none' | 'daily' | 'weekly' | 'monthly'
           created_at: string
           updated_at: string
+          provider_fee: number | null
+          driver_earnings: number | null
+          insurance_claim_amount: number | null
         }
         Insert: {
           member_id: string
@@ -136,6 +139,9 @@ export interface Database {
           payment_status?: 'pending' | 'completed' | 'failed'
           status?: 'pending' | 'assigned' | 'started' | 'picked_up' | 'completed' | 'return_pending' | 'return_started' | 'return_picked_up' | 'return_completed'
           recurring?: 'none' | 'daily' | 'weekly' | 'monthly'
+          provider_fee?: number | null
+          driver_earnings?: number | null
+          insurance_claim_amount?: number | null
         }
         Update: Partial<{
           driver_id: string
@@ -157,6 +163,9 @@ export interface Database {
           payment_status: 'pending' | 'completed' | 'failed'
           status: 'pending' | 'assigned' | 'started' | 'picked_up' | 'completed' | 'return_pending' | 'return_started' | 'return_picked_up' | 'return_completed'
           recurring: 'none' | 'daily' | 'weekly' | 'monthly'
+          provider_fee: number | null
+          driver_earnings: number | null
+          insurance_claim_amount: number | null
         }>
       }
     }
