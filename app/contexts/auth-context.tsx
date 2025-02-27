@@ -31,8 +31,10 @@ export interface AuthContextType {
   isAdmin: boolean
   isLoading: boolean
   login: (email: string, password: string) => Promise<AuthResponse>
+  signIn: (email: string, password: string) => Promise<AuthResponse>
   signUp: (email: string, password: string, userData?: { full_name?: string, phone?: string }) => Promise<AuthResponse>
   logout: () => Promise<void>
+  updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>
 }
 
 const defaultAuthState: AuthState = {
@@ -47,8 +49,10 @@ const defaultAuthState: AuthState = {
 const AuthContext = createContext<AuthContextType>({
   ...defaultAuthState,
   login: async () => ({ error: new Error('Not implemented') }),
+  signIn: async () => ({ error: new Error('Not implemented') }),
   signUp: async () => ({ error: new Error('Not implemented') }),
-  logout: async () => {}
+  logout: async () => {},
+  updateProfile: async () => ({ error: new Error('Not implemented') })
 })
 
 console.log('Auth context file loaded')
@@ -200,11 +204,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
+  const updateProfile = async (data: Partial<Profile>) => {
+    try {
+      if (!authState.user) throw new Error('No user logged in')
+
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', authState.user.id)
+
+      if (error) throw error
+
+      // Update local state
+      setAuthState(state => ({
+        ...state,
+        profile: { ...state.profile!, ...data }
+      }))
+
+      return { error: null }
+    } catch (error) {
+      console.error('Error updating profile:', error)
+      return { error: error as Error }
+    }
+  }
+
   const contextValue: AuthContextType = {
     ...authState,
     login,
+    signIn: login,
     signUp,
-    logout
+    logout,
+    updateProfile
   }
 
   return (

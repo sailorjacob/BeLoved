@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { FormContainer } from '@/components/ui/form-container'
 import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
-import { useAuth } from '@/hooks/useAuth'
+import { useAuth } from '@/app/contexts/auth-context'
 import { supabase } from '@/lib/supabase'
 
 interface DriverLoginFormData {
