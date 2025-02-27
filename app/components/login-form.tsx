@@ -88,21 +88,13 @@ export function LoginForm() {
     onSubmit: async (values) => {
       setHasAttemptedLogin(true)
       setSubmitError(null)
-      console.log('Attempting login with:', { email: values.email })
-      try {
-        const response = await auth.login(values.email, values.password)
-        console.log('Login response:', { hasError: !!response.error })
-        if (response.error) {
-          console.error('Login error:', response.error)
-          setSubmitError(response.error.message)
-          return
-        }
-        console.log('Login successful, redirecting to dashboard')
-        router.push('/dashboard')
-      } catch (error) {
-        console.error('Unexpected login error:', error)
-        setSubmitError(error instanceof Error ? error.message : 'Login failed')
+      
+      const { error } = await auth.login(values.email, values.password)
+      if (error) {
+        throw error
       }
+      
+      router.push('/dashboard')
     }
   })
 
@@ -118,30 +110,25 @@ export function LoginForm() {
     onSubmit: async (values) => {
       setHasAttemptedSignup(true)
       setSubmitError(null)
-      console.log('Attempting signup with:', { 
-        email: values.email,
-        fullName: values.full_name,
-        phone: values.phone
-      })
-      try {
-        if (values.password !== values.confirm_password) {
-          setSubmitError('Passwords do not match')
-          return
-        }
 
-        const response = await auth.signUp(values.email, values.password)
-        console.log('Signup response:', { hasError: !!response.error })
-        if (response.error) {
-          console.error('Signup error:', response.error)
-          setSubmitError(response.error.message)
-          return
-        }
-        console.log('Signup successful, showing confirmation message')
-        setSubmitError('Please check your email to confirm your account')
-      } catch (error) {
-        console.error('Unexpected signup error:', error)
-        setSubmitError(error instanceof Error ? error.message : 'Sign up failed')
+      if (values.password !== values.confirm_password) {
+        throw new Error('Passwords do not match')
       }
+
+      const { error } = await auth.signUp(
+        values.email, 
+        values.password,
+        {
+          full_name: values.full_name,
+          phone: values.phone
+        }
+      )
+
+      if (error) {
+        throw error
+      }
+
+      setSubmitError('Please check your email to confirm your account')
     }
   })
 

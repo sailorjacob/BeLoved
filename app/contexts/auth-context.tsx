@@ -23,21 +23,31 @@ export interface AuthResponse {
   data?: any
 }
 
-export interface AuthContextType extends AuthState {
+export interface AuthContextType {
+  user: User | null
+  profile: Profile | null
+  isLoggedIn: boolean
+  isDriver: boolean
+  isAdmin: boolean
+  isLoading: boolean
   login: (email: string, password: string) => Promise<AuthResponse>
-  signUp: (email: string, password: string) => Promise<AuthResponse>
+  signUp: (email: string, password: string, userData?: { full_name?: string, phone?: string }) => Promise<AuthResponse>
   logout: () => Promise<void>
 }
 
-export const AuthContext = createContext<AuthContextType>({
+const defaultAuthState: AuthState = {
   user: null,
   profile: null,
   isLoggedIn: false,
   isDriver: false,
   isAdmin: false,
-  isLoading: true,
-  login: async () => ({ error: null }),
-  signUp: async () => ({ error: null }),
+  isLoading: true
+}
+
+const AuthContext = createContext<AuthContextType>({
+  ...defaultAuthState,
+  login: async () => ({ error: new Error('Not implemented') }),
+  signUp: async () => ({ error: new Error('Not implemented') }),
   logout: async () => {}
 })
 
@@ -46,14 +56,8 @@ console.log('Auth context file loaded')
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   console.log('AuthProvider rendering')
   
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    isLoggedIn: false,
-    isDriver: false,
-    isAdmin: false,
-    isLoading: true
-  })
+  const router = useRouter()
+  const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
 
   useEffect(() => {
     console.log('AuthProvider useEffect running')
@@ -75,14 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         updateAuthState(session.user)
       } else {
-        setAuthState({
-          user: null,
-          profile: null,
-          isLoggedIn: false,
-          isDriver: false,
-          isAdmin: false,
-          isLoading: false
-        })
+        setAuthState(defaultAuthState)
       }
     })
 
@@ -91,27 +88,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateAuthState = async (user: User) => {
     console.log('Updating auth state for user:', user.id)
-    // Fetch the user's profile
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
+    try {
+      // Fetch the user's profile
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single()
 
-    if (profileError) {
-      console.error('Error fetching profile:', profileError)
+      if (profileError) throw profileError
+
+      console.log('Profile data:', profile)
+
+      setAuthState({
+        user,
+        profile,
+        isLoggedIn: true,
+        isDriver: profile?.user_type === 'driver',
+        isAdmin: profile?.user_type === 'admin',
+        isLoading: false
+      })
+    } catch (error) {
+      console.error('Error updating auth state:', error)
+      setAuthState({
+        user,
+        profile: null,
+        isLoggedIn: true,
+        isDriver: false,
+        isAdmin: false,
+        isLoading: false
+      })
     }
-
-    console.log('Profile data:', profile)
-
-    setAuthState({
-      user,
-      profile,
-      isLoggedIn: true,
-      isDriver: profile?.user_type === 'driver',
-      isAdmin: profile?.user_type === 'admin',
-      isLoading: false
-    })
   }
 
   const login = async (email: string, password: string): Promise<AuthResponse> => {
@@ -133,12 +140,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  const signUp = async (email: string, password: string): Promise<AuthResponse> => {
+  const signUp = async (email: string, password: string, userData?: { full_name?: string, phone?: string }): Promise<AuthResponse> => {
     console.log('Signup attempt for email:', email)
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: userData?.full_name || '',
+            user_type: 'member'
+          }
+        }
       })
 
       console.log('Signup response:', { hasData: !!data, error: signUpError })
@@ -151,8 +164,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         .from('profiles')
         .insert({
           id: data.user.id,
-          full_name: '',
-          phone: '',
+          full_name: userData?.full_name || '',
+          email: email,
+          phone: userData?.phone || '',
           user_type: 'member'
         })
 
@@ -166,7 +180,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const logout = async () => {
-    await supabase.auth.signOut()
+    const { error } = await supabase.auth.signOut()
+    if (error) {
+      console.error('Error signing out:', error)
+    } else {
+      router.push('/login')
+    }
   }
 
   const contextValue: AuthContextType = {
