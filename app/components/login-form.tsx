@@ -7,7 +7,7 @@ import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 
 interface LoginFormData {
@@ -71,12 +71,35 @@ export function LoginForm() {
   const [hasAttemptedSignup, setHasAttemptedSignup] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   
   console.log('Auth state:', {
     isLoggedIn: auth.isLoggedIn,
     hasUser: !!auth.user,
-    isLoading: auth.isLoading
+    isLoading: auth.isLoading,
+    profile: auth.profile
   })
+
+  useEffect(() => {
+    if (!isRedirecting && auth.isLoggedIn && auth.profile) {
+      setIsRedirecting(true)
+      console.log('Login form redirecting based on profile:', auth.profile)
+      
+      switch (auth.profile.user_type) {
+        case 'super_admin':
+          router.push('/super-admin-dashboard')
+          break
+        case 'admin':
+          router.push('/admin-dashboard')
+          break
+        case 'driver':
+          router.push('/driver-dashboard')
+          break
+        default:
+          router.push('/dashboard')
+      }
+    }
+  }, [auth.isLoggedIn, auth.profile, router, isRedirecting])
 
   const { 
     values: loginValues,
@@ -96,43 +119,8 @@ export function LoginForm() {
         const { error } = await auth.login(values.email, values.password)
         if (error) throw error
 
-        // Wait for a short time to ensure the session is updated
-        await new Promise(resolve => setTimeout(resolve, 500))
-
-        // Get the current session
-        const { data: { session } } = await supabase.auth.getSession()
-        if (!session?.user?.id) {
-          throw new Error('No session found after login')
-        }
-
-        // Get the user's profile to determine redirect
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('user_type')
-          .eq('id', session.user.id)
-          .single()
-
-        if (profileError || !profile) {
-          console.error('Error fetching profile:', profileError)
-          throw new Error('Could not fetch user profile')
-        }
-
-        console.log('Profile found after login:', profile)
-
-        // Redirect based on user type
-        switch (profile.user_type) {
-          case 'super_admin':
-            router.push('/super-admin-dashboard')
-            break
-          case 'admin':
-            router.push('/admin-dashboard')
-            break
-          case 'driver':
-            router.push('/driver-dashboard')
-            break
-          default:
-            router.push('/dashboard')
-        }
+        // Let the useEffect handle redirection after profile is loaded
+        console.log('Login successful, waiting for profile load')
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')

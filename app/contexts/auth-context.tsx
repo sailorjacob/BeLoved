@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect } from "react"
+import { createContext, useContext, useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
@@ -67,10 +67,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
   const [isInitialized, setIsInitialized] = useState(false)
   const [isMounted, setIsMounted] = useState(true)
+  const mountedRef = useRef(true)
 
   useEffect(() => {
     console.log('Setting up auth effect')
-    let mounted = true
+    mountedRef.current = true
     setIsMounted(true)
 
     const initializeAuth = async () => {
@@ -78,7 +79,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('Initializing auth...')
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (!mounted) {
+        if (!mountedRef.current) {
           console.log('Component unmounted during initialization')
           return
         }
@@ -100,24 +101,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', session.user.id)
           .single()
 
-        if (!mounted) {
+        if (!mountedRef.current) {
           console.log('Component unmounted during profile fetch')
           return
         }
 
-        if (profileError) {
+        if (profileError || !profile) {
           console.error('Profile fetch error:', profileError)
-          await supabase.auth.signOut()
-          setAuthState({
-            ...defaultAuthState,
-            isLoading: false
-          })
-          setIsInitialized(true)
-          return
-        }
-
-        if (!profile) {
-          console.error('No profile found for user:', session.user.id)
           await supabase.auth.signOut()
           setAuthState({
             ...defaultAuthState,
@@ -140,7 +130,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsInitialized(true)
       } catch (error) {
         console.error('Auth initialization error:', error)
-        if (mounted) {
+        if (mountedRef.current) {
           setAuthState({
             ...defaultAuthState,
             isLoading: false
@@ -153,13 +143,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) {
+      if (!mountedRef.current) {
         console.log('Auth state change ignored - component unmounted')
         return
       }
 
       console.log('Auth state change:', event, session?.user?.id)
       
+      if (event === 'SIGNED_OUT') {
+        setAuthState({
+          ...defaultAuthState,
+          isLoading: false
+        })
+        return
+      }
+
       try {
         if (!session?.user) {
           console.log('No session in auth state change')
@@ -177,7 +175,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', session.user.id)
           .single()
 
-        if (!mounted) {
+        if (!mountedRef.current) {
           console.log('Component unmounted during profile fetch in auth state change')
           return
         }
@@ -204,20 +202,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         })
       } catch (error) {
         console.error('Error handling auth state change:', error)
-        setAuthState({
-          ...defaultAuthState,
-          isLoading: false
-        })
+        if (mountedRef.current) {
+          setAuthState({
+            ...defaultAuthState,
+            isLoading: false
+          })
+        }
       }
     })
 
     return () => {
       console.log('Cleaning up auth provider')
-      mounted = false
+      mountedRef.current = false
       setIsMounted(false)
       subscription.unsubscribe()
     }
-  }, [router])
+  }, [])
 
   // Don't render children until auth is initialized
   if (!isInitialized) {
