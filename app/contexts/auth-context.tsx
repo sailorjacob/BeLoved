@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthProvider] Got auth user:', authUser)
       
       // Update state first
-      setState({
+      const newState = {
         user: authUser.user,
         profile: authUser.profile,
         isLoggedIn: authUser.isLoggedIn,
@@ -73,7 +73,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isSuperAdmin: authUser.role === 'super_admin',
         isLoading: false,
         role: authUser.role
-      })
+      }
+      
+      console.log('[AuthProvider] Setting new state:', newState)
+      setState(newState)
 
       // Handle redirects based on auth state
       if (authUser.isLoggedIn && authUser.role && !redirectInProgressRef.current) {
@@ -118,7 +121,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router, pathname])
 
   const handleAuthStateChange = useCallback(async (event: string, session: any) => {
-    console.log('[AuthProvider] Auth state change:', event, 'Previous event:', lastEventRef.current)
+    console.log('[AuthProvider] Auth state change:', event, 'Previous event:', lastEventRef.current, 'Session:', session)
     
     // Skip duplicate events except for SIGNED_IN
     if (event === lastEventRef.current && event !== 'SIGNED_IN') {

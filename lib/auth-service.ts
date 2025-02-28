@@ -62,8 +62,10 @@ class AuthService {
     this.sessionPromise = (async () => {
       try {
         const session = await this.getSession()
+        console.log('[AuthService] Session:', session)
         
         if (!session?.user) {
+          console.log('[AuthService] No session user')
           return {
             user: null,
             profile: null,
@@ -73,13 +75,17 @@ class AuthService {
         }
 
         const profile = await this.getProfile(session.user.id)
+        console.log('[AuthService] Profile:', profile)
         
-        return {
+        const authUser = {
           user: session.user,
           profile,
           isLoggedIn: true,
           role: (profile?.user_type as UserRole) || null
         }
+        
+        console.log('[AuthService] Returning auth user:', authUser)
+        return authUser
       } catch (error) {
         console.error('[AuthService] Error getting current user:', error)
         return {
@@ -113,11 +119,14 @@ class AuthService {
 
   async login(email: string, password: string) {
     try {
+      console.log('[AuthService] Attempting login for:', email)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
       if (error) throw error
+      
+      console.log('[AuthService] Login successful:', data)
       return data
     } catch (error) {
       console.error('[AuthService] Login error:', error)
