@@ -16,11 +16,11 @@ export default function RootLayout({
 }: {
   children: ReactNode
 }) {
-  // Development-only CSP meta tag
+  // Development-only CSP meta tag with broader permissions
   const devCsp = process.env.NODE_ENV === 'development' ? (
     <meta
       httpEquiv="Content-Security-Policy"
-      content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+      content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https: data: blob:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; style-src 'self' 'unsafe-inline' https:; img-src 'self' https: data: blob:; font-src 'self' https: data:; connect-src 'self' https: wss:;"
     />
   ) : null;
 
