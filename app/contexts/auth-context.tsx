@@ -123,9 +123,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Small delay to ensure auth state is stable
-    const timeoutId = setTimeout(handleRedirect, 500)
-    return () => clearTimeout(timeoutId)
+    handleRedirect()
   }, [state.isLoggedIn, state.role, pathname, router])
 
   useEffect(() => {
@@ -154,6 +152,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (mounted && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        // Small delay to ensure Supabase has updated the session
+        await new Promise(resolve => setTimeout(resolve, 100))
         await updateAuthState()
       }
     })
