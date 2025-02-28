@@ -8,18 +8,31 @@ import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
 
 export default function SuperAdminDashboardPage() {
-  const { isLoggedIn, isSuperAdmin } = useAuth()
+  const { isLoggedIn, isSuperAdmin, isLoading } = useAuth()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    if (!isLoggedIn || !isSuperAdmin) {
+  }, [])
+
+  useEffect(() => {
+    if (!isLoading && mounted && (!isLoggedIn || !isSuperAdmin)) {
       router.push('/login')
     }
-  }, [isLoggedIn, isSuperAdmin, router])
+  }, [isLoggedIn, isSuperAdmin, isLoading, mounted, router])
 
-  if (!mounted) {
+  // Show nothing while loading or not mounted
+  if (isLoading || !mounted) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
+
+  // If not logged in or not super admin, don't render anything (redirect will happen)
+  if (!isLoggedIn || !isSuperAdmin) {
     return null
   }
 

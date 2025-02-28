@@ -87,15 +87,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handleRedirect = useCallback(async (authUser: { role: UserRole | null }) => {
     if (redirectInProgressRef.current || !authCheckCompletedRef.current) return
-    if (!authUser || !authUser.role) return
-    
-    if (!authUser.role && publicPaths.includes(pathname || '')) return
+    if (!authUser?.role) {
+      if (!publicPaths.includes(pathname || '')) {
+        redirectInProgressRef.current = true
+        try {
+          await router.push('/login')
+        } finally {
+          redirectInProgressRef.current = false
+        }
+      }
+      return
+    }
     
     const targetPath = authService.getRedirectPath(authUser.role)
     if (pathname === targetPath) return
-    if (targetPath === '/login' && publicPaths.includes(pathname || '')) return
+    if (publicPaths.includes(pathname || '') && targetPath === '/login') return
 
-    console.log('[AuthProvider] Redirecting to:', targetPath)
+    console.log('[AuthProvider] Redirecting to:', targetPath, 'from:', pathname)
     redirectInProgressRef.current = true
     
     try {
@@ -109,7 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthProvider] Auth state change:', event)
 
     if (event === 'SIGNED_OUT') {
-      setState(defaultAuthState)
+      setState(prev => ({ ...defaultAuthState, isLoading: false }))
       if (!publicPaths.includes(pathname || '')) {
         router.push('/login')
       }
@@ -119,15 +127,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (['SIGNED_IN', 'TOKEN_REFRESHED', 'INITIAL_SESSION'].includes(event)) {
       const authUser = await updateAuthState()
       
-      if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && publicPaths.includes(pathname || ''))) {
-        if (authUser && authUser.role) {
-          handleRedirect(authUser)
-        }
-      }
-
       if (event === 'INITIAL_SESSION') {
         authCheckCompletedRef.current = true
         setState(prev => ({ ...prev, isLoading: false }))
+      }
+
+      if (authUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
+        handleRedirect(authUser)
       }
     }
   }, [updateAuthState, handleRedirect, pathname, router])
