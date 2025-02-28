@@ -15,13 +15,15 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
   const redirectLockRef = useRef(false)
+  const lastPathRef = useRef(window.location.pathname)
 
   useEffect(() => {
     const handleAuth = async () => {
       if (isLoading || redirectLockRef.current) return
 
       const pathname = window.location.pathname
-      console.log('Layout checking path:', pathname, { isLoggedIn, profile })
+      if (pathname === lastPathRef.current) return
+      lastPathRef.current = pathname
 
       try {
         redirectLockRef.current = true
@@ -30,7 +32,6 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
         if (publicPaths.includes(pathname) && isLoggedIn && profile) {
           const redirectPath = getRedirectPath(profile.user_type)
           if (pathname !== redirectPath) {
-            console.log('Layout: redirecting to dashboard:', redirectPath)
             setIsRedirecting(true)
             await router.replace(redirectPath)
             return
@@ -39,7 +40,6 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
         
         // Non-public path and not logged in
         if (!publicPaths.includes(pathname) && !isLoggedIn) {
-          console.log('Layout: redirecting to login')
           setIsRedirecting(true)
           await router.replace('/login')
           return
@@ -50,12 +50,15 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
           const correctPath = getRedirectPath(profile.user_type)
           if (pathname !== correctPath) {
             setIsRedirecting(true)
-            console.log('Layout: redirecting to correct dashboard:', correctPath)
             await router.replace(correctPath)
             return
           }
         }
 
+        setIsRedirecting(false)
+        setHasCheckedAuth(true)
+      } catch (error) {
+        console.error('Error during auth redirect:', error)
         setIsRedirecting(false)
         setHasCheckedAuth(true)
       } finally {

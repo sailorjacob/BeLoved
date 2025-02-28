@@ -64,14 +64,13 @@ function getRedirectPath(userType: string): string {
 console.log('Auth context file loaded')
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  console.log('AuthProvider rendering')
-  
   const router = useRouter()
   const pathname = usePathname()
   const [state, setState] = useState<AuthState>(defaultAuthState)
   const mountedRef = useRef(true)
   const redirectInProgressRef = useRef(false)
   const lastRedirectPathRef = useRef<string | null>(null)
+  const initializationInProgressRef = useRef(false)
 
   const updateAuthState = useCallback((updates: Partial<AuthState>) => {
     if (!mountedRef.current) return
@@ -98,16 +97,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Only redirect if necessary
+    // Only redirect if necessary and not to the same path
     if (targetPath && targetPath !== currentPath && targetPath !== lastRedirectPathRef.current) {
       redirectInProgressRef.current = true
       lastRedirectPathRef.current = targetPath
       try {
-        await router.push(targetPath)
+        await router.replace(targetPath)
       } catch (error) {
         console.error('Redirect error:', error)
+      } finally {
+        redirectInProgressRef.current = false
       }
-      redirectInProgressRef.current = false
     }
   }, [pathname, router])
 
@@ -145,10 +145,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!mountedRef.current) return
 
     try {
-      console.log('Auth state change:', event, !!session?.user)
-
       if (event === 'SIGNED_OUT' || !session?.user) {
-        console.log('User signed out or no session')
         updateAuthState({
           user: null,
           profile: null,
@@ -165,19 +162,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-        console.log('Processing auth event:', event)
         updateAuthState({ isLoading: true })
         
         try {
           const profile = await fetchProfile(session.user.id)
           
-          if (!mountedRef.current) {
-            console.log('Component unmounted during profile fetch')
-            return
-          }
+          if (!mountedRef.current) return
 
           if (!profile) {
-            console.error('No profile found after retries')
             await supabase.auth.signOut()
             updateAuthState({ ...defaultAuthState, isLoading: false })
             handleRedirect(null, false)
@@ -193,11 +185,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isSuperAdmin: profile.user_type === 'super_admin',
             isLoading: false
           }
-          
-          console.log('Updating auth state with:', { 
-            isLoggedIn: true, 
-            userType: profile.user_type 
-          })
           
           updateAuthState(newState)
           handleRedirect(profile, true)
@@ -220,12 +207,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [updateAuthState, handleRedirect, fetchProfile])
 
   useEffect(() => {
-    console.log('Setting up auth subscriptions')
     mountedRef.current = true
 
     const initializeAuth = async () => {
+      if (initializationInProgressRef.current) return
+      initializationInProgressRef.current = true
+
       try {
-        console.log('Initializing auth')
         const { data: { session }, error } = await supabase.auth.getSession()
         
         if (error) {
@@ -234,10 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        if (!mountedRef.current) {
-          console.log('Component unmounted during initialization')
-          return
-        }
+        if (!mountedRef.current) return
 
         await handleAuthStateChange('INITIAL_SESSION', session)
       } catch (error) {
@@ -245,106 +230,71 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (mountedRef.current) {
           updateAuthState({ ...defaultAuthState, isLoading: false })
         }
+      } finally {
+        initializationInProgressRef.current = false
       }
     }
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(handleAuthStateChange)
-
     initializeAuth()
 
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+
     return () => {
-      console.log('Cleaning up auth subscriptions')
       mountedRef.current = false
       subscription?.unsubscribe()
     }
-  }, [handleAuthStateChange, updateAuthState])
-
-  const login = useCallback(async (email: string, password: string): Promise<AuthResponse> => {
-    try {
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
-
-      if (error) throw error
-      return { error: null, data }
-    } catch (error) {
-      return { error: error as Error }
-    }
-  }, [])
-
-  const signUp = useCallback(async (email: string, password: string, userData?: { full_name?: string, phone?: string }): Promise<AuthResponse> => {
-    try {
-      const { data, error: signUpError } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: {
-            full_name: userData?.full_name || '',
-            user_type: 'member'
-          }
-        }
-      })
-
-      if (signUpError) throw signUpError
-      if (!data.user) throw new Error('No user returned from sign up')
-
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          full_name: userData?.full_name || '',
-          email: email,
-          phone: userData?.phone || '',
-          user_type: 'member'
-        })
-
-      if (profileError) throw profileError
-      return { error: null, data }
-    } catch (error) {
-      return { error: error as Error }
-    }
-  }, [])
-
-  const logout = useCallback(async () => {
-    try {
-      await supabase.auth.signOut()
-    } catch (error) {
-      console.error('Logout error:', error)
-    }
-  }, [])
-
-  const updateProfile = useCallback(async (data: Partial<Profile>) => {
-    try {
-      if (!state.user) throw new Error('No user logged in')
-
-      const { error } = await supabase
-        .from('profiles')
-        .update(data)
-        .eq('id', state.user.id)
-
-      if (error) throw error
-
-      updateAuthState({
-        profile: { ...state.profile!, ...data }
-      })
-
-      return { error: null }
-    } catch (error) {
-      return { error: error as Error }
-    }
-  }, [state.user, state.profile, updateAuthState])
+  }, [handleAuthStateChange])
 
   const contextValue = useMemo(() => ({
     ...state,
-    login,
-    signIn: login,
-    signUp,
-    logout,
-    updateProfile
-  }), [state, login, signUp, logout, updateProfile])
+    login: async (email: string, password: string) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        return { error, data }
+      } catch (error) {
+        return { error: error as Error }
+      }
+    },
+    signIn: async (email: string, password: string) => {
+      try {
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        return { error, data }
+      } catch (error) {
+        return { error: error as Error }
+      }
+    },
+    signUp: async (email: string, password: string, userData?: { full_name?: string, phone?: string }) => {
+      try {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              full_name: userData?.full_name,
+              phone: userData?.phone
+            }
+          }
+        })
+        return { error, data }
+      } catch (error) {
+        return { error: error as Error }
+      }
+    },
+    logout: async () => {
+      await supabase.auth.signOut()
+    },
+    updateProfile: async (data: Partial<Profile>) => {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .update(data)
+          .eq('id', state.user?.id)
+        return { error }
+      } catch (error) {
+        return { error: error as Error }
+      }
+    }
+  }), [state])
 
   if (state.isLoading) {
     return (
