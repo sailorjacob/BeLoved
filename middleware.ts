@@ -55,47 +55,6 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_type')
-      .eq('id', session.user.id)
-      .single()
-
-    console.log('[Middleware] User profile:', profile)
-
-    if (!profile?.user_type) {
-      console.log('[Middleware] No user type found, redirecting to login')
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
-
-    // Super admin can access all dashboard routes
-    if (profile.user_type === 'super_admin') {
-      if (pathname === '/dashboard') {
-        return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
-      }
-      if (pathname.includes('dashboard')) {
-        return res
-      }
-    }
-
-    // Role-based redirects
-    const roleRedirects = {
-      member: '/dashboard',
-      driver: '/driver-dashboard',
-      admin: '/admin-dashboard',
-      super_admin: '/super-admin-dashboard'
-    }
-
-    // If trying to access a dashboard that doesn't match their role
-    if (pathname.includes('dashboard')) {
-      const correctPath = roleRedirects[profile.user_type as keyof typeof roleRedirects]
-      if (pathname !== correctPath) {
-        console.log('[Middleware] Wrong dashboard, redirecting to:', correctPath)
-        return NextResponse.redirect(new URL(correctPath, request.url))
-      }
-    }
-
     return res
   } catch (error) {
     console.error('[Middleware] Error:', error)
