@@ -83,19 +83,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Add initialization timeout
   useEffect(() => {
+    if (!state.isLoading) return; // Don't set timeout if not loading
+
     initializationTimeoutRef.current = setTimeout(() => {
-      if (state.isLoading) {
+      if (state.isLoading && mountedRef.current) {
         console.log('[AuthProvider] Initialization timeout - resetting state')
         updateAuthState({ ...defaultAuthState, isLoading: false })
       }
-    }, 5000) // 5 second timeout
+    }, 10000) // Increased to 10 seconds
 
     return () => {
       if (initializationTimeoutRef.current) {
         clearTimeout(initializationTimeoutRef.current)
       }
     }
-  }, [])
+  }, [state.isLoading]) // Add state.isLoading as dependency
 
   const handleRedirect = useCallback(async (profile: Profile | null, isLoggedIn: boolean) => {
     if (!mountedRef.current || redirectInProgressRef.current) return
@@ -106,17 +108,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let targetPath: string | null = null
 
     // Determine target path
-    if (publicPaths.includes(currentPath)) {
-      if (isLoggedIn && profile) {
-        targetPath = getRedirectPath(profile.user_type)
-      }
-    } else if (!isLoggedIn) {
-      targetPath = '/login'
-    } else if (profile) {
+    if (isLoggedIn && profile) {
       const correctPath = getRedirectPath(profile.user_type)
-      if (currentPath !== correctPath) {
+      if (currentPath === '/login' || currentPath === '/') {
         targetPath = correctPath
+      } else if (currentPath !== correctPath) {
+        // Let middleware handle other path redirects
+        return
       }
+    } else if (!isLoggedIn && !publicPaths.includes(currentPath)) {
+      targetPath = '/login'
     }
 
     // Only redirect if necessary and not to the same path
