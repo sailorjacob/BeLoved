@@ -66,16 +66,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
   const [isInitialized, setIsInitialized] = useState(false)
+  const [isMounted, setIsMounted] = useState(true)
 
   useEffect(() => {
+    console.log('Setting up auth effect')
     let mounted = true
+    setIsMounted(true)
 
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth...')
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (!mounted) return
+        if (!mounted) {
+          console.log('Component unmounted during initialization')
+          return
+        }
 
         if (!session?.user) {
           console.log('No session found')
@@ -87,17 +93,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        console.log('Session found, fetching profile...')
+        console.log('Session found, fetching profile...', session.user.id)
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
 
-        if (!mounted) return
+        if (!mounted) {
+          console.log('Component unmounted during profile fetch')
+          return
+        }
 
-        if (profileError || !profile) {
-          console.error('Profile fetch error or no profile found:', profileError)
+        if (profileError) {
+          console.error('Profile fetch error:', profileError)
           await supabase.auth.signOut()
           setAuthState({
             ...defaultAuthState,
@@ -107,7 +116,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        console.log('Profile found:', profile.user_type)
+        if (!profile) {
+          console.error('No profile found for user:', session.user.id)
+          await supabase.auth.signOut()
+          setAuthState({
+            ...defaultAuthState,
+            isLoading: false
+          })
+          setIsInitialized(true)
+          return
+        }
+
+        console.log('Profile found:', { user_type: profile.user_type, id: profile.id })
         setAuthState({
           user: session.user,
           profile,
@@ -133,12 +153,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mounted) return
+      if (!mounted) {
+        console.log('Auth state change ignored - component unmounted')
+        return
+      }
 
       console.log('Auth state change:', event, session?.user?.id)
       
       try {
         if (!session?.user) {
+          console.log('No session in auth state change')
           setAuthState({
             ...defaultAuthState,
             isLoading: false
@@ -146,13 +170,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
+        console.log('Fetching profile after auth state change')
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
 
-        if (!mounted) return
+        if (!mounted) {
+          console.log('Component unmounted during profile fetch in auth state change')
+          return
+        }
 
         if (profileError || !profile) {
           console.error('Profile fetch error on auth change:', profileError)
@@ -164,6 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
+        console.log('Setting auth state with profile:', { user_type: profile.user_type, id: profile.id })
         setAuthState({
           user: session.user,
           profile,
@@ -185,6 +214,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       console.log('Cleaning up auth provider')
       mounted = false
+      setIsMounted(false)
       subscription.unsubscribe()
     }
   }, [router])
