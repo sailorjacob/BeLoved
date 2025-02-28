@@ -22,9 +22,35 @@ class AuthService {
     // Listen for auth state changes
     supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AuthService] Auth state change event:', event)
-      // Clear session promise on any auth state change
       this.sessionPromise = null
+      
+      // Handle token refresh errors
+      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
+        this.clearSession()
+      }
     })
+  }
+
+  private clearSession() {
+    this.sessionPromise = null
+    localStorage.removeItem('supabase.auth.token')
+    localStorage.removeItem('supabase.auth.refreshToken')
+  }
+
+  private async recoverSession(): Promise<Session | null> {
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) {
+        console.error('[AuthService] Error recovering session:', error)
+        this.clearSession()
+        return null
+      }
+      return session
+    } catch (error) {
+      console.error('[AuthService] Error recovering session:', error)
+      this.clearSession()
+      return null
+    }
   }
 
   static getInstance(): AuthService {
@@ -36,12 +62,12 @@ class AuthService {
 
   async getSession() {
     try {
-      const { data: { session }, error } = await supabase.auth.getSession()
-      if (error) throw error
+      const session = await this.recoverSession()
       console.log('[AuthService] Session check:', session ? 'Found' : 'Not found')
       return session
     } catch (error) {
       console.error('[AuthService] Error getting session:', error)
+      this.clearSession()
       return null
     }
   }
@@ -94,6 +120,7 @@ class AuthService {
         }
       } catch (error) {
         console.error('[AuthService] Error getting current user:', error)
+        this.clearSession()
         return {
           user: null,
           session: null,
@@ -131,10 +158,13 @@ class AuthService {
       })
       if (error) throw error
       
+      // Clear any existing session data before setting new session
+      this.clearSession()
       console.log('[AuthService] Login successful:', data)
       return data
     } catch (error) {
       console.error('[AuthService] Login error:', error)
+      this.clearSession()
       throw error
     }
   }
@@ -184,8 +214,10 @@ class AuthService {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      this.clearSession()
     } catch (error) {
       console.error('[AuthService] Logout error:', error)
+      this.clearSession()
       throw error
     }
   }
