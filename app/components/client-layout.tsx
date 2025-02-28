@@ -11,19 +11,56 @@ interface ClientLayoutProps {
 }
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, profile } = useAuth()
   const router = useRouter()
   const pathname = usePathname()
   const publicPaths = ['/login', '/driver-login', '/admin-login', '/']
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && !isRedirecting && !user && !publicPaths.includes(pathname)) {
-      console.log('ClientLayout redirecting to login')
-      setIsRedirecting(true)
-      router.push('/login')
+    setIsMounted(true)
+    return () => setIsMounted(false)
+  }, [])
+
+  useEffect(() => {
+    if (!isMounted) return
+
+    const handleAuth = async () => {
+      if (!isLoading && !isRedirecting) {
+        // If on a public path and logged in, redirect to appropriate dashboard
+        if (publicPaths.includes(pathname) && user && profile) {
+          setIsRedirecting(true)
+          console.log('ClientLayout: redirecting logged in user from public path')
+          switch (profile.user_type) {
+            case 'super_admin':
+              await router.push('/super-admin-dashboard')
+              break
+            case 'admin':
+              await router.push('/admin-dashboard')
+              break
+            case 'driver':
+              await router.push('/driver-dashboard')
+              break
+            default:
+              await router.push('/dashboard')
+          }
+          return
+        }
+
+        // If not on a public path and not logged in, redirect to login
+        if (!publicPaths.includes(pathname) && !user) {
+          setIsRedirecting(true)
+          console.log('ClientLayout: redirecting to login')
+          await router.push('/login')
+        }
+      }
     }
-  }, [user, isLoading, pathname, router, isRedirecting])
+
+    handleAuth()
+  }, [user, profile, isLoading, pathname, router, publicPaths, isRedirecting, isMounted])
+
+  if (!isMounted) return null
 
   if (isLoading || isRedirecting) {
     return (
@@ -49,16 +86,6 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export function ClientLayout({ children }: ClientLayoutProps) {
-  const [isMounted, setIsMounted] = useState(false)
-
-  useEffect(() => {
-    setIsMounted(true)
-  }, [])
-
-  if (!isMounted) {
-    return null
-  }
-
   return (
     <AuthProvider>
       <LayoutContent>{children}</LayoutContent>
