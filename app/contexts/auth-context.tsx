@@ -327,8 +327,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         })
-        console.log('[AuthProvider] SignUp result:', { success: !error })
-        return { error, data }
+
+        if (error) throw error
+        if (!data.user) throw new Error('No user returned from sign up')
+
+        // Create profile for the new user
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: data.user.id,
+            full_name: userData?.full_name || '',
+            email: email,
+            phone: userData?.phone || '',
+            user_type: 'member'  // Default to member for regular signup
+          })
+
+        if (profileError) {
+          console.error('[AuthProvider] Profile creation error:', profileError)
+          // Sign out the user if profile creation fails
+          await supabase.auth.signOut()
+          throw new Error('Failed to create user profile')
+        }
+
+        console.log('[AuthProvider] SignUp result:', { success: true })
+        return { error: null, data }
       } catch (error) {
         console.error('[AuthProvider] SignUp error:', error)
         return { error: error as Error }
