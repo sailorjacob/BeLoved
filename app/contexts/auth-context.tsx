@@ -170,6 +170,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleAuthStateChange = useCallback(async (event: string, session: any) => {
     if (!mountedRef.current) return
 
+    console.log('[AuthProvider] Processing auth state change:', { event, hasSession: !!session })
+
     try {
       if (event === 'SIGNED_OUT' || !session?.user) {
         updateAuthState({
@@ -188,14 +190,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        console.log('[AuthProvider] Processing sign in event for user:', session.user.id)
         updateAuthState({ isLoading: true })
         
         try {
           const profile = await fetchProfile(session.user.id)
+          console.log('[AuthProvider] Fetched profile:', profile)
           
           if (!mountedRef.current) return
 
           if (!profile) {
+            console.error('[AuthProvider] No profile found for user')
             await supabase.auth.signOut()
             updateAuthState({ ...defaultAuthState, isLoading: false })
             handleRedirect(null, false)
@@ -212,10 +217,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false
           }
           
+          console.log('[AuthProvider] Updating state with profile:', newState)
           updateAuthState(newState)
-          handleRedirect(profile, true)
+          
+          // Force redirect on SIGNED_IN event
+          if (event === 'SIGNED_IN') {
+            const targetPath = getRedirectPath(profile.user_type)
+            console.log('[AuthProvider] Forcing redirect after sign in:', targetPath)
+            router.replace(targetPath)
+          } else {
+            handleRedirect(profile, true)
+          }
         } catch (error) {
-          console.error('Error in auth state change flow:', error)
+          console.error('[AuthProvider] Error in auth state change flow:', error)
           if (mountedRef.current) {
             updateAuthState({ ...defaultAuthState, isLoading: false })
             handleRedirect(null, false)
@@ -223,14 +237,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       }
     } catch (error) {
-      console.error('Critical auth state change error:', error)
+      console.error('[AuthProvider] Critical auth state change error:', error)
       if (mountedRef.current) {
         await supabase.auth.signOut()
         updateAuthState({ ...defaultAuthState, isLoading: false })
         handleRedirect(null, false)
       }
     }
-  }, [updateAuthState, handleRedirect, fetchProfile])
+  }, [updateAuthState, handleRedirect, fetchProfile, router])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth effect')
@@ -297,7 +311,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthProvider] Login attempt')
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-        console.log('[AuthProvider] Login result:', { success: !error })
+        console.log('[AuthProvider] Login result:', { success: !error, hasUser: !!data.user })
+        
+        if (!error && data.user) {
+          // Fetch profile immediately after successful login
+          const profile = await fetchProfile(data.user.id)
+          if (profile) {
+            const targetPath = getRedirectPath(profile.user_type)
+            console.log('[AuthProvider] Login successful, redirecting to:', targetPath)
+            router.replace(targetPath)
+          }
+        }
+        
         return { error, data }
       } catch (error) {
         console.error('[AuthProvider] Login error:', error)
@@ -375,7 +400,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: error as Error }
       }
     }
-  }), [state])
+  }), [state, fetchProfile, router])
 
   if (state.isLoading) {
     console.log('[AuthProvider] Showing loading state')
