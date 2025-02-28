@@ -4,6 +4,24 @@ import type { NextRequest } from 'next/server'
 
 const publicPaths = ['/', '/login', '/auth/callback']
 
+// CSP Headers for production
+const getSecurityHeaders = () => ({
+  'Content-Security-Policy': `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' ${process.env.NODE_ENV === 'development' ? "'unsafe-eval'" : ''};
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: blob: https:;
+    font-src 'self' data:;
+    connect-src 'self' https: wss:;
+    frame-ancestors 'none';
+    form-action 'self';
+  `.replace(/\s+/g, ' ').trim(),
+  'X-Frame-Options': 'DENY',
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'strict-origin-when-cross-origin',
+  'Permissions-Policy': 'camera=(), microphone=(), geolocation=()'
+})
+
 export async function middleware(request: NextRequest) {
   // Skip middleware completely in development
   if (process.env.NODE_ENV === 'development') {
@@ -14,6 +32,14 @@ export async function middleware(request: NextRequest) {
   const supabase = createMiddlewareClient({ req: request, res })
   const { data: { session } } = await supabase.auth.getSession()
   const pathname = request.nextUrl.pathname
+
+  // Apply security headers in production
+  if (process.env.NODE_ENV === 'production') {
+    const securityHeaders = getSecurityHeaders()
+    Object.entries(securityHeaders).forEach(([key, value]) => {
+      res.headers.set(key, value)
+    })
+  }
 
   // Skip auth check for public routes
   if (publicPaths.includes(pathname)) {
