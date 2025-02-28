@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useRef } from "react"
+import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
@@ -24,14 +24,7 @@ export interface AuthResponse {
   data?: any
 }
 
-export interface AuthContextType {
-  user: User | null
-  profile: Profile | null
-  isLoggedIn: boolean
-  isDriver: boolean
-  isAdmin: boolean
-  isSuperAdmin: boolean
-  isLoading: boolean
+export interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<AuthResponse>
   signIn: (email: string, password: string) => Promise<AuthResponse>
   signUp: (email: string, password: string, userData?: { full_name?: string, phone?: string }) => Promise<AuthResponse>
@@ -84,183 +77,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const [state, setState] = useState<AuthState>(defaultAuthState)
   const [isInitialized, setIsInitialized] = useState(false)
-  const [isRedirecting, setIsRedirecting] = useState(false)
   const mountedRef = useRef(true)
-  const authChangeHandlerRef = useRef<((event: string, session: any) => void) | null>(null)
+  const redirectTimeoutRef = useRef<NodeJS.Timeout>()
+  const lastRedirectRef = useRef<string>('')
 
-  const handleRedirect = async (profile: Profile | null, isLoggedIn: boolean) => {
-    if (isRedirecting) {
-      console.log('Already redirecting, skipping')
+  const handleRedirect = useCallback(async (profile: Profile | null, isLoggedIn: boolean) => {
+    const currentPath = pathname || '/'
+    
+    // Clear any pending redirects
+    if (redirectTimeoutRef.current) {
+      clearTimeout(redirectTimeoutRef.current)
+    }
+
+    // Prevent duplicate redirects
+    if (lastRedirectRef.current === currentPath) {
       return
     }
-    
-    const currentPath = pathname || '/'
-    console.log('Checking redirect:', { currentPath, isLoggedIn, profile })
 
     try {
+      let targetPath: string | null = null
+
       // Handle public paths
       if (publicPaths.includes(currentPath)) {
         if (isLoggedIn && profile) {
-          const redirectPath = getRedirectPath(profile.user_type)
-          if (currentPath !== redirectPath) {
-            setIsRedirecting(true)
-            console.log('Redirecting to dashboard:', redirectPath)
-            await router.push(redirectPath)
-            console.log('Redirect complete')
-            setIsRedirecting(false)
-          } else {
-            console.log('Already on correct path')
+          targetPath = getRedirectPath(profile.user_type)
+        }
+      } else {
+        // Handle protected paths
+        if (!isLoggedIn) {
+          targetPath = '/login'
+        } else if (profile) {
+          const correctPath = getRedirectPath(profile.user_type)
+          if (currentPath !== correctPath) {
+            targetPath = correctPath
           }
-        } else {
-          console.log('On public path, no redirect needed')
         }
-        return
       }
 
-      // Handle protected paths
-      if (!isLoggedIn) {
-        setIsRedirecting(true)
-        console.log('Redirecting to login')
-        await router.push('/login')
-        console.log('Redirect to login complete')
-        setIsRedirecting(false)
-        return
-      }
-
-      // Ensure user is on correct dashboard
-      if (profile) {
-        const correctPath = getRedirectPath(profile.user_type)
-        if (currentPath !== correctPath) {
-          setIsRedirecting(true)
-          console.log('Redirecting to correct dashboard:', correctPath)
-          await router.push(correctPath)
-          console.log('Redirect to dashboard complete')
-          setIsRedirecting(false)
-        } else {
-          console.log('Already on correct dashboard')
-        }
+      // Only redirect if we have a target and it's different from current path
+      if (targetPath && targetPath !== currentPath) {
+        lastRedirectRef.current = targetPath
+        // Debounce redirect to prevent rapid consecutive redirects
+        redirectTimeoutRef.current = setTimeout(() => {
+          if (mountedRef.current) {
+            router.push(targetPath!)
+          }
+        }, 100)
       }
     } catch (error) {
       console.error('Error during redirect:', error)
-      setIsRedirecting(false)
     }
-  }
+  }, [pathname, router])
 
-  useEffect(() => {
-    console.log('Setting up auth effect')
-    mountedRef.current = true
-
-    const initializeAuth = async () => {
-      try {
-        console.log('Initializing auth...')
-        const { data: { session } } = await supabase.auth.getSession()
-        
-        if (!mountedRef.current) return
-
-        if (!session?.user) {
-          console.log('No session found')
-          const newState = {
-            ...defaultAuthState,
-            isLoading: false
-          }
-          setState(newState)
-          setIsInitialized(true)
-          handleRedirect(null, false)
-          return
-        }
-
-        console.log('Session found, fetching profile...', session.user.id)
-        const { data: profile, error: profileError } = await supabase
-          .from('profiles')
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-
-        if (!mountedRef.current) return
-
-        if (profileError || !profile) {
-          console.error('Profile fetch error:', profileError)
-          await supabase.auth.signOut()
-          const newState = {
-            ...defaultAuthState,
-            isLoading: false
-          }
-          setState(newState)
-          setIsInitialized(true)
-          handleRedirect(null, false)
-          return
-        }
-
-        console.log('Profile found:', { user_type: profile.user_type, id: profile.id })
-        const newState = {
-          user: session.user,
-          profile,
-          isLoggedIn: true,
-          isDriver: profile.user_type === 'driver',
-          isAdmin: profile.user_type === 'admin',
-          isSuperAdmin: profile.user_type === 'super_admin',
-          isLoading: false
-        }
-        setState(newState)
-        setIsInitialized(true)
-        handleRedirect(profile, true)
-      } catch (error) {
-        console.error('Auth initialization error:', error)
-        if (mountedRef.current) {
-          const newState = {
-            ...defaultAuthState,
-            isLoading: false
-          }
-          setState(newState)
-          setIsInitialized(true)
-          handleRedirect(null, false)
-        }
-      }
-    }
-
-    initializeAuth()
-
-    // Handle auth state changes
-    console.log('Setting up auth state listener')
-    
-    const setupAuth = async () => {
-      try {
-        // Set up auth state change listener
-        authChangeHandlerRef.current = async (event: string, session: any) => {
-          console.log('Auth state changed:', event, session?.user?.id)
-          if (mountedRef.current) {
-            await handleAuthStateChange(event, session)
-          }
-        }
-
-        // Subscribe to auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange(
-          authChangeHandlerRef.current
-        )
-
-        return () => {
-          console.log('Cleaning up auth state listener')
-          mountedRef.current = false
-          subscription?.unsubscribe()
-        }
-      } catch (error) {
-        console.error('Error in auth setup:', error)
-        if (mountedRef.current) {
-          setState(prev => ({ ...prev, isLoading: false }))
-        }
-      }
-    }
-
-    setupAuth()
-  }, [router, pathname])
-
-  const handleAuthStateChange = async (event: string, session: any) => {
-    console.log('Handling auth state change:', event)
-    
-    if (!mountedRef.current) {
-      console.log('Component unmounted, skipping auth state change')
-      return
-    }
+  const handleAuthStateChange = useCallback(async (event: string, session: any) => {
+    if (!mountedRef.current) return
 
     try {
       if (event === 'SIGNED_OUT') {
@@ -280,72 +150,123 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN' && session?.user) {
         setState(prev => ({ ...prev, isLoading: true }))
         
-        // Fetch user profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
 
+        if (!mountedRef.current) return
+
         if (profileError) {
           throw profileError
         }
 
-        if (mountedRef.current) {
-          setState({
-            user: session.user,
-            profile,
-            isLoggedIn: true,
-            isDriver: profile.user_type === 'driver',
-            isAdmin: profile.user_type === 'admin',
-            isSuperAdmin: profile.user_type === 'super_admin',
-            isLoading: false
-          })
-        }
+        setState({
+          user: session.user,
+          profile,
+          isLoggedIn: true,
+          isDriver: profile.user_type === 'driver',
+          isAdmin: profile.user_type === 'admin',
+          isSuperAdmin: profile.user_type === 'super_admin',
+          isLoading: false
+        })
 
-        await handleRedirect(profile, true)
+        handleRedirect(profile, true)
       }
     } catch (error) {
       console.error('Error handling auth state change:', error)
       if (mountedRef.current) {
-        console.log('Signing out due to error')
         await supabase.auth.signOut()
         setState(prev => ({ ...prev, isLoading: false }))
         handleRedirect(null, false)
       }
     }
-  }
+  }, [handleRedirect])
 
-  // Don't render children until auth is initialized
-  if (!isInitialized || isRedirecting) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
-      </div>
-    )
-  }
+  useEffect(() => {
+    mountedRef.current = true
+
+    const initializeAuth = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        
+        if (!mountedRef.current) return
+
+        if (!session?.user) {
+          setState(prev => ({ ...prev, isLoading: false }))
+          setIsInitialized(true)
+          handleRedirect(null, false)
+          return
+        }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (!mountedRef.current) return
+
+        if (profileError || !profile) {
+          await supabase.auth.signOut()
+          setState(prev => ({ ...prev, isLoading: false }))
+          setIsInitialized(true)
+          handleRedirect(null, false)
+          return
+        }
+
+        setState({
+          user: session.user,
+          profile,
+          isLoggedIn: true,
+          isDriver: profile.user_type === 'driver',
+          isAdmin: profile.user_type === 'admin',
+          isSuperAdmin: profile.user_type === 'super_admin',
+          isLoading: false
+        })
+        setIsInitialized(true)
+        handleRedirect(profile, true)
+      } catch (error) {
+        console.error('Auth initialization error:', error)
+        if (mountedRef.current) {
+          setState(prev => ({ ...prev, isLoading: false }))
+          setIsInitialized(true)
+          handleRedirect(null, false)
+        }
+      }
+    }
+
+    // Set up auth state change listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+
+    initializeAuth()
+
+    return () => {
+      mountedRef.current = false
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+      }
+      subscription?.unsubscribe()
+    }
+  }, [handleRedirect, handleAuthStateChange])
 
   const login = async (email: string, password: string): Promise<AuthResponse> => {
-    console.log('Login attempt for email:', email)
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       })
 
-      console.log('Login response:', { hasData: !!data, error })
-
       if (error) throw error
 
       return { error: null, data }
     } catch (error) {
-      console.error('Login error:', error)
       return { error: error as Error }
     }
   }
 
   const signUp = async (email: string, password: string, userData?: { full_name?: string, phone?: string }): Promise<AuthResponse> => {
-    console.log('Signup attempt for email:', email)
     try {
       const { data, error: signUpError } = await supabase.auth.signUp({
         email,
@@ -358,12 +279,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       })
 
-      console.log('Signup response:', { hasData: !!data, error: signUpError })
-
       if (signUpError) throw signUpError
       if (!data.user) throw new Error('No user returned from sign up')
 
-      // Create the user's profile
       const { error: profileError } = await supabase
         .from('profiles')
         .insert({
@@ -378,7 +296,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null, data }
     } catch (error) {
-      console.error('Signup error:', error)
       return { error: error as Error }
     }
   }
@@ -401,7 +318,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (error) throw error
 
-      // Update local state
       setState(state => ({
         ...state,
         profile: { ...state.profile!, ...data }
@@ -409,22 +325,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       return { error: null }
     } catch (error) {
-      console.error('Error updating profile:', error)
       return { error: error as Error }
     }
   }
 
-  const contextValue: AuthContextType = {
-    ...state,
-    login,
-    signIn: login,
-    signUp,
-    logout,
-    updateProfile
+  if (!isInitialized) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+      </div>
+    )
   }
 
   return (
-    <AuthContext.Provider value={contextValue}>
+    <AuthContext.Provider value={{
+      ...state,
+      login,
+      signIn: login,
+      signUp,
+      logout,
+      updateProfile
+    }}>
       {children}
     </AuthContext.Provider>
   )
