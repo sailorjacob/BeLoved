@@ -29,27 +29,28 @@ function LoadingSpinner() {
 }
 
 export default function SuperAdminDashboardPage() {
-  const { isLoggedIn, isSuperAdmin, isLoading, user, profile } = useAuth()
+  const { isLoggedIn, isSuperAdmin, isLoading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    console.log('[SuperAdminDashboard] Auth state:', { isLoggedIn, isSuperAdmin, isLoading, user, profile })
-    
     if (!isLoading && !isLoggedIn) {
-      console.log('[SuperAdminDashboard] Not logged in, redirecting to login')
-      router.push('/login')
+      router.replace('/login')
       return
     }
 
     if (!isLoading && isLoggedIn && !isSuperAdmin) {
-      console.log('[SuperAdminDashboard] Not super admin, redirecting to appropriate dashboard')
-      router.push('/dashboard')
+      router.replace('/dashboard')
       return
     }
-  }, [isLoggedIn, isSuperAdmin, isLoading, router, user, profile])
+  }, [isLoggedIn, isSuperAdmin, isLoading, router])
 
   // Show loading state while checking auth
-  if (isLoading || !isLoggedIn || !isSuperAdmin) {
+  if (isLoading) {
+    return <LoadingSpinner />
+  }
+
+  // Don't render anything while redirecting
+  if (!isLoggedIn || !isSuperAdmin) {
     return <LoadingSpinner />
   }
 

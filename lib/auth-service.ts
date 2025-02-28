@@ -17,24 +17,14 @@ export interface AuthUser {
 class AuthService {
   private static instance: AuthService
   private sessionPromise: Promise<AuthUser> | null = null
-  private lastSessionCheck: number = 0
-  private sessionCacheTimeout: number = 2000 // 2 second cache
-  private cachedAuthUser: AuthUser | null = null
   
   private constructor() {
     // Listen for auth state changes
     supabase.auth.onAuthStateChange((event, session) => {
       console.log('[AuthService] Auth state change event:', event)
-      // Clear cache on any auth state change
-      this.clearCache()
+      // Clear session promise on any auth state change
+      this.sessionPromise = null
     })
-  }
-
-  private clearCache() {
-    console.log('[AuthService] Clearing cache')
-    this.cachedAuthUser = null
-    this.sessionPromise = null
-    this.lastSessionCheck = 0
   }
 
   static getInstance(): AuthService {
@@ -48,7 +38,7 @@ class AuthService {
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error) throw error
-      console.log('[AuthService] Fresh session check:', session ? 'Found' : 'Not found')
+      console.log('[AuthService] Session check:', session ? 'Found' : 'Not found')
       return session
     } catch (error) {
       console.error('[AuthService] Error getting session:', error)
@@ -76,40 +66,32 @@ class AuthService {
   async getCurrentUser(): Promise<AuthUser> {
     // If there's a promise in flight, wait for it
     if (this.sessionPromise) {
-      console.log('[AuthService] Using existing session promise')
       return this.sessionPromise
     }
 
     this.sessionPromise = (async () => {
       try {
         const session = await this.getSession()
-        console.log('[AuthService] Session:', session)
         
         if (!session?.user) {
-          console.log('[AuthService] No session user')
-          const noUser = {
+          return {
             user: null,
             session: null,
             profile: null,
             isLoggedIn: false,
             role: null
           }
-          return noUser
         }
 
         const profile = await this.getProfile(session.user.id)
-        console.log('[AuthService] Profile:', profile)
         
-        const authUser = {
+        return {
           user: session.user,
           session,
           profile,
           isLoggedIn: true,
           role: (profile?.user_type as UserRole) || null
         }
-        
-        console.log('[AuthService] Returning auth user:', authUser)
-        return authUser
       } catch (error) {
         console.error('[AuthService] Error getting current user:', error)
         return {
@@ -119,8 +101,6 @@ class AuthService {
           isLoggedIn: false,
           role: null
         }
-      } finally {
-        this.sessionPromise = null
       }
     })()
 

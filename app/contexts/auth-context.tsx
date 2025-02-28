@@ -52,9 +52,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [state, setState] = useState<AuthState>(defaultAuthState)
+  const isInitialMount = useRef(true)
   const isRedirecting = useRef(false)
-  const lastAuthEvent = useRef<string | null>(null)
-  const hasInitialized = useRef(false)
 
   const updateAuthState = useCallback(async () => {
     try {
@@ -87,38 +86,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Handle redirects based on auth state
   useEffect(() => {
-    if (state.isLoading || !hasInitialized.current || isRedirecting.current) {
+    if (state.isLoading || isRedirecting.current) {
       return
     }
 
     const handleRedirect = async () => {
       if (isRedirecting.current) return
+      isRedirecting.current = true
 
       try {
-        isRedirecting.current = true
-        console.log('[AuthProvider] Handling redirect, current path:', pathname)
-        console.log('[AuthProvider] Auth state for redirect:', {
+        console.log('[AuthProvider] Checking redirect:', {
+          pathname,
           isLoggedIn: state.isLoggedIn,
           role: state.role,
-          lastAuthEvent: lastAuthEvent.current,
-          hasInitialized: hasInitialized.current
+          isInitialMount: isInitialMount.current
         })
 
         if (state.isLoggedIn && state.role) {
           const targetPath = authService.getRedirectPath(state.role)
-          // Only redirect if we're on a public path or wrong dashboard
-          if (publicPaths.includes(pathname || '') || 
-              (pathname !== targetPath && pathname?.includes('dashboard'))) {
+          if (pathname !== targetPath && (isInitialMount.current || publicPaths.includes(pathname || ''))) {
             console.log('[AuthProvider] Redirecting to:', targetPath)
             await router.push(targetPath)
-          } else {
-            console.log('[AuthProvider] No redirect needed, already on correct path')
           }
         } else if (!publicPaths.includes(pathname || '')) {
           console.log('[AuthProvider] Not logged in, redirecting to login')
           await router.push('/login')
         }
       } finally {
+        isInitialMount.current = false
         isRedirecting.current = false
       }
     }
@@ -133,7 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const setup = async () => {
       if (mounted) {
         await updateAuthState()
-        hasInitialized.current = true
       }
     }
 
@@ -141,7 +135,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
       console.log('[AuthProvider] Auth state change:', event, session)
-      lastAuthEvent.current = event
       
       if (event === 'SIGNED_OUT') {
         setState({
@@ -152,8 +145,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (mounted && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        // Small delay to ensure Supabase has updated the session
-        await new Promise(resolve => setTimeout(resolve, 100))
         await updateAuthState()
       }
     })
