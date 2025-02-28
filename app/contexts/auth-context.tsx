@@ -50,6 +50,7 @@ const publicPaths = ['/login', '/auth/callback', '/']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
+  const [isInitialized, setIsInitialized] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const authServiceRef = useRef(authService)
@@ -63,7 +64,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const handleNavigation = useCallback((path: string) => {
-    if (!isMounted.current) return
+    if (!isMounted.current || !isInitialized) return
     
     // Clear any existing navigation timeout
     if (navigationTimeoutRef.current) {
@@ -76,7 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         router.push(path)
       }
     }, 0)
-  }, [router, pathname])
+  }, [router, pathname, isInitialized])
 
   const updateAuthState = useCallback(async () => {
     if (isUpdatingRef.current || !isMounted.current) return
@@ -104,8 +105,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       safeSetState(newState)
 
-      // Handle navigation after state update
-      if (isMounted.current) {
+      // Only handle navigation if initialized
+      if (isMounted.current && isInitialized) {
         const publicPaths = ['/login', '/signup', '/forgot-password']
         const isPublicPath = publicPaths.includes(pathname)
 
@@ -128,32 +129,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isUpdatingRef.current = false
     }
-  }, [safeSetState, handleNavigation, pathname])
+  }, [safeSetState, handleNavigation, pathname, isInitialized])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
     isMounted.current = true
 
-    const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
-      console.log('[AuthProvider] Auth state change:', event, session)
+    const setupAuth = async () => {
+      try {
+        const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
+          console.log('[AuthProvider] Auth state change:', event, session)
 
-      if (!isMounted.current) return
+          if (!isMounted.current) return
 
-      if (event === 'SIGNED_OUT') {
-        safeSetState({
-          ...defaultAuthState,
-          isLoading: false
+          if (event === 'SIGNED_OUT') {
+            safeSetState({
+              ...defaultAuthState,
+              isLoading: false
+            })
+            if (isInitialized) {
+              handleNavigation('/login')
+            }
+            return
+          }
+
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            await updateAuthState()
+          }
         })
-        handleNavigation('/login')
-        return
-      }
 
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        // Initial auth state update
         await updateAuthState()
-      }
-    })
+        
+        // Mark as initialized after initial auth check
+        if (isMounted.current) {
+          setIsInitialized(true)
+        }
 
-    updateAuthState()
+        return subscription
+      } catch (error) {
+        console.error('[AuthProvider] Error setting up auth:', error)
+        if (isMounted.current) {
+          setIsInitialized(true)
+          safeSetState({
+            ...defaultAuthState,
+            isLoading: false
+          })
+        }
+        return null
+      }
+    }
+
+    const subscription = setupAuth()
 
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
@@ -161,7 +188,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (navigationTimeoutRef.current) {
         clearTimeout(navigationTimeoutRef.current)
       }
-      subscription?.unsubscribe()
+      subscription.then(sub => sub?.unsubscribe())
     }
   }, [updateAuthState, handleNavigation, safeSetState])
 
