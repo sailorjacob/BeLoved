@@ -8,7 +8,7 @@ import { UserNav } from "./components/user-nav"
 import { ClientLayout } from "@/app/components/client-layout"
 
 export default function Home() {
-  const { user, profile } = useAuth()
+  const { user, profile, isLoading } = useAuth()
 
   return (
     <ClientLayout>
@@ -29,7 +29,11 @@ export default function Home() {
           <UserNav />
         </div>
         <div className="flex-grow flex flex-col items-center justify-center">
-          {user ? (
+          {isLoading ? (
+            <div className="flex items-center justify-center">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+            </div>
+          ) : user ? (
             profile?.user_type === "member" ? (
               <Scheduler />
             ) : null

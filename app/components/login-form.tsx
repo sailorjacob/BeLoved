@@ -70,6 +70,19 @@ export function LoginForm() {
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   
+  // If we're already logged in or still loading, don't show the form
+  if (auth.isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[200px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
+
+  if (auth.isLoggedIn) {
+    return null
+  }
+
   console.log('Auth state:', {
     isLoggedIn: auth.isLoggedIn,
     hasUser: !!auth.user,
