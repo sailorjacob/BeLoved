@@ -1,5 +1,5 @@
 import { supabase } from './supabase'
-import type { User } from '@supabase/supabase-js'
+import type { User, Session } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -8,6 +8,7 @@ export type UserRole = 'member' | 'driver' | 'admin' | 'super_admin'
 
 export interface AuthUser {
   user: User | null
+  session: Session | null
   profile: Profile | null
   isLoggedIn: boolean
   role: UserRole | null
@@ -16,6 +17,8 @@ export interface AuthUser {
 class AuthService {
   private static instance: AuthService
   private sessionPromise: Promise<AuthUser> | null = null
+  private lastSessionCheck: number = 0
+  private sessionCacheTimeout: number = 1000 // 1 second cache
   
   private constructor() {}
 
@@ -28,8 +31,15 @@ class AuthService {
 
   async getSession() {
     try {
+      const now = Date.now()
+      if (this.sessionPromise && (now - this.lastSessionCheck) < this.sessionCacheTimeout) {
+        console.log('[AuthService] Using cached session promise')
+        return (await this.sessionPromise).session
+      }
+
       const { data: { session }, error } = await supabase.auth.getSession()
       if (error) throw error
+      console.log('[AuthService] Fresh session check:', session ? 'Found' : 'Not found')
       return session
     } catch (error) {
       console.error('[AuthService] Error getting session:', error)
@@ -46,6 +56,7 @@ class AuthService {
         .single()
 
       if (error) throw error
+      console.log('[AuthService] Got profile:', profile)
       return profile
     } catch (error) {
       console.error('[AuthService] Error getting profile:', error)
@@ -54,11 +65,15 @@ class AuthService {
   }
 
   async getCurrentUser(): Promise<AuthUser> {
-    // Use existing promise if one is in flight
-    if (this.sessionPromise) {
+    const now = Date.now()
+    
+    // Return cached promise if it exists and is recent
+    if (this.sessionPromise && (now - this.lastSessionCheck) < this.sessionCacheTimeout) {
+      console.log('[AuthService] Using cached auth user')
       return this.sessionPromise
     }
 
+    this.lastSessionCheck = now
     this.sessionPromise = (async () => {
       try {
         const session = await this.getSession()
@@ -68,6 +83,7 @@ class AuthService {
           console.log('[AuthService] No session user')
           return {
             user: null,
+            session: null,
             profile: null,
             isLoggedIn: false,
             role: null
@@ -79,6 +95,7 @@ class AuthService {
         
         const authUser = {
           user: session.user,
+          session,
           profile,
           isLoggedIn: true,
           role: (profile?.user_type as UserRole) || null
@@ -90,12 +107,11 @@ class AuthService {
         console.error('[AuthService] Error getting current user:', error)
         return {
           user: null,
+          session: null,
           profile: null,
           isLoggedIn: false,
           role: null
         }
-      } finally {
-        this.sessionPromise = null
       }
     })()
 

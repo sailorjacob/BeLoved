@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(defaultAuthState)
   const isInitialMount = useRef(true)
   const isRedirecting = useRef(false)
+  const lastAuthEvent = useRef<string | null>(null)
 
   const updateAuthState = useCallback(async () => {
     try {
@@ -86,8 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Handle redirects based on auth state
   useEffect(() => {
-    if (state.isLoading || isInitialMount.current || isRedirecting.current) {
-      isInitialMount.current = false
+    if (state.isLoading || isRedirecting.current) {
       return
     }
 
@@ -96,15 +96,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         isRedirecting.current = true
+        console.log('[AuthProvider] Handling redirect, current path:', pathname)
+        console.log('[AuthProvider] Auth state for redirect:', {
+          isLoggedIn: state.isLoggedIn,
+          role: state.role,
+          lastAuthEvent: lastAuthEvent.current
+        })
 
         if (state.isLoggedIn && state.role) {
           const targetPath = authService.getRedirectPath(state.role)
-          if (publicPaths.includes(pathname || '') || pathname !== targetPath) {
+          // Only redirect if we're on a public path or wrong dashboard
+          if (publicPaths.includes(pathname || '') || 
+              (pathname !== targetPath && pathname?.includes('dashboard'))) {
             console.log('[AuthProvider] Redirecting to:', targetPath)
             await router.push(targetPath)
+          } else {
+            console.log('[AuthProvider] No redirect needed, already on correct path')
           }
         } else if (!publicPaths.includes(pathname || '')) {
-          console.log('[AuthProvider] Redirecting to login')
+          console.log('[AuthProvider] Not logged in, redirecting to login')
           await router.push('/login')
         }
       } finally {
@@ -112,7 +122,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    handleRedirect()
+    // Small delay to ensure auth state is stable
+    const timeoutId = setTimeout(handleRedirect, 100)
+    return () => clearTimeout(timeoutId)
   }, [state.isLoggedIn, state.role, pathname, router])
 
   useEffect(() => {
@@ -129,6 +141,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
       console.log('[AuthProvider] Auth state change:', event, session)
+      lastAuthEvent.current = event
       
       if (event === 'SIGNED_OUT') {
         setState({
@@ -138,7 +151,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return
       }
 
-      if (mounted) {
+      if (mounted && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
         await updateAuthState()
       }
     })
