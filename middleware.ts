@@ -50,7 +50,7 @@ export async function middleware(request: NextRequest) {
 
   const cspHeader = `
     default-src 'self';
-    script-src 'self' ${isDevelopment ? "'unsafe-eval'" : ''} 'nonce-${nonce}' 'strict-dynamic';
+    script-src 'self' 'unsafe-inline' ${isDevelopment ? "'unsafe-eval'" : ''} 'nonce-${nonce}' 'strict-dynamic';
     style-src 'self' 'unsafe-inline';
     img-src 'self' blob: data:;
     font-src 'self';
