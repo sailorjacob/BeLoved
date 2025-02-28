@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const mountedRef = useRef(true)
   const redirectInProgressRef = useRef(false)
   const authCheckCompletedRef = useRef(false)
+  const [isInitializing, setIsInitializing] = useState(true)
 
   const updateAuthState = useCallback(async () => {
     if (!mountedRef.current) return
@@ -62,31 +63,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const authUser = await authService.getCurrentUser()
       
-      setState({
+      setState(prev => ({
         user: authUser.user,
         profile: authUser.profile,
         isLoggedIn: authUser.isLoggedIn,
         isDriver: authUser.role === 'driver',
         isAdmin: authUser.role === 'admin',
         isSuperAdmin: authUser.role === 'super_admin',
-        isLoading: false,
+        isLoading: prev.isLoading && !authCheckCompletedRef.current,
         role: authUser.role
-      })
+      }))
 
       return authUser
     } catch (error) {
       console.error('[AuthProvider] Error updating state:', error)
-      setState(defaultAuthState)
+      setState(prev => ({
+        ...defaultAuthState,
+        isLoading: prev.isLoading && !authCheckCompletedRef.current
+      }))
       return null
     }
   }, [])
 
   const handleRedirect = useCallback(async (authUser: { role: UserRole | null }) => {
     if (redirectInProgressRef.current || !authCheckCompletedRef.current) return
-    if (!authUser) return
-
+    if (!authUser || !authUser.role) return
+    
+    if (!authUser.role && publicPaths.includes(pathname || '')) return
+    
     const targetPath = authService.getRedirectPath(authUser.role)
     if (pathname === targetPath) return
+    if (targetPath === '/login' && publicPaths.includes(pathname || '')) return
 
     console.log('[AuthProvider] Redirecting to:', targetPath)
     redirectInProgressRef.current = true
@@ -113,13 +120,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const authUser = await updateAuthState()
       
       if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && publicPaths.includes(pathname || ''))) {
-        if (authUser) {
+        if (authUser && authUser.role) {
           handleRedirect(authUser)
         }
       }
 
       if (event === 'INITIAL_SESSION') {
         authCheckCompletedRef.current = true
+        setState(prev => ({ ...prev, isLoading: false }))
       }
     }
   }, [updateAuthState, handleRedirect, pathname, router])
@@ -127,13 +135,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     mountedRef.current = true
     authCheckCompletedRef.current = false
+    setIsInitializing(true)
 
     const initializeAuth = async () => {
       try {
         await handleAuthStateChange('INITIAL_SESSION', null)
       } catch (error) {
         console.error('[AuthProvider] Initialization error:', error)
-        setState(defaultAuthState)
+        setState(prev => ({
+          ...defaultAuthState,
+          isLoading: false
+        }))
+      } finally {
+        setIsInitializing(false)
       }
     }
 
@@ -188,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (state.isLoading) {
+  if (isInitializing || state.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
