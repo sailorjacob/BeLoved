@@ -92,31 +92,51 @@ export function LoginForm() {
       setSubmitError(null)
       setSubmitSuccess(null)
       
-      const { error } = await auth.login(values.email, values.password)
-      if (error) {
+      try {
+        const { error } = await auth.login(values.email, values.password)
+        if (error) throw error
+
+        // Wait for a short time to ensure the session is updated
+        await new Promise(resolve => setTimeout(resolve, 500))
+
+        // Get the current session
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.user?.id) {
+          throw new Error('No session found after login')
+        }
+
+        // Get the user's profile to determine redirect
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('user_type')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profileError || !profile) {
+          console.error('Error fetching profile:', profileError)
+          throw new Error('Could not fetch user profile')
+        }
+
+        console.log('Profile found after login:', profile)
+
+        // Redirect based on user type
+        switch (profile.user_type) {
+          case 'super_admin':
+            router.push('/super-admin-dashboard')
+            break
+          case 'admin':
+            router.push('/admin-dashboard')
+            break
+          case 'driver':
+            router.push('/driver-dashboard')
+            break
+          default:
+            router.push('/dashboard')
+        }
+      } catch (error) {
+        console.error('Login flow error:', error)
+        setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
         throw error
-      }
-
-      // Get the user's profile to determine redirect
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('user_type')
-        .eq('id', auth.user?.id)
-        .single()
-
-      // Redirect based on user type
-      switch (profile?.user_type) {
-        case 'super_admin':
-          router.push('/super-admin-dashboard')
-          break
-        case 'admin':
-          router.push('/admin-dashboard')
-          break
-        case 'driver':
-          router.push('/driver-dashboard')
-          break
-        default:
-          router.push('/dashboard')
       }
     }
   })
