@@ -49,29 +49,32 @@ const AuthContext = createContext<AuthContextType | null>(null)
 const publicPaths = ['/login', '/auth/callback', '/']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [authState, setAuthState] = useState<AuthState>({
-    isLoading: true,
-    isLoggedIn: false,
-    isSuperAdmin: false,
-    isDriver: false,
-    isAdmin: false,
-    user: null,
-    profile: null,
-    role: null
-  })
+  const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
   const isInitialMount = useRef(true)
   const router = useRouter()
   const pathname = usePathname()
   const authServiceRef = useRef(authService)
+  const isUpdatingRef = useRef(false)
 
   const updateAuthState = useCallback(async () => {
+    if (isUpdatingRef.current) return
+    isUpdatingRef.current = true
+
     try {
       const authUser = await authServiceRef.current.getCurrentUser()
       console.log('[AuthProvider] Got auth user:', authUser)
 
+      if (!authUser) {
+        setAuthState({
+          ...defaultAuthState,
+          isLoading: false
+        })
+        return
+      }
+
       setAuthState({
         isLoading: false,
-        isLoggedIn: authUser.isLoggedIn,
+        isLoggedIn: !!authUser.isLoggedIn,
         isSuperAdmin: authUser.role === 'super_admin',
         isDriver: authUser.role === 'driver',
         isAdmin: authUser.role === 'admin',
@@ -82,56 +85,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[AuthProvider] Error getting user:', error)
       setAuthState({
-        isLoading: false,
-        isLoggedIn: false,
-        isSuperAdmin: false,
-        isDriver: false,
-        isAdmin: false,
-        user: null,
-        profile: null,
-        role: null
+        ...defaultAuthState,
+        isLoading: false
       })
+    } finally {
+      isUpdatingRef.current = false
     }
   }, [])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
+    let isMounted = true
 
     const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
       console.log('[AuthProvider] Auth state change:', event, session)
 
+      if (!isMounted) return
+
       if (event === 'SIGNED_OUT') {
         setAuthState({
-          isLoading: false,
-          isLoggedIn: false,
-          isSuperAdmin: false,
-          isDriver: false,
-          isAdmin: false,
-          user: null,
-          profile: null,
-          role: null
+          ...defaultAuthState,
+          isLoading: false
         })
         return
       }
 
-      await updateAuthState()
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        await updateAuthState()
+      }
     })
+
+    // Initial auth check
+    updateAuthState()
 
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
+      isMounted = false
       subscription?.unsubscribe()
     }
   }, [updateAuthState])
 
   useEffect(() => {
-    // Skip redirect on initial mount
-    if (isInitialMount.current) {
+    // Skip redirect on initial mount or during loading
+    if (isInitialMount.current || authState.isLoading) {
       isInitialMount.current = false
-      return
-    }
-
-    // Skip redirect if still loading
-    if (authState.isLoading) {
       return
     }
 

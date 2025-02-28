@@ -4,7 +4,7 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '@/app/components/user-nav'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
@@ -23,6 +23,7 @@ function LoadingSpinner() {
           />
         </div>
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+        <p className="text-sm text-gray-500">Loading...</p>
       </div>
     </div>
   )
@@ -32,23 +33,43 @@ export default function SuperAdminDashboardPage() {
   const { isLoggedIn, isSuperAdmin, isLoading } = useAuth()
   const router = useRouter()
   const [isRedirecting, setIsRedirecting] = useState(false)
+  const redirectTimeoutRef = useRef<NodeJS.Timeout>()
 
   useEffect(() => {
     console.log('[SuperAdminDashboard] Auth state:', { isLoggedIn, isSuperAdmin, isLoading })
+    
+    // Clear any existing redirect timeout
+    if (redirectTimeoutRef.current) {
+      clearTimeout(redirectTimeoutRef.current)
+    }
     
     if (!isLoading) {
       if (!isLoggedIn) {
         console.log('[SuperAdminDashboard] Not logged in, redirecting to login')
         setIsRedirecting(true)
-        router.replace('/login')
+        // Add a small delay before redirect to prevent React errors
+        redirectTimeoutRef.current = setTimeout(() => {
+          router.replace('/login')
+        }, 100)
         return
       }
 
       if (!isSuperAdmin) {
         console.log('[SuperAdminDashboard] Not super admin, redirecting to dashboard')
         setIsRedirecting(true)
-        router.replace('/dashboard')
+        // Add a small delay before redirect to prevent React errors
+        redirectTimeoutRef.current = setTimeout(() => {
+          router.replace('/dashboard')
+        }, 100)
         return
+      }
+
+      setIsRedirecting(false)
+    }
+
+    return () => {
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
       }
     }
   }, [isLoggedIn, isSuperAdmin, isLoading, router])
