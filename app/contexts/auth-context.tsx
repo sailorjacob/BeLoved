@@ -2,21 +2,21 @@
 
 import type React from "react"
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
-import type { User } from '@supabase/supabase-js'
+import type { User, Subscription } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { useRouter, usePathname } from 'next/navigation'
 import { authService, type UserRole } from '@/lib/auth-service'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
-export interface AuthState {
-  user: User | null
-  profile: Profile | null
+type AuthState = {
+  isLoading: boolean
   isLoggedIn: boolean
+  isSuperAdmin: boolean
   isDriver: boolean
   isAdmin: boolean
-  isSuperAdmin: boolean
-  isLoading: boolean
+  user: User | null
+  profile: Profile | null
   role: UserRole | null
 }
 
@@ -49,118 +49,123 @@ const AuthContext = createContext<AuthContextType | null>(null)
 const publicPaths = ['/login', '/auth/callback', '/']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const [authState, setAuthState] = useState<AuthState>({
+    isLoading: true,
+    isLoggedIn: false,
+    isSuperAdmin: false,
+    isDriver: false,
+    isAdmin: false,
+    user: null,
+    profile: null,
+    role: null
+  })
+  const isInitialMount = useRef(true)
   const router = useRouter()
   const pathname = usePathname()
-  const [state, setState] = useState<AuthState>(defaultAuthState)
-  const isInitialMount = useRef(true)
-  const isRedirecting = useRef(false)
+  const authServiceRef = useRef(authService)
 
   const updateAuthState = useCallback(async () => {
     try {
-      const authUser = await authService.getCurrentUser()
+      const authUser = await authServiceRef.current.getCurrentUser()
       console.log('[AuthProvider] Got auth user:', authUser)
-      
-      const newState = {
-        user: authUser.user,
-        profile: authUser.profile,
+
+      setAuthState({
+        isLoading: false,
         isLoggedIn: authUser.isLoggedIn,
+        isSuperAdmin: authUser.role === 'super_admin',
         isDriver: authUser.role === 'driver',
         isAdmin: authUser.role === 'admin',
-        isSuperAdmin: authUser.role === 'super_admin',
-        isLoading: false,
+        user: authUser.user,
+        profile: authUser.profile,
         role: authUser.role
-      }
-
-      console.log('[AuthProvider] Setting new state:', newState)
-      setState(newState)
-      return authUser
-    } catch (error) {
-      console.error('[AuthProvider] Error updating state:', error)
-      setState({
-        ...defaultAuthState,
-        isLoading: false
       })
-      return null
+    } catch (error) {
+      console.error('[AuthProvider] Error getting user:', error)
+      setAuthState({
+        isLoading: false,
+        isLoggedIn: false,
+        isSuperAdmin: false,
+        isDriver: false,
+        isAdmin: false,
+        user: null,
+        profile: null,
+        role: null
+      })
     }
   }, [])
 
-  // Handle redirects based on auth state
-  useEffect(() => {
-    if (state.isLoading || isRedirecting.current) {
-      return
-    }
-
-    const handleRedirect = async () => {
-      if (isRedirecting.current) return
-      isRedirecting.current = true
-
-      try {
-        console.log('[AuthProvider] Checking redirect:', {
-          pathname,
-          isLoggedIn: state.isLoggedIn,
-          role: state.role,
-          isInitialMount: isInitialMount.current
-        })
-
-        if (state.isLoggedIn && state.role) {
-          const targetPath = authService.getRedirectPath(state.role)
-          if (pathname !== targetPath && (isInitialMount.current || publicPaths.includes(pathname || ''))) {
-            console.log('[AuthProvider] Redirecting to:', targetPath)
-            await router.push(targetPath)
-          }
-        } else if (!publicPaths.includes(pathname || '')) {
-          console.log('[AuthProvider] Not logged in, redirecting to login')
-          await router.push('/login')
-        }
-      } finally {
-        isInitialMount.current = false
-        isRedirecting.current = false
-      }
-    }
-
-    handleRedirect()
-  }, [state.isLoggedIn, state.role, pathname, router])
-
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
-    let mounted = true
 
-    const setup = async () => {
-      if (mounted) {
-        await updateAuthState()
-      }
-    }
-
-    setup()
-
-    const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
       console.log('[AuthProvider] Auth state change:', event, session)
-      
+
       if (event === 'SIGNED_OUT') {
-        setState({
-          ...defaultAuthState,
-          isLoading: false
+        setAuthState({
+          isLoading: false,
+          isLoggedIn: false,
+          isSuperAdmin: false,
+          isDriver: false,
+          isAdmin: false,
+          user: null,
+          profile: null,
+          role: null
         })
         return
       }
 
-      if (mounted && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        await updateAuthState()
-      }
+      await updateAuthState()
     })
-    
+
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
-      mounted = false
       subscription?.unsubscribe()
     }
   }, [updateAuthState])
 
+  useEffect(() => {
+    // Skip redirect on initial mount
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      return
+    }
+
+    // Skip redirect if still loading
+    if (authState.isLoading) {
+      return
+    }
+
+    console.log('[AuthProvider] Checking redirect:', authState)
+
+    const publicPaths = ['/login', '/signup', '/forgot-password']
+    const isPublicPath = publicPaths.includes(pathname)
+
+    if (!authState.isLoggedIn && !isPublicPath) {
+      console.log('[AuthProvider] Redirecting to:', '/login')
+      router.replace('/login')
+      return
+    }
+
+    if (authState.isLoggedIn && isPublicPath) {
+      const targetPath = authState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard'
+      console.log('[AuthProvider] Redirecting to:', targetPath)
+      router.replace(targetPath)
+      return
+    }
+
+    // Ensure super admin pages are only accessible by super admins
+    if (authState.isLoggedIn && pathname.startsWith('/super-admin') && !authState.isSuperAdmin) {
+      console.log('[AuthProvider] Redirecting non-super admin to dashboard')
+      router.replace('/dashboard')
+      return
+    }
+  }, [authState, pathname, router])
+
   const contextValue: AuthContextType = {
-    ...state,
+    ...authState,
     login: async (email, password) => {
       try {
-        const data = await authService.login(email, password)
+        const data = await authServiceRef.current.login(email, password)
         return { error: null, data }
       } catch (error) {
         return { error: error as Error }
@@ -168,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signIn: async (email, password) => {
       try {
-        const data = await authService.login(email, password)
+        const data = await authServiceRef.current.login(email, password)
         return { error: null, data }
       } catch (error) {
         return { error: error as Error }
@@ -176,19 +181,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     signUp: async (email, password, userData) => {
       try {
-        const data = await authService.signup(email, password, userData)
+        const data = await authServiceRef.current.signup(email, password, userData)
         return { error: null, data }
       } catch (error) {
         return { error: error as Error }
       }
     },
     logout: async () => {
-      await authService.logout()
+      await authServiceRef.current.logout()
     },
     updateProfile: async (data) => {
       try {
-        if (!state.user?.id) throw new Error('No user ID available')
-        await authService.updateProfile(state.user.id, data)
+        if (!authState.user?.id) throw new Error('No user ID available')
+        await authServiceRef.current.updateProfile(authState.user.id, data)
         await updateAuthState()
         return { error: null }
       } catch (error) {
@@ -197,7 +202,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (state.isLoading) {
+  if (authState.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="flex flex-col items-center gap-4">

@@ -4,7 +4,7 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '@/app/components/user-nav'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
@@ -31,26 +31,30 @@ function LoadingSpinner() {
 export default function SuperAdminDashboardPage() {
   const { isLoggedIn, isSuperAdmin, isLoading } = useAuth()
   const router = useRouter()
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && !isLoggedIn) {
-      router.replace('/login')
-      return
-    }
+    console.log('[SuperAdminDashboard] Auth state:', { isLoggedIn, isSuperAdmin, isLoading })
+    
+    if (!isLoading) {
+      if (!isLoggedIn) {
+        console.log('[SuperAdminDashboard] Not logged in, redirecting to login')
+        setIsRedirecting(true)
+        router.replace('/login')
+        return
+      }
 
-    if (!isLoading && isLoggedIn && !isSuperAdmin) {
-      router.replace('/dashboard')
-      return
+      if (!isSuperAdmin) {
+        console.log('[SuperAdminDashboard] Not super admin, redirecting to dashboard')
+        setIsRedirecting(true)
+        router.replace('/dashboard')
+        return
+      }
     }
   }, [isLoggedIn, isSuperAdmin, isLoading, router])
 
-  // Show loading state while checking auth
-  if (isLoading) {
-    return <LoadingSpinner />
-  }
-
-  // Don't render anything while redirecting
-  if (!isLoggedIn || !isSuperAdmin) {
+  // Show loading state while checking auth or during redirect
+  if (isLoading || isRedirecting || !isLoggedIn || !isSuperAdmin) {
     return <LoadingSpinner />
   }
 
