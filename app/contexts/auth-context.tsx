@@ -51,18 +51,21 @@ const publicPaths = ['/login', '/auth/callback', '/']
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
   const isInitialMount = useRef(true)
+  const isMounted = useRef(true)
   const router = useRouter()
   const pathname = usePathname()
   const authServiceRef = useRef(authService)
   const isUpdatingRef = useRef(false)
 
   const updateAuthState = useCallback(async () => {
-    if (isUpdatingRef.current) return
+    if (isUpdatingRef.current || !isMounted.current) return
     isUpdatingRef.current = true
 
     try {
       const authUser = await authServiceRef.current.getCurrentUser()
       console.log('[AuthProvider] Got auth user:', authUser)
+
+      if (!isMounted.current) return
 
       if (!authUser) {
         setAuthState({
@@ -84,10 +87,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
     } catch (error) {
       console.error('[AuthProvider] Error getting user:', error)
-      setAuthState({
-        ...defaultAuthState,
-        isLoading: false
-      })
+      if (isMounted.current) {
+        setAuthState({
+          ...defaultAuthState,
+          isLoading: false
+        })
+      }
     } finally {
       isUpdatingRef.current = false
     }
@@ -95,39 +100,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
-    let isMounted = true
+    isMounted.current = true
 
-    const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
-      console.log('[AuthProvider] Auth state change:', event, session)
+    let subscription: { unsubscribe: () => void } | undefined
 
-      if (!isMounted) return
+    const setupAuth = async () => {
+      try {
+        const { data } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
+          console.log('[AuthProvider] Auth state change:', event, session)
 
-      if (event === 'SIGNED_OUT') {
-        setAuthState({
-          ...defaultAuthState,
-          isLoading: false
+          if (!isMounted.current) return
+
+          if (event === 'SIGNED_OUT') {
+            setAuthState({
+              ...defaultAuthState,
+              isLoading: false
+            })
+            return
+          }
+
+          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+            await updateAuthState()
+          }
         })
-        return
-      }
 
-      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-        await updateAuthState()
+        subscription = data.subscription
+      } catch (error) {
+        console.error('[AuthProvider] Error setting up auth:', error)
       }
-    })
+    }
 
-    // Initial auth check
+    // Initial setup
+    setupAuth()
     updateAuthState()
 
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
-      isMounted = false
+      isMounted.current = false
       subscription?.unsubscribe()
     }
   }, [updateAuthState])
 
   useEffect(() => {
     // Skip redirect on initial mount or during loading
-    if (isInitialMount.current || authState.isLoading) {
+    if (isInitialMount.current || authState.isLoading || !isMounted.current) {
       isInitialMount.current = false
       return
     }

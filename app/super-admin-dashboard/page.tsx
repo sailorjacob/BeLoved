@@ -34,6 +34,17 @@ export default function SuperAdminDashboardPage() {
   const router = useRouter()
   const [isRedirecting, setIsRedirecting] = useState(false)
   const redirectTimeoutRef = useRef<NodeJS.Timeout>()
+  const isMounted = useRef(true)
+
+  useEffect(() => {
+    isMounted.current = true
+    return () => {
+      isMounted.current = false
+      if (redirectTimeoutRef.current) {
+        clearTimeout(redirectTimeoutRef.current)
+      }
+    }
+  }, [])
 
   useEffect(() => {
     console.log('[SuperAdminDashboard] Auth state:', { isLoggedIn, isSuperAdmin, isLoading })
@@ -43,13 +54,15 @@ export default function SuperAdminDashboardPage() {
       clearTimeout(redirectTimeoutRef.current)
     }
     
-    if (!isLoading) {
+    if (!isLoading && isMounted.current) {
       if (!isLoggedIn) {
         console.log('[SuperAdminDashboard] Not logged in, redirecting to login')
         setIsRedirecting(true)
         // Add a small delay before redirect to prevent React errors
         redirectTimeoutRef.current = setTimeout(() => {
-          router.replace('/login')
+          if (isMounted.current) {
+            router.replace('/login')
+          }
         }, 100)
         return
       }
@@ -59,18 +72,14 @@ export default function SuperAdminDashboardPage() {
         setIsRedirecting(true)
         // Add a small delay before redirect to prevent React errors
         redirectTimeoutRef.current = setTimeout(() => {
-          router.replace('/dashboard')
+          if (isMounted.current) {
+            router.replace('/dashboard')
+          }
         }, 100)
         return
       }
 
       setIsRedirecting(false)
-    }
-
-    return () => {
-      if (redirectTimeoutRef.current) {
-        clearTimeout(redirectTimeoutRef.current)
-      }
     }
   }, [isLoggedIn, isSuperAdmin, isLoading, router])
 
