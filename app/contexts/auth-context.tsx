@@ -82,10 +82,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   
   const router = useRouter()
   const pathname = usePathname()
-  const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
+  const [state, setState] = useState<AuthState>(defaultAuthState)
   const [isInitialized, setIsInitialized] = useState(false)
   const [isRedirecting, setIsRedirecting] = useState(false)
   const mountedRef = useRef(true)
+  const authChangeHandlerRef = useRef<((event: string, session: any) => void) | null>(null)
 
   const handleRedirect = async (profile: Profile | null, isLoggedIn: boolean) => {
     if (isRedirecting) {
@@ -162,7 +163,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...defaultAuthState,
             isLoading: false
           }
-          setAuthState(newState)
+          setState(newState)
           setIsInitialized(true)
           handleRedirect(null, false)
           return
@@ -184,7 +185,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...defaultAuthState,
             isLoading: false
           }
-          setAuthState(newState)
+          setState(newState)
           setIsInitialized(true)
           handleRedirect(null, false)
           return
@@ -200,7 +201,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isSuperAdmin: profile.user_type === 'super_admin',
           isLoading: false
         }
-        setAuthState(newState)
+        setState(newState)
         setIsInitialized(true)
         handleRedirect(profile, true)
       } catch (error) {
@@ -210,7 +211,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             ...defaultAuthState,
             isLoading: false
           }
-          setAuthState(newState)
+          setState(newState)
           setIsInitialized(true)
           handleRedirect(null, false)
         }
@@ -219,98 +220,101 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     initializeAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mountedRef.current) {
-        console.log('Auth state change ignored - component unmounted')
-        return
-      }
-
-      console.log('Auth state change:', event, session?.user?.id)
-      console.log('Current pathname:', pathname)
-      
-      if (event === 'SIGNED_OUT') {
-        console.log('Handling SIGNED_OUT event')
-        const newState = {
-          ...defaultAuthState,
-          isLoading: false
+    // Handle auth state changes
+    console.log('Setting up auth state listener')
+    
+    const setupAuth = async () => {
+      try {
+        // Set up auth state change listener
+        authChangeHandlerRef.current = async (event: string, session: any) => {
+          console.log('Auth state changed:', event, session?.user?.id)
+          if (mountedRef.current) {
+            await handleAuthStateChange(event, session)
+          }
         }
-        setAuthState(newState)
+
+        // Subscribe to auth changes
+        const { data: { subscription } } = supabase.auth.onAuthStateChange(
+          authChangeHandlerRef.current
+        )
+
+        return () => {
+          console.log('Cleaning up auth state listener')
+          mountedRef.current = false
+          subscription?.unsubscribe()
+        }
+      } catch (error) {
+        console.error('Error in auth setup:', error)
+        if (mountedRef.current) {
+          setState(prev => ({ ...prev, isLoading: false }))
+        }
+      }
+    }
+
+    setupAuth()
+  }, [router, pathname])
+
+  const handleAuthStateChange = async (event: string, session: any) => {
+    console.log('Handling auth state change:', event)
+    
+    if (!mountedRef.current) {
+      console.log('Component unmounted, skipping auth state change')
+      return
+    }
+
+    try {
+      if (event === 'SIGNED_OUT') {
+        setState({
+          user: null,
+          profile: null,
+          isLoggedIn: false,
+          isDriver: false,
+          isAdmin: false,
+          isSuperAdmin: false,
+          isLoading: false
+        })
         handleRedirect(null, false)
         return
       }
 
-      try {
-        if (!session?.user) {
-          console.log('No session in auth state change')
-          const newState = {
-            ...defaultAuthState,
-            isLoading: false
-          }
-          setAuthState(newState)
-          handleRedirect(null, false)
-          return
-        }
-
-        console.log('Fetching profile after auth state change')
+      if (event === 'SIGNED_IN' && session?.user) {
+        setState(prev => ({ ...prev, isLoading: true }))
+        
+        // Fetch user profile
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
           .single()
 
-        console.log('Profile fetch result:', { profile, error: profileError })
-
-        if (!mountedRef.current) {
-          console.log('Component unmounted during profile fetch')
-          return
-        }
-
         if (profileError) {
-          console.error('Profile fetch error:', profileError)
           throw profileError
         }
 
-        if (!profile) {
-          console.error('No profile found for user')
-          throw new Error('No profile found')
-        }
-
-        console.log('Setting auth state with profile:', { user_type: profile.user_type, id: profile.id })
-        const newState = {
-          user: session.user,
-          profile,
-          isLoggedIn: true,
-          isDriver: profile.user_type === 'driver',
-          isAdmin: profile.user_type === 'admin',
-          isSuperAdmin: profile.user_type === 'super_admin',
-          isLoading: false
-        }
-        setAuthState(newState)
-
-        console.log('Attempting redirect with profile')
-        await handleRedirect(profile, true)
-        console.log('Redirect complete')
-      } catch (error) {
-        console.error('Error handling auth state change:', error)
         if (mountedRef.current) {
-          console.log('Signing out due to error')
-          await supabase.auth.signOut()
-          const newState = {
-            ...defaultAuthState,
+          setState({
+            user: session.user,
+            profile,
+            isLoggedIn: true,
+            isDriver: profile.user_type === 'driver',
+            isAdmin: profile.user_type === 'admin',
+            isSuperAdmin: profile.user_type === 'super_admin',
             isLoading: false
-          }
-          setAuthState(newState)
-          handleRedirect(null, false)
+          })
         }
-      }
-    })
 
-    return () => {
-      console.log('Cleaning up auth provider')
-      mountedRef.current = false
-      subscription.unsubscribe()
+        await handleRedirect(profile, true)
+      }
+    } catch (error) {
+      console.error('Error handling auth state change:', error)
+      if (mountedRef.current) {
+        console.log('Signing out due to error')
+        await supabase.auth.signOut()
+        setState(prev => ({ ...prev, isLoading: false }))
+        handleRedirect(null, false)
+      }
     }
-  }, [router, pathname])
+  }
 
   // Don't render children until auth is initialized
   if (!isInitialized || isRedirecting) {
@@ -388,17 +392,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateProfile = async (data: Partial<Profile>) => {
     try {
-      if (!authState.user) throw new Error('No user logged in')
+      if (!state.user) throw new Error('No user logged in')
 
       const { error } = await supabase
         .from('profiles')
         .update(data)
-        .eq('id', authState.user.id)
+        .eq('id', state.user.id)
 
       if (error) throw error
 
       // Update local state
-      setAuthState(state => ({
+      setState(state => ({
         ...state,
         profile: { ...state.profile!, ...data }
       }))
@@ -411,7 +415,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   const contextValue: AuthContextType = {
-    ...authState,
+    ...state,
     login,
     signIn: login,
     signUp,
