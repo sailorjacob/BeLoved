@@ -75,60 +75,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const pendingRedirectRef = useRef<string | null>(null)
   const initializationInProgressRef = useRef(false)
   const initializationTimeoutRef = useRef<NodeJS.Timeout>()
+  const authCheckCompletedRef = useRef(false)
 
   const updateAuthState = useCallback((updates: Partial<AuthState>) => {
     if (!mountedRef.current) return
     console.log('[AuthProvider] Updating state:', updates)
     setState(prev => ({ ...prev, ...updates }))
   }, [])
-
-  // Add initialization timeout
-  useEffect(() => {
-    if (!state.isLoading) return; // Don't set timeout if not loading
-
-    initializationTimeoutRef.current = setTimeout(() => {
-      if (state.isLoading && mountedRef.current) {
-        console.log('[AuthProvider] Initialization timeout - resetting state')
-        updateAuthState({ ...defaultAuthState, isLoading: false })
-      }
-    }, 10000) // Increased to 10 seconds
-
-    return () => {
-      if (initializationTimeoutRef.current) {
-        clearTimeout(initializationTimeoutRef.current)
-      }
-    }
-  }, [state.isLoading]) // Add state.isLoading as dependency
-
-  // Handle pending redirects
-  useEffect(() => {
-    if (pendingRedirectRef.current && !redirectInProgressRef.current) {
-      const targetPath = pendingRedirectRef.current
-      console.log('[AuthProvider] Processing pending redirect to:', targetPath)
-      redirectInProgressRef.current = true
-      window.location.href = targetPath
-      pendingRedirectRef.current = null
-    }
-  }, [state.isLoading])
-
-  const handleRedirect = useCallback(async (profile: Profile | null, isLoggedIn: boolean) => {
-    if (!mountedRef.current || redirectInProgressRef.current) return
-
-    const currentPath = pathname || '/'
-    console.log('[AuthProvider] Checking redirect:', { currentPath, isLoggedIn, userType: profile?.user_type })
-    
-    // Only handle redirects from login page to dashboard
-    if (isLoggedIn && profile && (currentPath === '/login' || currentPath === '/')) {
-      const targetPath = getRedirectPath(profile.user_type)
-      if (targetPath !== currentPath && targetPath !== lastRedirectPathRef.current) {
-        console.log('[AuthProvider] Setting pending redirect to:', targetPath)
-        pendingRedirectRef.current = targetPath
-        lastRedirectPathRef.current = targetPath
-      }
-    } else {
-      console.log('[AuthProvider] No redirect needed')
-    }
-  }, [pathname])
 
   const fetchProfile = useCallback(async (userId: string) => {
     let retries = 3
@@ -160,8 +113,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return null
   }, [])
 
+  // Handle pending redirects
+  useEffect(() => {
+    const handleRedirect = async () => {
+      if (!pendingRedirectRef.current || redirectInProgressRef.current || state.isLoading) return
+
+      const targetPath = pendingRedirectRef.current
+      console.log('[AuthProvider] Processing pending redirect to:', targetPath)
+      redirectInProgressRef.current = true
+      
+      try {
+        await router.replace(targetPath)
+        pendingRedirectRef.current = null
+      } catch (error) {
+        console.error('[AuthProvider] Redirect error:', error)
+      } finally {
+        redirectInProgressRef.current = false
+      }
+    }
+
+    if (authCheckCompletedRef.current) {
+      handleRedirect()
+    }
+  }, [state.isLoading, router, authCheckCompletedRef.current])
+
   const handleAuthStateChange = useCallback(async (event: string, session: any) => {
     if (!mountedRef.current) return
+    if (event === 'INITIAL_SESSION' && authCheckCompletedRef.current) return
 
     console.log('[AuthProvider] Processing auth state change:', { event, hasSession: !!session })
 
@@ -176,14 +154,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isSuperAdmin: false,
           isLoading: false
         })
-        if (mountedRef.current) {
-          window.location.href = '/login'
+        if (mountedRef.current && !publicPaths.includes(pathname || '')) {
+          pendingRedirectRef.current = '/login'
         }
         return
       }
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
-        console.log('[AuthProvider] Processing sign in event for user:', session.user.id)
         updateAuthState({ isLoading: true })
         
         try {
@@ -196,7 +173,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('[AuthProvider] No profile found for user')
             await supabase.auth.signOut()
             updateAuthState({ ...defaultAuthState, isLoading: false })
-            window.location.href = '/login'
+            pendingRedirectRef.current = '/login'
             return
           }
 
@@ -210,22 +187,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             isLoading: false
           }
           
-          console.log('[AuthProvider] Updating state with profile:', newState)
           updateAuthState(newState)
           
-          // Force redirect on SIGNED_IN event
-          if (event === 'SIGNED_IN') {
+          if (event === 'SIGNED_IN' || (event === 'INITIAL_SESSION' && (pathname === '/login' || pathname === '/'))) {
             const targetPath = getRedirectPath(profile.user_type)
-            console.log('[AuthProvider] Setting pending redirect after sign in:', targetPath)
+            console.log('[AuthProvider] Setting pending redirect after auth:', targetPath)
             pendingRedirectRef.current = targetPath
-          } else {
-            handleRedirect(profile, true)
+          }
+
+          if (event === 'INITIAL_SESSION') {
+            authCheckCompletedRef.current = true
           }
         } catch (error) {
           console.error('[AuthProvider] Error in auth state change flow:', error)
           if (mountedRef.current) {
             updateAuthState({ ...defaultAuthState, isLoading: false })
-            window.location.href = '/login'
+            pendingRedirectRef.current = '/login'
           }
         }
       }
@@ -234,27 +211,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mountedRef.current) {
         await supabase.auth.signOut()
         updateAuthState({ ...defaultAuthState, isLoading: false })
-        window.location.href = '/login'
+        pendingRedirectRef.current = '/login'
       }
     }
-  }, [updateAuthState, handleRedirect, fetchProfile])
+  }, [updateAuthState, fetchProfile, pathname])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth effect')
     mountedRef.current = true
+    authCheckCompletedRef.current = false
 
     const initializeAuth = async () => {
-      console.log('[AuthProvider] Starting auth initialization')
-      if (initializationInProgressRef.current) {
-        console.log('[AuthProvider] Initialization already in progress')
-        return
-      }
+      if (initializationInProgressRef.current) return
       initializationInProgressRef.current = true
 
       try {
-        console.log('[AuthProvider] Getting session')
         const { data: { session }, error } = await supabase.auth.getSession()
-        console.log('[AuthProvider] Session result:', { hasSession: !!session, hasError: !!error })
         
         if (error) {
           console.error('[AuthProvider] Session initialization error:', error)
@@ -262,10 +234,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        if (!mountedRef.current) {
-          console.log('[AuthProvider] Component unmounted during initialization')
-          return
-        }
+        if (!mountedRef.current) return
 
         await handleAuthStateChange('INITIAL_SESSION', session)
       } catch (error) {
@@ -274,7 +243,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           updateAuthState({ ...defaultAuthState, isLoading: false })
         }
       } finally {
-        console.log('[AuthProvider] Initialization complete')
         initializationInProgressRef.current = false
       }
     }
@@ -287,7 +255,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     })
 
     return () => {
-      console.log('[AuthProvider] Cleaning up')
       mountedRef.current = false
       subscription?.unsubscribe()
     }
@@ -305,12 +272,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
         console.log('[AuthProvider] Login result:', { success: !error, hasUser: !!data.user })
-        
-        if (!error && data.user) {
-          // Let the auth state change handler handle the redirect
-          console.log('[AuthProvider] Login successful, waiting for auth state change')
-        }
-        
         return { error, data }
       } catch (error) {
         console.error('[AuthProvider] Login error:', error)

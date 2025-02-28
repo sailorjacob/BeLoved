@@ -48,19 +48,32 @@ export async function middleware(request: NextRequest) {
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDevelopment = process.env.NODE_ENV === 'development'
 
-  const cspHeader = `
-    default-src 'self';
-    script-src 'self' 'unsafe-inline' ${isDevelopment ? "'unsafe-eval'" : ''} 'nonce-${nonce}' 'strict-dynamic';
-    style-src 'self' 'unsafe-inline';
-    img-src 'self' blob: data:;
-    font-src 'self';
-    object-src 'none';
-    base-uri 'self';
-    form-action 'self';
-    frame-ancestors 'none';
-    block-all-mixed-content;
-    upgrade-insecure-requests;
-  `.replace(/\s{2,}/g, ' ').trim()
+  // In development, use a more permissive CSP
+  const cspHeader = isDevelopment 
+    ? `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'unsafe-eval';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' blob: data:;
+      font-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      upgrade-insecure-requests;
+    `.replace(/\s{2,}/g, ' ').trim()
+    : `
+      default-src 'self';
+      script-src 'self' 'unsafe-inline' 'nonce-${nonce}' 'strict-dynamic';
+      style-src 'self' 'unsafe-inline';
+      img-src 'self' blob: data:;
+      font-src 'self';
+      object-src 'none';
+      base-uri 'self';
+      form-action 'self';
+      frame-ancestors 'none';
+      block-all-mixed-content;
+      upgrade-insecure-requests;
+    `.replace(/\s{2,}/g, ' ').trim()
 
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
