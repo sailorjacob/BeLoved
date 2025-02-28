@@ -15,6 +15,7 @@ export interface AuthUser {
 
 class AuthService {
   private static instance: AuthService
+  private sessionPromise: Promise<AuthUser> | null = null
   
   private constructor() {}
 
@@ -26,42 +27,73 @@ class AuthService {
   }
 
   async getSession() {
-    const { data: { session }, error } = await supabase.auth.getSession()
-    if (error) throw error
-    return session
+    try {
+      const { data: { session }, error } = await supabase.auth.getSession()
+      if (error) throw error
+      return session
+    } catch (error) {
+      console.error('[AuthService] Error getting session:', error)
+      return null
+    }
   }
 
   async getProfile(userId: string): Promise<Profile | null> {
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
 
-    if (error) throw error
-    return profile
+      if (error) throw error
+      return profile
+    } catch (error) {
+      console.error('[AuthService] Error getting profile:', error)
+      return null
+    }
   }
 
   async getCurrentUser(): Promise<AuthUser> {
-    const session = await this.getSession()
-    
-    if (!session?.user) {
-      return {
-        user: null,
-        profile: null,
-        isLoggedIn: false,
-        role: null
-      }
+    // Use existing promise if one is in flight
+    if (this.sessionPromise) {
+      return this.sessionPromise
     }
 
-    const profile = await this.getProfile(session.user.id)
-    
-    return {
-      user: session.user,
-      profile,
-      isLoggedIn: true,
-      role: (profile?.user_type as UserRole) || null
-    }
+    this.sessionPromise = (async () => {
+      try {
+        const session = await this.getSession()
+        
+        if (!session?.user) {
+          return {
+            user: null,
+            profile: null,
+            isLoggedIn: false,
+            role: null
+          }
+        }
+
+        const profile = await this.getProfile(session.user.id)
+        
+        return {
+          user: session.user,
+          profile,
+          isLoggedIn: true,
+          role: (profile?.user_type as UserRole) || null
+        }
+      } catch (error) {
+        console.error('[AuthService] Error getting current user:', error)
+        return {
+          user: null,
+          profile: null,
+          isLoggedIn: false,
+          role: null
+        }
+      } finally {
+        this.sessionPromise = null
+      }
+    })()
+
+    return this.sessionPromise
   }
 
   getRedirectPath(role: UserRole | null): string {
@@ -80,12 +112,17 @@ class AuthService {
   }
 
   async login(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password
-    })
-    if (error) throw error
-    return data
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      if (error) throw error
+      return data
+    } catch (error) {
+      console.error('[AuthService] Login error:', error)
+      throw error
+    }
   }
 
   async signup(email: string, password: string, userData?: { 
@@ -93,46 +130,64 @@ class AuthService {
     phone?: string
     user_type?: UserRole 
   }) {
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: userData }
-    })
-    
-    if (error) throw error
-    if (!data.user) throw new Error('No user returned from sign up')
-
-    // Create profile
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .insert({
-        id: data.user.id,
-        full_name: userData?.full_name || '',
-        email: email,
-        phone: userData?.phone || '',
-        user_type: userData?.user_type || 'member'
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: { 
+          data: userData,
+          emailRedirectTo: `${window.location.origin}/auth/callback`
+        }
       })
+      
+      if (error) throw error
+      if (!data.user) throw new Error('No user returned from sign up')
 
-    if (profileError) {
-      await supabase.auth.signOut()
-      throw profileError
+      // Create profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user.id,
+          full_name: userData?.full_name || '',
+          email: email,
+          phone: userData?.phone || '',
+          user_type: userData?.user_type || 'member'
+        })
+
+      if (profileError) {
+        await supabase.auth.signOut()
+        throw profileError
+      }
+
+      return data
+    } catch (error) {
+      console.error('[AuthService] Signup error:', error)
+      throw error
     }
-
-    return data
   }
 
   async logout() {
-    const { error } = await supabase.auth.signOut()
-    if (error) throw error
+    try {
+      const { error } = await supabase.auth.signOut()
+      if (error) throw error
+    } catch (error) {
+      console.error('[AuthService] Logout error:', error)
+      throw error
+    }
   }
 
   async updateProfile(userId: string, data: Partial<Profile>) {
-    const { error } = await supabase
-      .from('profiles')
-      .update(data)
-      .eq('id', userId)
-    
-    if (error) throw error
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update(data)
+        .eq('id', userId)
+      
+      if (error) throw error
+    } catch (error) {
+      console.error('[AuthService] Update profile error:', error)
+      throw error
+    }
   }
 
   onAuthStateChange(callback: (event: string, session: any) => void) {

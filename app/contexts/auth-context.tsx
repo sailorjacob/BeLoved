@@ -55,6 +55,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const lastEventRef = useRef<string | null>(null)
   const lastPathRef = useRef<string | null>(null)
   const authCheckCompletedRef = useRef(false)
+  const redirectInProgressRef = useRef(false)
 
   const updateAuthState = useCallback(async () => {
     try {
@@ -75,22 +76,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       })
 
       // Handle redirects based on auth state
-      if (authUser.isLoggedIn && authUser.role) {
+      if (authUser.isLoggedIn && authUser.role && !redirectInProgressRef.current) {
         const targetPath = authService.getRedirectPath(authUser.role)
         
         // Only redirect if we're on a public path or if we're on the wrong dashboard
         if (publicPaths.includes(pathname || '') || 
             (pathname !== targetPath && pathname?.includes('dashboard'))) {
           console.log('[AuthProvider] Redirecting to:', targetPath, 'from:', pathname)
+          redirectInProgressRef.current = true
           lastPathRef.current = targetPath
           await router.push(targetPath)
+          redirectInProgressRef.current = false
         } else {
           console.log('[AuthProvider] No redirect needed - already on correct path:', pathname)
         }
-      } else if (!publicPaths.includes(pathname || '')) {
+      } else if (!authUser.isLoggedIn && !publicPaths.includes(pathname || '') && !redirectInProgressRef.current) {
         console.log('[AuthProvider] Not logged in, redirecting to login')
+        redirectInProgressRef.current = true
         lastPathRef.current = '/login'
         await router.push('/login')
+        redirectInProgressRef.current = false
       }
 
       authCheckCompletedRef.current = true
@@ -102,9 +107,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isLoading: false
       })
       
-      if (!publicPaths.includes(pathname || '')) {
+      if (!publicPaths.includes(pathname || '') && !redirectInProgressRef.current) {
+        redirectInProgressRef.current = true
         lastPathRef.current = '/login'
         await router.push('/login')
+        redirectInProgressRef.current = false
       }
       return null
     }
@@ -127,8 +134,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...defaultAuthState,
         isLoading: false
       })
-      if (!publicPaths.includes(pathname || '')) {
+      if (!publicPaths.includes(pathname || '') && !redirectInProgressRef.current) {
+        redirectInProgressRef.current = true
         await router.push('/login')
+        redirectInProgressRef.current = false
       }
       return
     }
