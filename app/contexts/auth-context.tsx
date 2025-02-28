@@ -50,13 +50,13 @@ const publicPaths = ['/login', '/auth/callback', '/']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
-  const [isRedirecting, setIsRedirecting] = useState(false)
   const isInitialMount = useRef(true)
   const isMounted = useRef(true)
   const router = useRouter()
   const pathname = usePathname()
   const authServiceRef = useRef(authService)
   const isUpdatingRef = useRef(false)
+  const subscriptionRef = useRef<{ unsubscribe: () => void }>()
 
   const safeSetState = useCallback((newState: Partial<AuthState>) => {
     if (isMounted.current) {
@@ -105,42 +105,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [safeSetState])
 
-  const handleRedirect = useCallback(() => {
-    if (isRedirecting || !isMounted.current) return
-    
-    const publicPaths = ['/login', '/signup', '/forgot-password']
-    const isPublicPath = publicPaths.includes(pathname)
-
-    if (!authState.isLoggedIn && !isPublicPath) {
-      console.log('[AuthProvider] Redirecting to:', '/login')
-      setIsRedirecting(true)
-      router.replace('/login')
-      return
-    }
-
-    if (authState.isLoggedIn && isPublicPath) {
-      const targetPath = authState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard'
-      console.log('[AuthProvider] Redirecting to:', targetPath)
-      setIsRedirecting(true)
-      router.replace(targetPath)
-      return
-    }
-
-    if (authState.isLoggedIn && pathname.startsWith('/super-admin') && !authState.isSuperAdmin) {
-      console.log('[AuthProvider] Redirecting non-super admin to dashboard')
-      setIsRedirecting(true)
-      router.replace('/dashboard')
-      return
-    }
-
-    setIsRedirecting(false)
-  }, [authState.isLoggedIn, authState.isSuperAdmin, pathname, router, isRedirecting])
-
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
     isMounted.current = true
-
-    let subscription: { unsubscribe: () => void } | undefined
 
     const setupAuth = async () => {
       try {
@@ -162,7 +129,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         })
 
-        subscription = data.subscription
+        subscriptionRef.current = data.subscription
       } catch (error) {
         console.error('[AuthProvider] Error setting up auth:', error)
       }
@@ -174,20 +141,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
       isMounted.current = false
-      subscription?.unsubscribe()
+      if (subscriptionRef.current) {
+        subscriptionRef.current.unsubscribe()
+      }
     }
   }, [updateAuthState, safeSetState])
 
   useEffect(() => {
-    // Skip redirect on initial mount or during loading
     if (isInitialMount.current || authState.isLoading) {
       isInitialMount.current = false
       return
     }
 
-    console.log('[AuthProvider] Checking redirect:', authState)
-    handleRedirect()
-  }, [authState, handleRedirect])
+    const publicPaths = ['/login', '/signup', '/forgot-password']
+    const isPublicPath = publicPaths.includes(pathname)
+
+    console.log('[AuthProvider] Checking redirect:', { authState, pathname, isPublicPath })
+
+    if (!authState.isLoggedIn && !isPublicPath) {
+      console.log('[AuthProvider] Not logged in, redirecting to login')
+      router.replace('/login')
+      return
+    }
+
+    if (authState.isLoggedIn && isPublicPath) {
+      const targetPath = authState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard'
+      console.log('[AuthProvider] Logged in on public path, redirecting to:', targetPath)
+      router.replace(targetPath)
+      return
+    }
+
+    if (authState.isLoggedIn && pathname.startsWith('/super-admin') && !authState.isSuperAdmin) {
+      console.log('[AuthProvider] Non-super admin on super admin path, redirecting to dashboard')
+      router.replace('/dashboard')
+    }
+  }, [authState, pathname, router])
 
   const contextValue: AuthContextType = {
     ...authState,
