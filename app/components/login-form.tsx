@@ -8,6 +8,7 @@ import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 interface LoginFormData {
   email: string
@@ -95,8 +96,28 @@ export function LoginForm() {
       if (error) {
         throw error
       }
-      
-      router.push('/dashboard')
+
+      // Get the user's profile to determine redirect
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('user_type')
+        .eq('id', auth.user?.id)
+        .single()
+
+      // Redirect based on user type
+      switch (profile?.user_type) {
+        case 'super_admin':
+          router.push('/super-admin-dashboard')
+          break
+        case 'admin':
+          router.push('/admin-dashboard')
+          break
+        case 'driver':
+          router.push('/driver-dashboard')
+          break
+        default:
+          router.push('/dashboard')
+      }
     }
   })
 
