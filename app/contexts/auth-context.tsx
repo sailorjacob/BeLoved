@@ -46,53 +46,23 @@ const defaultAuthState: AuthState = {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-const publicPaths = ['/login', '/auth/callback', '/']
+const publicPaths = ['/login', '/signup', '/forgot-password', '/']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
-  const [isInitialized, setIsInitialized] = useState(false)
   const router = useRouter()
   const pathname = usePathname()
   const authServiceRef = useRef(authService)
-  const isUpdatingRef = useRef(false)
   const isMounted = useRef(true)
-  const navigationTimeoutRef = useRef<NodeJS.Timeout>()
-
-  const safeSetState = useCallback((newState: Partial<AuthState>) => {
-    if (!isMounted.current) return
-    setAuthState(prev => ({ ...prev, ...newState }))
-  }, [])
-
-  const handleNavigation = useCallback((path: string) => {
-    if (!isMounted.current || !isInitialized) return
-    
-    // Clear any existing navigation timeout
-    if (navigationTimeoutRef.current) {
-      clearTimeout(navigationTimeoutRef.current)
-    }
-
-    // Schedule navigation for next tick to allow state updates to complete
-    navigationTimeoutRef.current = setTimeout(() => {
-      if (isMounted.current && pathname !== path) {
-        router.push(path)
-      }
-    }, 0)
-  }, [router, pathname, isInitialized])
 
   const updateAuthState = useCallback(async () => {
-    if (isUpdatingRef.current || !isMounted.current) return
-    isUpdatingRef.current = true
-
     try {
       const authUser = await authServiceRef.current.getCurrentUser()
       console.log('[AuthProvider] Got auth user:', authUser)
 
       if (!isMounted.current) return
 
-      const newState = !authUser ? {
-        ...defaultAuthState,
-        isLoading: false
-      } : {
+      const newState = {
         isLoading: false,
         isLoggedIn: !!authUser.isLoggedIn,
         isSuperAdmin: authUser.role === 'super_admin',
@@ -103,94 +73,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: authUser.role
       }
 
-      safeSetState(newState)
+      setAuthState(newState)
 
-      // Only handle navigation if initialized
-      if (isMounted.current && isInitialized) {
-        const publicPaths = ['/login', '/signup', '/forgot-password']
-        const isPublicPath = publicPaths.includes(pathname)
+      // Handle navigation based on auth state
+      const isPublicPath = publicPaths.includes(pathname)
 
-        if (!newState.isLoggedIn && !isPublicPath) {
-          handleNavigation('/login')
-        } else if (newState.isLoggedIn && isPublicPath) {
-          handleNavigation(newState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard')
-        } else if (newState.isLoggedIn && pathname.startsWith('/super-admin') && !newState.isSuperAdmin) {
-          handleNavigation('/dashboard')
-        }
+      if (!newState.isLoggedIn && !isPublicPath) {
+        router.replace('/login')
+      } else if (newState.isLoggedIn && isPublicPath) {
+        const dashboardPath = getDashboardPath(newState.role)
+        router.replace(dashboardPath)
       }
     } catch (error) {
-      console.error('[AuthProvider] Error getting user:', error)
-      if (isMounted.current) {
-        safeSetState({
-          ...defaultAuthState,
-          isLoading: false
-        })
+      console.error('[AuthProvider] Error updating auth state:', error)
+      setAuthState({
+        ...defaultAuthState,
+        isLoading: false
+      })
+      if (!publicPaths.includes(pathname)) {
+        router.replace('/login')
       }
-    } finally {
-      isUpdatingRef.current = false
     }
-  }, [safeSetState, handleNavigation, pathname, isInitialized])
+  }, [pathname, router])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
     isMounted.current = true
 
-    const setupAuth = async () => {
-      try {
-        const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
-          console.log('[AuthProvider] Auth state change:', event, session)
+    const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event, session) => {
+      console.log('[AuthProvider] Auth state change:', event, session)
 
-          if (!isMounted.current) return
+      if (!isMounted.current) return
 
-          if (event === 'SIGNED_OUT') {
-            safeSetState({
-              ...defaultAuthState,
-              isLoading: false
-            })
-            if (isInitialized) {
-              handleNavigation('/login')
-            }
-            return
-          }
-
-          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            await updateAuthState()
-          }
+      if (event === 'SIGNED_OUT') {
+        setAuthState({
+          ...defaultAuthState,
+          isLoading: false
         })
-
-        // Initial auth state update
-        await updateAuthState()
-        
-        // Mark as initialized after initial auth check
-        if (isMounted.current) {
-          setIsInitialized(true)
-        }
-
-        return subscription
-      } catch (error) {
-        console.error('[AuthProvider] Error setting up auth:', error)
-        if (isMounted.current) {
-          setIsInitialized(true)
-          safeSetState({
-            ...defaultAuthState,
-            isLoading: false
-          })
-        }
-        return null
+        router.replace('/login')
+        return
       }
-    }
 
-    const subscription = setupAuth()
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        await updateAuthState()
+      }
+    })
+
+    updateAuthState()
 
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
       isMounted.current = false
-      if (navigationTimeoutRef.current) {
-        clearTimeout(navigationTimeoutRef.current)
-      }
-      subscription.then(sub => sub?.unsubscribe())
+      subscription?.unsubscribe()
     }
-  }, [updateAuthState, handleNavigation, safeSetState])
+  }, [updateAuthState, router])
 
   const contextValue: AuthContextType = {
     ...authState,
@@ -249,6 +185,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
+}
+
+function getDashboardPath(role: UserRole | null): string {
+  switch (role) {
+    case 'super_admin':
+      return '/super-admin-dashboard'
+    case 'admin':
+      return '/admin-dashboard'
+    case 'driver':
+      return '/driver-dashboard'
+    case 'member':
+      return '/dashboard'
+    default:
+      return '/login'
+  }
 }
 
 export function useAuth() {
