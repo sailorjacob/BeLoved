@@ -105,32 +105,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const currentPath = pathname || '/'
     console.log('[AuthProvider] Checking redirect:', { currentPath, isLoggedIn, userType: profile?.user_type })
     
-    let targetPath: string | null = null
-
-    // Determine target path
-    if (isLoggedIn && profile) {
-      const correctPath = getRedirectPath(profile.user_type)
-      if (currentPath === '/login' || currentPath === '/') {
-        targetPath = correctPath
-      } else if (currentPath !== correctPath) {
-        // Let middleware handle other path redirects
-        return
-      }
-    } else if (!isLoggedIn && !publicPaths.includes(currentPath)) {
-      targetPath = '/login'
-    }
-
-    // Only redirect if necessary and not to the same path
-    if (targetPath && targetPath !== currentPath && targetPath !== lastRedirectPathRef.current) {
-      console.log('[AuthProvider] Redirecting to:', targetPath)
-      redirectInProgressRef.current = true
-      lastRedirectPathRef.current = targetPath
-      try {
-        await router.replace(targetPath)
-      } catch (error) {
-        console.error('[AuthProvider] Redirect error:', error)
-      } finally {
-        redirectInProgressRef.current = false
+    // Only handle redirects from login page to dashboard
+    if (isLoggedIn && profile && (currentPath === '/login' || currentPath === '/')) {
+      const targetPath = getRedirectPath(profile.user_type)
+      if (targetPath !== currentPath && targetPath !== lastRedirectPathRef.current) {
+        console.log('[AuthProvider] Redirecting to:', targetPath)
+        redirectInProgressRef.current = true
+        lastRedirectPathRef.current = targetPath
+        try {
+          await router.replace(targetPath)
+        } catch (error) {
+          console.error('[AuthProvider] Redirect error:', error)
+        } finally {
+          redirectInProgressRef.current = false
+        }
       }
     } else {
       console.log('[AuthProvider] No redirect needed')
@@ -314,13 +302,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AuthProvider] Login result:', { success: !error, hasUser: !!data.user })
         
         if (!error && data.user) {
-          // Fetch profile immediately after successful login
-          const profile = await fetchProfile(data.user.id)
-          if (profile) {
-            const targetPath = getRedirectPath(profile.user_type)
-            console.log('[AuthProvider] Login successful, redirecting to:', targetPath)
-            router.replace(targetPath)
-          }
+          // Let the auth state change handler handle the redirect
+          console.log('[AuthProvider] Login successful, waiting for auth state change')
         }
         
         return { error, data }

@@ -2,21 +2,22 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+const publicPaths = ['/', '/login', '/auth/callback']
+
 export async function middleware(request: NextRequest) {
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req: request, res })
   const { data: { session } } = await supabase.auth.getSession()
+  const pathname = request.nextUrl.pathname
 
-  // If no session, redirect to login except for public routes
-  if (!session) {
-    const isPublicRoute = request.nextUrl.pathname === '/' || 
-      request.nextUrl.pathname === '/login' || 
-      request.nextUrl.pathname === '/auth/callback'
-    
-    if (!isPublicRoute) {
-      return NextResponse.redirect(new URL('/login', request.url))
-    }
+  // Skip auth check for public routes
+  if (publicPaths.includes(pathname)) {
     return res
+  }
+
+  // For non-public routes, check session
+  if (!session) {
+    return NextResponse.redirect(new URL('/login', request.url))
   }
 
   // Get user profile to check role
@@ -26,9 +27,7 @@ export async function middleware(request: NextRequest) {
     .eq('id', session.user.id)
     .single()
 
-  const pathname = request.nextUrl.pathname
-
-  // Redirect based on user type
+  // Role-based access control
   if (profile?.user_type === 'member' && pathname.includes('/admin')) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
@@ -45,6 +44,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
   }
 
+  // Set up CSP
   const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
   const isDevelopment = process.env.NODE_ENV === 'development'
 
