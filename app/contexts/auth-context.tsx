@@ -50,19 +50,33 @@ const publicPaths = ['/login', '/auth/callback', '/']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
-  const isInitialMount = useRef(true)
-  const isMounted = useRef(true)
   const router = useRouter()
   const pathname = usePathname()
   const authServiceRef = useRef(authService)
   const isUpdatingRef = useRef(false)
-  const subscriptionRef = useRef<{ unsubscribe: () => void }>()
+  const isMounted = useRef(true)
+  const navigationTimeoutRef = useRef<NodeJS.Timeout>()
 
   const safeSetState = useCallback((newState: Partial<AuthState>) => {
-    if (isMounted.current) {
-      setAuthState(prev => ({ ...prev, ...newState }))
-    }
+    if (!isMounted.current) return
+    setAuthState(prev => ({ ...prev, ...newState }))
   }, [])
+
+  const handleNavigation = useCallback((path: string) => {
+    if (!isMounted.current) return
+    
+    // Clear any existing navigation timeout
+    if (navigationTimeoutRef.current) {
+      clearTimeout(navigationTimeoutRef.current)
+    }
+
+    // Schedule navigation for next tick to allow state updates to complete
+    navigationTimeoutRef.current = setTimeout(() => {
+      if (isMounted.current && pathname !== path) {
+        router.push(path)
+      }
+    }, 0)
+  }, [router, pathname])
 
   const updateAuthState = useCallback(async () => {
     if (isUpdatingRef.current || !isMounted.current) return
@@ -74,15 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!isMounted.current) return
 
-      if (!authUser) {
-        safeSetState({
-          ...defaultAuthState,
-          isLoading: false
-        })
-        return
-      }
-
-      safeSetState({
+      const newState = !authUser ? {
+        ...defaultAuthState,
+        isLoading: false
+      } : {
         isLoading: false,
         isLoggedIn: !!authUser.isLoggedIn,
         isSuperAdmin: authUser.role === 'super_admin',
@@ -91,7 +100,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         user: authUser.user,
         profile: authUser.profile,
         role: authUser.role
-      })
+      }
+
+      safeSetState(newState)
+
+      // Handle navigation after state update
+      if (isMounted.current) {
+        const publicPaths = ['/login', '/signup', '/forgot-password']
+        const isPublicPath = publicPaths.includes(pathname)
+
+        if (!newState.isLoggedIn && !isPublicPath) {
+          handleNavigation('/login')
+        } else if (newState.isLoggedIn && isPublicPath) {
+          handleNavigation(newState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard')
+        } else if (newState.isLoggedIn && pathname.startsWith('/super-admin') && !newState.isSuperAdmin) {
+          handleNavigation('/dashboard')
+        }
+      }
     } catch (error) {
       console.error('[AuthProvider] Error getting user:', error)
       if (isMounted.current) {
@@ -103,79 +128,42 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isUpdatingRef.current = false
     }
-  }, [safeSetState])
+  }, [safeSetState, handleNavigation, pathname])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
     isMounted.current = true
 
-    const setupAuth = async () => {
-      try {
-        const { data } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
-          console.log('[AuthProvider] Auth state change:', event, session)
+    const { data: { subscription } } = authServiceRef.current.onAuthStateChange(async (event: string, session: any) => {
+      console.log('[AuthProvider] Auth state change:', event, session)
 
-          if (!isMounted.current) return
+      if (!isMounted.current) return
 
-          if (event === 'SIGNED_OUT') {
-            safeSetState({
-              ...defaultAuthState,
-              isLoading: false
-            })
-            return
-          }
-
-          if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
-            await updateAuthState()
-          }
+      if (event === 'SIGNED_OUT') {
+        safeSetState({
+          ...defaultAuthState,
+          isLoading: false
         })
-
-        subscriptionRef.current = data.subscription
-      } catch (error) {
-        console.error('[AuthProvider] Error setting up auth:', error)
+        handleNavigation('/login')
+        return
       }
-    }
 
-    setupAuth()
+      if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        await updateAuthState()
+      }
+    })
+
     updateAuthState()
 
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
       isMounted.current = false
-      if (subscriptionRef.current) {
-        subscriptionRef.current.unsubscribe()
+      if (navigationTimeoutRef.current) {
+        clearTimeout(navigationTimeoutRef.current)
       }
+      subscription?.unsubscribe()
     }
-  }, [updateAuthState, safeSetState])
-
-  useEffect(() => {
-    if (isInitialMount.current || authState.isLoading) {
-      isInitialMount.current = false
-      return
-    }
-
-    const publicPaths = ['/login', '/signup', '/forgot-password']
-    const isPublicPath = publicPaths.includes(pathname)
-
-    console.log('[AuthProvider] Checking redirect:', { authState, pathname, isPublicPath })
-
-    if (!authState.isLoggedIn && !isPublicPath) {
-      console.log('[AuthProvider] Not logged in, redirecting to login')
-      router.replace('/login')
-      return
-    }
-
-    if (authState.isLoggedIn && isPublicPath) {
-      const targetPath = authState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard'
-      console.log('[AuthProvider] Logged in on public path, redirecting to:', targetPath)
-      router.replace(targetPath)
-      return
-    }
-
-    if (authState.isLoggedIn && pathname.startsWith('/super-admin') && !authState.isSuperAdmin) {
-      console.log('[AuthProvider] Non-super admin on super admin path, redirecting to dashboard')
-      router.replace('/dashboard')
-    }
-  }, [authState, pathname, router])
+  }, [updateAuthState, handleNavigation, safeSetState])
 
   const contextValue: AuthContextType = {
     ...authState,
