@@ -54,6 +54,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<AuthState>(defaultAuthState)
   const lastEventRef = useRef<string | null>(null)
   const lastPathRef = useRef<string | null>(null)
+  const isInitialAuthRef = useRef(true)
 
   const updateAuthState = useCallback(async () => {
     try {
@@ -61,6 +62,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const authUser = await authService.getCurrentUser()
       console.log('[AuthProvider] Got auth user:', authUser)
       
+      // Update state first
       setState({
         user: authUser.user,
         profile: authUser.profile,
@@ -76,15 +78,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (authUser.isLoggedIn && authUser.role) {
         const targetPath = authService.getRedirectPath(authUser.role)
         
-        // Prevent redirect loops and unnecessary redirects
-        if (pathname !== targetPath && 
-            lastPathRef.current !== targetPath && 
+        // Only redirect on initial auth check or explicit navigation
+        if ((isInitialAuthRef.current || lastEventRef.current === 'SIGNED_IN') && 
+            pathname !== targetPath && 
             !publicPaths.includes(pathname || '')) {
           console.log('[AuthProvider] Redirecting to:', targetPath, 'from:', pathname)
           lastPathRef.current = targetPath
           await router.push(targetPath)
         } else {
-          console.log('[AuthProvider] Skipping redirect - already on correct path or redirect in progress')
+          console.log('[AuthProvider] Skipping redirect - not initial auth or already on correct path')
         }
       } else if (!publicPaths.includes(pathname || '')) {
         console.log('[AuthProvider] Not logged in, redirecting to login')
@@ -92,6 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await router.push('/login')
       }
 
+      isInitialAuthRef.current = false
       return authUser
     } catch (error) {
       console.error('[AuthProvider] Error updating state:', error)
@@ -111,8 +114,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const handleAuthStateChange = useCallback(async (event: string, session: any) => {
     console.log('[AuthProvider] Auth state change:', event, 'Previous event:', lastEventRef.current)
     
-    // Prevent duplicate handling of the same event
-    if (event === lastEventRef.current && event !== 'SIGNED_IN') {
+    // Always process SIGNED_IN and first INITIAL_SESSION
+    if (event === lastEventRef.current && 
+        event !== 'SIGNED_IN' && 
+        !(event === 'INITIAL_SESSION' && isInitialAuthRef.current)) {
       console.log('[AuthProvider] Skipping duplicate event')
       return
     }

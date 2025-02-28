@@ -30,14 +30,8 @@ export async function middleware(request: NextRequest) {
 
   console.log('[Middleware] Processing request:', pathname)
 
-  // Skip middleware completely in development
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[Middleware] Skipping in development')
-    return res
-  }
-
   try {
-    // Apply security headers in production
+    // Apply security headers in production only
     if (process.env.NODE_ENV === 'production') {
       const securityHeaders = getSecurityHeaders()
       Object.entries(securityHeaders).forEach(([key, value]) => {
@@ -53,7 +47,6 @@ export async function middleware(request: NextRequest) {
 
     // Get session
     const { data: { session } } = await supabase.auth.getSession()
-    
     console.log('[Middleware] Session check:', session ? 'Found' : 'Not found')
 
     // For non-public routes, check session
@@ -72,30 +65,35 @@ export async function middleware(request: NextRequest) {
     console.log('[Middleware] User profile:', profile)
 
     // Role-based access control
-    if (profile?.user_type === 'member' && pathname.includes('/admin')) {
-      console.log('[Middleware] Member accessing admin route, redirecting')
+    if (!profile?.user_type) {
+      console.log('[Middleware] No user type found, redirecting to login')
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // Super admin can access everything except member dashboard
+    if (profile.user_type === 'super_admin') {
+      if (pathname === '/dashboard') {
+        return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
+      }
+      return res
+    }
+
+    // Other role checks
+    if (profile.user_type === 'member' && pathname.includes('/admin')) {
       return NextResponse.redirect(new URL('/dashboard', request.url))
     }
 
-    if (profile?.user_type === 'driver' && !pathname.includes('/driver')) {
-      console.log('[Middleware] Driver accessing non-driver route, redirecting')
+    if (profile.user_type === 'driver' && !pathname.includes('/driver')) {
       return NextResponse.redirect(new URL('/driver-dashboard', request.url))
     }
 
-    if (profile?.user_type === 'admin' && pathname.includes('/super-admin')) {
-      console.log('[Middleware] Admin accessing super-admin route, redirecting')
+    if (profile.user_type === 'admin' && pathname.includes('/super-admin')) {
       return NextResponse.redirect(new URL('/admin-dashboard', request.url))
-    }
-
-    if (profile?.user_type === 'super_admin' && pathname === '/dashboard') {
-      console.log('[Middleware] Super admin accessing member dashboard, redirecting')
-      return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
     }
 
     return res
   } catch (error) {
     console.error('[Middleware] Error:', error)
-    // On error, redirect to login
     return NextResponse.redirect(new URL('/login', request.url))
   }
 }
