@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useRef, useCallback } from "react"
+import { createContext, useContext, useState, useEffect, useCallback } from "react"
 import type { User } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { useRouter, usePathname } from 'next/navigation'
@@ -52,119 +52,61 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [state, setState] = useState<AuthState>(defaultAuthState)
-  const mountedRef = useRef(true)
-  const redirectInProgressRef = useRef(false)
-  const authCheckCompletedRef = useRef(false)
-  const [isInitializing, setIsInitializing] = useState(true)
 
   const updateAuthState = useCallback(async () => {
-    if (!mountedRef.current) return
-
     try {
       const authUser = await authService.getCurrentUser()
       
-      setState(prev => ({
+      setState({
         user: authUser.user,
         profile: authUser.profile,
         isLoggedIn: authUser.isLoggedIn,
         isDriver: authUser.role === 'driver',
         isAdmin: authUser.role === 'admin',
         isSuperAdmin: authUser.role === 'super_admin',
-        isLoading: prev.isLoading && !authCheckCompletedRef.current,
+        isLoading: false,
         role: authUser.role
-      }))
+      })
+
+      // Handle redirects based on auth state
+      if (authUser.isLoggedIn && authUser.role) {
+        const targetPath = authService.getRedirectPath(authUser.role)
+        if (pathname !== targetPath && !publicPaths.includes(pathname || '')) {
+          console.log('[AuthProvider] Redirecting to:', targetPath, 'from:', pathname)
+          router.push(targetPath)
+        }
+      } else if (!publicPaths.includes(pathname || '')) {
+        console.log('[AuthProvider] Redirecting to login')
+        router.push('/login')
+      }
 
       return authUser
     } catch (error) {
       console.error('[AuthProvider] Error updating state:', error)
-      setState(prev => ({
+      setState({
         ...defaultAuthState,
-        isLoading: prev.isLoading && !authCheckCompletedRef.current
-      }))
-      return null
-    }
-  }, [])
-
-  const handleRedirect = useCallback(async (authUser: { role: UserRole | null }) => {
-    if (redirectInProgressRef.current || !authCheckCompletedRef.current) return
-    if (!authUser?.role) {
-      if (!publicPaths.includes(pathname || '')) {
-        redirectInProgressRef.current = true
-        try {
-          await router.push('/login')
-        } finally {
-          redirectInProgressRef.current = false
-        }
-      }
-      return
-    }
-    
-    const targetPath = authService.getRedirectPath(authUser.role)
-    if (pathname === targetPath) return
-    if (publicPaths.includes(pathname || '') && targetPath === '/login') return
-
-    console.log('[AuthProvider] Redirecting to:', targetPath, 'from:', pathname)
-    redirectInProgressRef.current = true
-    
-    try {
-      await router.push(targetPath)
-    } finally {
-      redirectInProgressRef.current = false
-    }
-  }, [router, pathname])
-
-  const handleAuthStateChange = useCallback(async (event: string, session: any) => {
-    console.log('[AuthProvider] Auth state change:', event)
-
-    if (event === 'SIGNED_OUT') {
-      setState(prev => ({ ...defaultAuthState, isLoading: false }))
+        isLoading: false
+      })
+      
       if (!publicPaths.includes(pathname || '')) {
         router.push('/login')
       }
-      return
+      return null
     }
+  }, [router, pathname])
 
-    if (['SIGNED_IN', 'TOKEN_REFRESHED', 'INITIAL_SESSION'].includes(event)) {
-      const authUser = await updateAuthState()
-      
-      if (event === 'INITIAL_SESSION') {
-        authCheckCompletedRef.current = true
-        setState(prev => ({ ...prev, isLoading: false }))
-      }
-
-      if (authUser && (event === 'SIGNED_IN' || event === 'INITIAL_SESSION')) {
-        handleRedirect(authUser)
-      }
-    }
-  }, [updateAuthState, handleRedirect, pathname, router])
+  const handleAuthStateChange = useCallback(async (event: string) => {
+    console.log('[AuthProvider] Auth state change:', event)
+    await updateAuthState()
+  }, [updateAuthState])
 
   useEffect(() => {
-    mountedRef.current = true
-    authCheckCompletedRef.current = false
-    setIsInitializing(true)
+    // Initial auth check
+    updateAuthState()
 
-    const initializeAuth = async () => {
-      try {
-        await handleAuthStateChange('INITIAL_SESSION', null)
-      } catch (error) {
-        console.error('[AuthProvider] Initialization error:', error)
-        setState(prev => ({
-          ...defaultAuthState,
-          isLoading: false
-        }))
-      } finally {
-        setIsInitializing(false)
-      }
-    }
-
-    initializeAuth()
-
+    // Subscribe to auth changes
     const { data: { subscription } } = authService.onAuthStateChange(handleAuthStateChange)
-
-    return () => {
-      mountedRef.current = false
-      subscription?.unsubscribe()
-    }
+    return () => subscription?.unsubscribe()
   }, [handleAuthStateChange])
 
   const contextValue: AuthContextType = {
@@ -208,10 +150,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }
 
-  if (isInitializing || state.isLoading) {
+  if (state.isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+          <p className="text-sm text-gray-500">Loading...</p>
+        </div>
       </div>
     )
   }
