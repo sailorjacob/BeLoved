@@ -64,31 +64,36 @@ export async function middleware(request: NextRequest) {
 
     console.log('[Middleware] User profile:', profile)
 
-    // Role-based access control
     if (!profile?.user_type) {
       console.log('[Middleware] No user type found, redirecting to login')
       return NextResponse.redirect(new URL('/login', request.url))
     }
 
-    // Super admin can access everything except member dashboard
+    // Super admin can access all dashboard routes
     if (profile.user_type === 'super_admin') {
       if (pathname === '/dashboard') {
         return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
       }
-      return res
+      if (pathname.includes('dashboard')) {
+        return res
+      }
     }
 
-    // Other role checks
-    if (profile.user_type === 'member' && pathname.includes('/admin')) {
-      return NextResponse.redirect(new URL('/dashboard', request.url))
+    // Role-based redirects
+    const roleRedirects = {
+      member: '/dashboard',
+      driver: '/driver-dashboard',
+      admin: '/admin-dashboard',
+      super_admin: '/super-admin-dashboard'
     }
 
-    if (profile.user_type === 'driver' && !pathname.includes('/driver')) {
-      return NextResponse.redirect(new URL('/driver-dashboard', request.url))
-    }
-
-    if (profile.user_type === 'admin' && pathname.includes('/super-admin')) {
-      return NextResponse.redirect(new URL('/admin-dashboard', request.url))
+    // If trying to access a dashboard that doesn't match their role
+    if (pathname.includes('dashboard')) {
+      const correctPath = roleRedirects[profile.user_type as keyof typeof roleRedirects]
+      if (pathname !== correctPath) {
+        console.log('[Middleware] Wrong dashboard, redirecting to:', correctPath)
+        return NextResponse.redirect(new URL(correctPath, request.url))
+      }
     }
 
     return res
