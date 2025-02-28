@@ -52,19 +52,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [state, setState] = useState<AuthState>(defaultAuthState)
-  const lastEventRef = useRef<string | null>(null)
-  const lastPathRef = useRef<string | null>(null)
-  const authCheckCompletedRef = useRef(false)
-  const redirectInProgressRef = useRef(false)
+  const isInitialMount = useRef(true)
 
   const updateAuthState = useCallback(async () => {
     try {
-      console.log('[AuthProvider] Updating auth state...')
       const authUser = await authService.getCurrentUser()
       console.log('[AuthProvider] Got auth user:', authUser)
       
-      // Update state first
-      const newState = {
+      setState({
         user: authUser.user,
         profile: authUser.profile,
         isLoggedIn: authUser.isLoggedIn,
@@ -73,35 +68,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         isSuperAdmin: authUser.role === 'super_admin',
         isLoading: false,
         role: authUser.role
-      }
-      
-      console.log('[AuthProvider] Setting new state:', newState)
-      setState(newState)
+      })
 
-      // Handle redirects based on auth state
-      if (authUser.isLoggedIn && authUser.role && !redirectInProgressRef.current) {
-        const targetPath = authService.getRedirectPath(authUser.role)
-        
-        // Only redirect if we're on a public path or if we're on the wrong dashboard
-        if (publicPaths.includes(pathname || '') || 
-            (pathname !== targetPath && pathname?.includes('dashboard'))) {
-          console.log('[AuthProvider] Redirecting to:', targetPath, 'from:', pathname)
-          redirectInProgressRef.current = true
-          lastPathRef.current = targetPath
-          await router.push(targetPath)
-          redirectInProgressRef.current = false
-        } else {
-          console.log('[AuthProvider] No redirect needed - already on correct path:', pathname)
-        }
-      } else if (!authUser.isLoggedIn && !publicPaths.includes(pathname || '') && !redirectInProgressRef.current) {
-        console.log('[AuthProvider] Not logged in, redirecting to login')
-        redirectInProgressRef.current = true
-        lastPathRef.current = '/login'
-        await router.push('/login')
-        redirectInProgressRef.current = false
-      }
-
-      authCheckCompletedRef.current = true
       return authUser
     } catch (error) {
       console.error('[AuthProvider] Error updating state:', error)
@@ -109,59 +77,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         ...defaultAuthState,
         isLoading: false
       })
-      
-      if (!publicPaths.includes(pathname || '') && !redirectInProgressRef.current) {
-        redirectInProgressRef.current = true
-        lastPathRef.current = '/login'
-        await router.push('/login')
-        redirectInProgressRef.current = false
-      }
       return null
     }
-  }, [router, pathname])
+  }, [])
 
-  const handleAuthStateChange = useCallback(async (event: string, session: any) => {
-    console.log('[AuthProvider] Auth state change:', event, 'Previous event:', lastEventRef.current, 'Session:', session)
-    
-    // Skip duplicate events except for SIGNED_IN
-    if (event === lastEventRef.current && event !== 'SIGNED_IN') {
-      console.log('[AuthProvider] Skipping duplicate event')
+  // Handle redirects based on auth state
+  useEffect(() => {
+    if (state.isLoading || isInitialMount.current) {
+      isInitialMount.current = false
       return
     }
-    
-    lastEventRef.current = event
 
-    if (event === 'SIGNED_OUT') {
-      console.log('[AuthProvider] User signed out')
-      setState({
-        ...defaultAuthState,
-        isLoading: false
-      })
-      if (!publicPaths.includes(pathname || '') && !redirectInProgressRef.current) {
-        redirectInProgressRef.current = true
+    const handleRedirect = async () => {
+      if (state.isLoggedIn && state.role) {
+        const targetPath = authService.getRedirectPath(state.role)
+        if (publicPaths.includes(pathname || '') || 
+            (pathname !== targetPath && pathname?.includes('dashboard'))) {
+          console.log('[AuthProvider] Redirecting to:', targetPath)
+          await router.push(targetPath)
+        }
+      } else if (!publicPaths.includes(pathname || '')) {
+        console.log('[AuthProvider] Redirecting to login')
         await router.push('/login')
-        redirectInProgressRef.current = false
       }
-      return
     }
 
-    await updateAuthState()
-  }, [updateAuthState, pathname, router])
+    handleRedirect()
+  }, [state.isLoggedIn, state.role, pathname, router])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
-    
-    // Initial auth check
     updateAuthState()
 
-    // Subscribe to auth changes
-    const { data: { subscription } } = authService.onAuthStateChange(handleAuthStateChange)
+    const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
+      console.log('[AuthProvider] Auth state change:', event)
+      
+      if (event === 'SIGNED_OUT') {
+        setState({
+          ...defaultAuthState,
+          isLoading: false
+        })
+        return
+      }
+
+      await updateAuthState()
+    })
     
     return () => {
       console.log('[AuthProvider] Cleaning up auth...')
       subscription?.unsubscribe()
     }
-  }, [handleAuthStateChange])
+  }, [updateAuthState])
 
   const contextValue: AuthContextType = {
     ...state,
