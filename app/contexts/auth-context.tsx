@@ -73,11 +73,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const redirectInProgressRef = useRef(false)
   const lastRedirectPathRef = useRef<string | null>(null)
   const initializationInProgressRef = useRef(false)
+  const initializationTimeoutRef = useRef<NodeJS.Timeout>()
 
   const updateAuthState = useCallback((updates: Partial<AuthState>) => {
     if (!mountedRef.current) return
     console.log('[AuthProvider] Updating state:', updates)
     setState(prev => ({ ...prev, ...updates }))
+  }, [])
+
+  // Add initialization timeout
+  useEffect(() => {
+    initializationTimeoutRef.current = setTimeout(() => {
+      if (state.isLoading) {
+        console.log('[AuthProvider] Initialization timeout - resetting state')
+        updateAuthState({ ...defaultAuthState, isLoading: false })
+      }
+    }, 5000) // 5 second timeout
+
+    return () => {
+      if (initializationTimeoutRef.current) {
+        clearTimeout(initializationTimeoutRef.current)
+      }
+    }
   }, [])
 
   const handleRedirect = useCallback(async (profile: Profile | null, isLoggedIn: boolean) => {

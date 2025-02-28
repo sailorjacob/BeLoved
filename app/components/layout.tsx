@@ -18,6 +18,16 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
   const redirectLockRef = useRef(false)
   const lastPathRef = useRef(window.location.pathname)
+  const initialCheckDoneRef = useRef(false)
+
+  // Handle initial auth check
+  useEffect(() => {
+    if (!isLoading && !initialCheckDoneRef.current) {
+      console.log('[Layout] Initial auth check complete')
+      initialCheckDoneRef.current = true
+      setHasCheckedAuth(true)
+    }
+  }, [isLoading])
 
   useEffect(() => {
     console.log('[Layout] Auth state changed:', { isLoggedIn, isLoading, userType: profile?.user_type })
@@ -74,18 +84,18 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
 
         console.log('[Layout] No redirect needed')
         setIsRedirecting(false)
-        setHasCheckedAuth(true)
       } catch (error) {
         console.error('[Layout] Error during auth redirect:', error)
         setIsRedirecting(false)
-        setHasCheckedAuth(true)
       } finally {
         redirectLockRef.current = false
       }
     }
 
-    handleAuth()
-  }, [isLoading, isLoggedIn, profile, router, publicPaths])
+    if (hasCheckedAuth) {
+      handleAuth()
+    }
+  }, [isLoading, isLoggedIn, profile, router, publicPaths, hasCheckedAuth])
 
   // Only show loading on initial auth check or during redirects
   if (!hasCheckedAuth || isRedirecting) {
