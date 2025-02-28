@@ -112,26 +112,43 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [pathname, router])
 
   const fetchProfile = useCallback(async (userId: string) => {
-    try {
-      const { data: profile, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
+    let retries = 3
+    while (retries > 0) {
+      try {
+        const { data: profile, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
 
-      if (error) throw error
-      return profile
-    } catch (error) {
-      console.error('Error fetching profile:', error)
-      return null
+        if (error) {
+          console.error('Error fetching profile:', error)
+          retries--
+          if (retries > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1000))
+            continue
+          }
+          throw error
+        }
+        return profile
+      } catch (error) {
+        console.error('Error in profile fetch attempt:', error)
+        retries--
+        if (retries === 0) throw error
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
     }
+    return null
   }, [])
 
   const handleAuthStateChange = useCallback(async (event: string, session: any) => {
     if (!mountedRef.current) return
 
     try {
+      console.log('Auth state change:', event, !!session?.user)
+
       if (event === 'SIGNED_OUT' || !session?.user) {
+        console.log('User signed out or no session')
         updateAuthState({
           user: null,
           profile: null,
@@ -141,36 +158,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isSuperAdmin: false,
           isLoading: false
         })
-        handleRedirect(null, false)
+        if (mountedRef.current) {
+          handleRedirect(null, false)
+        }
         return
       }
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
+        console.log('Processing auth event:', event)
         updateAuthState({ isLoading: true })
         
-        const profile = await fetchProfile(session.user.id)
-        if (!profile || !mountedRef.current) {
-          await supabase.auth.signOut()
-          updateAuthState({ ...defaultAuthState, isLoading: false })
-          handleRedirect(null, false)
-          return
-        }
+        try {
+          const profile = await fetchProfile(session.user.id)
+          
+          if (!mountedRef.current) {
+            console.log('Component unmounted during profile fetch')
+            return
+          }
 
-        const newState = {
-          user: session.user,
-          profile,
-          isLoggedIn: true,
-          isDriver: profile.user_type === 'driver',
-          isAdmin: profile.user_type === 'admin',
-          isSuperAdmin: profile.user_type === 'super_admin',
-          isLoading: false
+          if (!profile) {
+            console.error('No profile found after retries')
+            await supabase.auth.signOut()
+            updateAuthState({ ...defaultAuthState, isLoading: false })
+            handleRedirect(null, false)
+            return
+          }
+
+          const newState = {
+            user: session.user,
+            profile,
+            isLoggedIn: true,
+            isDriver: profile.user_type === 'driver',
+            isAdmin: profile.user_type === 'admin',
+            isSuperAdmin: profile.user_type === 'super_admin',
+            isLoading: false
+          }
+          
+          console.log('Updating auth state with:', { 
+            isLoggedIn: true, 
+            userType: profile.user_type 
+          })
+          
+          updateAuthState(newState)
+          handleRedirect(profile, true)
+        } catch (error) {
+          console.error('Error in auth state change flow:', error)
+          if (mountedRef.current) {
+            updateAuthState({ ...defaultAuthState, isLoading: false })
+            handleRedirect(null, false)
+          }
         }
-        
-        updateAuthState(newState)
-        handleRedirect(profile, true)
       }
     } catch (error) {
-      console.error('Auth state change error:', error)
+      console.error('Critical auth state change error:', error)
       if (mountedRef.current) {
         await supabase.auth.signOut()
         updateAuthState({ ...defaultAuthState, isLoading: false })
@@ -180,15 +220,31 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [updateAuthState, handleRedirect, fetchProfile])
 
   useEffect(() => {
+    console.log('Setting up auth subscriptions')
     mountedRef.current = true
 
     const initializeAuth = async () => {
       try {
-        const { data: { session } } = await supabase.auth.getSession()
+        console.log('Initializing auth')
+        const { data: { session }, error } = await supabase.auth.getSession()
+        
+        if (error) {
+          console.error('Session initialization error:', error)
+          updateAuthState({ ...defaultAuthState, isLoading: false })
+          return
+        }
+
+        if (!mountedRef.current) {
+          console.log('Component unmounted during initialization')
+          return
+        }
+
         await handleAuthStateChange('INITIAL_SESSION', session)
       } catch (error) {
         console.error('Auth initialization error:', error)
-        updateAuthState({ isLoading: false })
+        if (mountedRef.current) {
+          updateAuthState({ ...defaultAuthState, isLoading: false })
+        }
       }
     }
 
@@ -199,6 +255,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
 
     return () => {
+      console.log('Cleaning up auth subscriptions')
       mountedRef.current = false
       subscription?.unsubscribe()
     }
