@@ -1,7 +1,7 @@
 'use client'
 
 import * as React from 'react'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { AuthProvider } from '@/app/contexts/auth-context'
 import { useAuth } from '@/app/contexts/auth-context'
 import { useRouter, usePathname } from 'next/navigation'
@@ -15,14 +15,17 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const publicPaths = ['/login', '/driver-login', '/admin-login', '/']
+  const [isRedirecting, setIsRedirecting] = useState(false)
 
   useEffect(() => {
-    if (!isLoading && !user && !publicPaths.includes(pathname)) {
+    if (!isLoading && !isRedirecting && !user && !publicPaths.includes(pathname)) {
+      console.log('ClientLayout redirecting to login')
+      setIsRedirecting(true)
       router.push('/login')
     }
-  }, [user, isLoading, pathname, router])
+  }, [user, isLoading, pathname, router, isRedirecting])
 
-  if (isLoading) {
+  if (isLoading || isRedirecting) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
@@ -46,9 +49,9 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
 }
 
 export function ClientLayout({ children }: ClientLayoutProps) {
-  const [isMounted, setIsMounted] = React.useState(false)
+  const [isMounted, setIsMounted] = useState(false)
 
-  React.useEffect(() => {
+  useEffect(() => {
     setIsMounted(true)
   }, [])
 
