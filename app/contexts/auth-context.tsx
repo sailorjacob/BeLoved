@@ -88,43 +88,60 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const mountedRef = useRef(true)
 
   const handleRedirect = async (profile: Profile | null, isLoggedIn: boolean) => {
-    if (isRedirecting) return
+    if (isRedirecting) {
+      console.log('Already redirecting, skipping')
+      return
+    }
     
     const currentPath = pathname || '/'
     console.log('Checking redirect:', { currentPath, isLoggedIn, profile })
 
-    // Handle public paths
-    if (publicPaths.includes(currentPath)) {
-      if (isLoggedIn && profile) {
-        const redirectPath = getRedirectPath(profile.user_type)
-        if (currentPath !== redirectPath) {
+    try {
+      // Handle public paths
+      if (publicPaths.includes(currentPath)) {
+        if (isLoggedIn && profile) {
+          const redirectPath = getRedirectPath(profile.user_type)
+          if (currentPath !== redirectPath) {
+            setIsRedirecting(true)
+            console.log('Redirecting to dashboard:', redirectPath)
+            await router.push(redirectPath)
+            console.log('Redirect complete')
+            setIsRedirecting(false)
+          } else {
+            console.log('Already on correct path')
+          }
+        } else {
+          console.log('On public path, no redirect needed')
+        }
+        return
+      }
+
+      // Handle protected paths
+      if (!isLoggedIn) {
+        setIsRedirecting(true)
+        console.log('Redirecting to login')
+        await router.push('/login')
+        console.log('Redirect to login complete')
+        setIsRedirecting(false)
+        return
+      }
+
+      // Ensure user is on correct dashboard
+      if (profile) {
+        const correctPath = getRedirectPath(profile.user_type)
+        if (currentPath !== correctPath) {
           setIsRedirecting(true)
-          console.log('Redirecting to dashboard:', redirectPath)
-          await router.push(redirectPath)
+          console.log('Redirecting to correct dashboard:', correctPath)
+          await router.push(correctPath)
+          console.log('Redirect to dashboard complete')
           setIsRedirecting(false)
+        } else {
+          console.log('Already on correct dashboard')
         }
       }
-      return
-    }
-
-    // Handle protected paths
-    if (!isLoggedIn) {
-      setIsRedirecting(true)
-      console.log('Redirecting to login')
-      await router.push('/login')
+    } catch (error) {
+      console.error('Error during redirect:', error)
       setIsRedirecting(false)
-      return
-    }
-
-    // Ensure user is on correct dashboard
-    if (profile) {
-      const correctPath = getRedirectPath(profile.user_type)
-      if (currentPath !== correctPath) {
-        setIsRedirecting(true)
-        console.log('Redirecting to correct dashboard:', correctPath)
-        await router.push(correctPath)
-        setIsRedirecting(false)
-      }
     }
   }
 
@@ -203,11 +220,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mountedRef.current) return
+      if (!mountedRef.current) {
+        console.log('Auth state change ignored - component unmounted')
+        return
+      }
 
       console.log('Auth state change:', event, session?.user?.id)
+      console.log('Current pathname:', pathname)
       
       if (event === 'SIGNED_OUT') {
+        console.log('Handling SIGNED_OUT event')
         const newState = {
           ...defaultAuthState,
           isLoading: false
@@ -236,18 +258,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', session.user.id)
           .single()
 
-        if (!mountedRef.current) return
+        console.log('Profile fetch result:', { profile, error: profileError })
 
-        if (profileError || !profile) {
-          console.error('Profile fetch error on auth change:', profileError)
-          await supabase.auth.signOut()
-          const newState = {
-            ...defaultAuthState,
-            isLoading: false
-          }
-          setAuthState(newState)
-          handleRedirect(null, false)
+        if (!mountedRef.current) {
+          console.log('Component unmounted during profile fetch')
           return
+        }
+
+        if (profileError) {
+          console.error('Profile fetch error:', profileError)
+          throw profileError
+        }
+
+        if (!profile) {
+          console.error('No profile found for user')
+          throw new Error('No profile found')
         }
 
         console.log('Setting auth state with profile:', { user_type: profile.user_type, id: profile.id })
@@ -261,10 +286,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false
         }
         setAuthState(newState)
-        handleRedirect(profile, true)
+
+        console.log('Attempting redirect with profile')
+        await handleRedirect(profile, true)
+        console.log('Redirect complete')
       } catch (error) {
         console.error('Error handling auth state change:', error)
         if (mountedRef.current) {
+          console.log('Signing out due to error')
+          await supabase.auth.signOut()
           const newState = {
             ...defaultAuthState,
             isLoading: false
