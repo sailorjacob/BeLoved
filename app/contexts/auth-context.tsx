@@ -50,12 +50,19 @@ const publicPaths = ['/login', '/auth/callback', '/']
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const isInitialMount = useRef(true)
   const isMounted = useRef(true)
   const router = useRouter()
   const pathname = usePathname()
   const authServiceRef = useRef(authService)
   const isUpdatingRef = useRef(false)
+
+  const safeSetState = useCallback((newState: Partial<AuthState>) => {
+    if (isMounted.current) {
+      setAuthState(prev => ({ ...prev, ...newState }))
+    }
+  }, [])
 
   const updateAuthState = useCallback(async () => {
     if (isUpdatingRef.current || !isMounted.current) return
@@ -68,14 +75,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!isMounted.current) return
 
       if (!authUser) {
-        setAuthState({
+        safeSetState({
           ...defaultAuthState,
           isLoading: false
         })
         return
       }
 
-      setAuthState({
+      safeSetState({
         isLoading: false,
         isLoggedIn: !!authUser.isLoggedIn,
         isSuperAdmin: authUser.role === 'super_admin',
@@ -88,7 +95,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error('[AuthProvider] Error getting user:', error)
       if (isMounted.current) {
-        setAuthState({
+        safeSetState({
           ...defaultAuthState,
           isLoading: false
         })
@@ -96,7 +103,38 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       isUpdatingRef.current = false
     }
-  }, [])
+  }, [safeSetState])
+
+  const handleRedirect = useCallback(() => {
+    if (isRedirecting || !isMounted.current) return
+    
+    const publicPaths = ['/login', '/signup', '/forgot-password']
+    const isPublicPath = publicPaths.includes(pathname)
+
+    if (!authState.isLoggedIn && !isPublicPath) {
+      console.log('[AuthProvider] Redirecting to:', '/login')
+      setIsRedirecting(true)
+      router.replace('/login')
+      return
+    }
+
+    if (authState.isLoggedIn && isPublicPath) {
+      const targetPath = authState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard'
+      console.log('[AuthProvider] Redirecting to:', targetPath)
+      setIsRedirecting(true)
+      router.replace(targetPath)
+      return
+    }
+
+    if (authState.isLoggedIn && pathname.startsWith('/super-admin') && !authState.isSuperAdmin) {
+      console.log('[AuthProvider] Redirecting non-super admin to dashboard')
+      setIsRedirecting(true)
+      router.replace('/dashboard')
+      return
+    }
+
+    setIsRedirecting(false)
+  }, [authState.isLoggedIn, authState.isSuperAdmin, pathname, router, isRedirecting])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth...')
@@ -112,7 +150,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!isMounted.current) return
 
           if (event === 'SIGNED_OUT') {
-            setAuthState({
+            safeSetState({
               ...defaultAuthState,
               isLoading: false
             })
@@ -130,7 +168,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    // Initial setup
     setupAuth()
     updateAuthState()
 
@@ -139,40 +176,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isMounted.current = false
       subscription?.unsubscribe()
     }
-  }, [updateAuthState])
+  }, [updateAuthState, safeSetState])
 
   useEffect(() => {
     // Skip redirect on initial mount or during loading
-    if (isInitialMount.current || authState.isLoading || !isMounted.current) {
+    if (isInitialMount.current || authState.isLoading) {
       isInitialMount.current = false
       return
     }
 
     console.log('[AuthProvider] Checking redirect:', authState)
-
-    const publicPaths = ['/login', '/signup', '/forgot-password']
-    const isPublicPath = publicPaths.includes(pathname)
-
-    if (!authState.isLoggedIn && !isPublicPath) {
-      console.log('[AuthProvider] Redirecting to:', '/login')
-      router.replace('/login')
-      return
-    }
-
-    if (authState.isLoggedIn && isPublicPath) {
-      const targetPath = authState.isSuperAdmin ? '/super-admin-dashboard' : '/dashboard'
-      console.log('[AuthProvider] Redirecting to:', targetPath)
-      router.replace(targetPath)
-      return
-    }
-
-    // Ensure super admin pages are only accessible by super admins
-    if (authState.isLoggedIn && pathname.startsWith('/super-admin') && !authState.isSuperAdmin) {
-      console.log('[AuthProvider] Redirecting non-super admin to dashboard')
-      router.replace('/dashboard')
-      return
-    }
-  }, [authState, pathname, router])
+    handleRedirect()
+  }, [authState, handleRedirect])
 
   const contextValue: AuthContextType = {
     ...authState,

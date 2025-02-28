@@ -4,7 +4,7 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '@/app/components/user-nav'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
@@ -33,8 +33,25 @@ export default function SuperAdminDashboardPage() {
   const { isLoggedIn, isSuperAdmin, isLoading } = useAuth()
   const router = useRouter()
   const [isRedirecting, setIsRedirecting] = useState(false)
-  const redirectTimeoutRef = useRef<NodeJS.Timeout>()
   const isMounted = useRef(true)
+  const redirectTimeoutRef = useRef<NodeJS.Timeout>()
+
+  const safeSetState = useCallback((value: boolean) => {
+    if (isMounted.current) {
+      setIsRedirecting(value)
+    }
+  }, [])
+
+  const handleRedirect = useCallback((path: string) => {
+    if (!isMounted.current) return
+
+    safeSetState(true)
+    redirectTimeoutRef.current = setTimeout(() => {
+      if (isMounted.current) {
+        router.replace(path)
+      }
+    }, 100)
+  }, [router, safeSetState])
 
   useEffect(() => {
     isMounted.current = true
@@ -54,34 +71,22 @@ export default function SuperAdminDashboardPage() {
       clearTimeout(redirectTimeoutRef.current)
     }
     
-    if (!isLoading && isMounted.current) {
+    if (!isLoading) {
       if (!isLoggedIn) {
         console.log('[SuperAdminDashboard] Not logged in, redirecting to login')
-        setIsRedirecting(true)
-        // Add a small delay before redirect to prevent React errors
-        redirectTimeoutRef.current = setTimeout(() => {
-          if (isMounted.current) {
-            router.replace('/login')
-          }
-        }, 100)
+        handleRedirect('/login')
         return
       }
 
       if (!isSuperAdmin) {
         console.log('[SuperAdminDashboard] Not super admin, redirecting to dashboard')
-        setIsRedirecting(true)
-        // Add a small delay before redirect to prevent React errors
-        redirectTimeoutRef.current = setTimeout(() => {
-          if (isMounted.current) {
-            router.replace('/dashboard')
-          }
-        }, 100)
+        handleRedirect('/dashboard')
         return
       }
 
-      setIsRedirecting(false)
+      safeSetState(false)
     }
-  }, [isLoggedIn, isSuperAdmin, isLoading, router])
+  }, [isLoggedIn, isSuperAdmin, isLoading, handleRedirect, safeSetState])
 
   // Show loading state while checking auth or during redirect
   if (isLoading || isRedirecting || !isLoggedIn || !isSuperAdmin) {
