@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/auth-context'
 
@@ -14,48 +14,53 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
   const { isLoggedIn, isLoading, profile } = useAuth()
   const [isRedirecting, setIsRedirecting] = useState(false)
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
+  const redirectLockRef = useRef(false)
 
   useEffect(() => {
     const handleAuth = async () => {
-      if (isLoading) return
+      if (isLoading || redirectLockRef.current) return
 
       const pathname = window.location.pathname
       console.log('Layout checking path:', pathname, { isLoggedIn, profile })
 
-      // If we're on a public path
-      if (publicPaths.includes(pathname)) {
-        // Only redirect if logged in with a profile
-        if (isLoggedIn && profile) {
-          setIsRedirecting(true)
+      try {
+        redirectLockRef.current = true
+        
+        // If we're on a public path and logged in with a profile
+        if (publicPaths.includes(pathname) && isLoggedIn && profile) {
           const redirectPath = getRedirectPath(profile.user_type)
           if (pathname !== redirectPath) {
             console.log('Layout: redirecting to dashboard:', redirectPath)
-            await router.push(redirectPath)
+            setIsRedirecting(true)
+            await router.replace(redirectPath)
+            return
           }
         }
-      } else {
-        // Non-public path
-        if (!isLoggedIn) {
-          setIsRedirecting(true)
+        
+        // Non-public path and not logged in
+        if (!publicPaths.includes(pathname) && !isLoggedIn) {
           console.log('Layout: redirecting to login')
-          await router.push('/login')
+          setIsRedirecting(true)
+          await router.replace('/login')
           return
         }
 
         // Check if user is on the correct dashboard
-        if (profile) {
+        if (!publicPaths.includes(pathname) && profile) {
           const correctPath = getRedirectPath(profile.user_type)
           if (pathname !== correctPath) {
             setIsRedirecting(true)
             console.log('Layout: redirecting to correct dashboard:', correctPath)
-            await router.push(correctPath)
+            await router.replace(correctPath)
             return
           }
         }
-      }
 
-      setHasCheckedAuth(true)
-      setIsRedirecting(false)
+        setIsRedirecting(false)
+        setHasCheckedAuth(true)
+      } finally {
+        redirectLockRef.current = false
+      }
     }
 
     handleAuth()
