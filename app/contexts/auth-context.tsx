@@ -123,11 +123,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     console.log('[AuthProvider] Processing pending redirect to:', targetPath)
     
     redirectInProgressRef.current = true
-    
-    // Force a hard navigation
-    window.location.assign(targetPath)
+    router.push(targetPath)
     pendingRedirectRef.current = null
-  }, [state.isLoading, pathname])
+  }, [state.isLoading, pathname, router])
 
   const handleAuthStateChange = useCallback(async (event: string, session: any) => {
     if (!mountedRef.current) return
@@ -145,7 +143,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false
         })
         if (mountedRef.current && !publicPaths.includes(pathname || '')) {
-          window.location.assign('/login')
+          router.push('/login')
         }
         return
       }
@@ -163,7 +161,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('[AuthProvider] No profile found for user')
             await supabase.auth.signOut()
             updateAuthState({ ...defaultAuthState, isLoading: false })
-            window.location.assign('/login')
+            router.push('/login')
             return
           }
 
@@ -183,7 +181,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const targetPath = getRedirectPath(profile.user_type)
             console.log('[AuthProvider] Setting redirect after auth:', { targetPath, currentPath: pathname })
             if (pathname !== targetPath) {
-              window.location.assign(targetPath)
+              pendingRedirectRef.current = targetPath
             }
           }
 
@@ -194,7 +192,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('[AuthProvider] Error in auth state change flow:', error)
           if (mountedRef.current) {
             updateAuthState({ ...defaultAuthState, isLoading: false })
-            window.location.assign('/login')
+            router.push('/login')
           }
         }
       }
@@ -203,10 +201,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mountedRef.current) {
         await supabase.auth.signOut()
         updateAuthState({ ...defaultAuthState, isLoading: false })
-        window.location.assign('/login')
+        router.push('/login')
       }
     }
-  }, [updateAuthState, fetchProfile, pathname])
+  }, [updateAuthState, fetchProfile, pathname, router])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth effect')
