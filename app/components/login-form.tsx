@@ -7,8 +7,7 @@ import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useState, useEffect } from 'react'
-import { supabase } from '@/lib/supabase'
+import { useState } from 'react'
 
 interface LoginFormData {
   email: string
@@ -65,13 +64,11 @@ const signUpValidationRules = {
 console.log('Login form component loaded')
 
 export function LoginForm() {
-  const router = useRouter()
   const auth = useAuth()
   const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false)
   const [hasAttemptedSignup, setHasAttemptedSignup] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
-  const [isRedirecting, setIsRedirecting] = useState(false)
   
   console.log('Auth state:', {
     isLoggedIn: auth.isLoggedIn,
@@ -79,27 +76,6 @@ export function LoginForm() {
     isLoading: auth.isLoading,
     profile: auth.profile
   })
-
-  useEffect(() => {
-    if (!isRedirecting && auth.isLoggedIn && auth.profile) {
-      setIsRedirecting(true)
-      console.log('Login form redirecting based on profile:', auth.profile)
-      
-      switch (auth.profile.user_type) {
-        case 'super_admin':
-          router.push('/super-admin-dashboard')
-          break
-        case 'admin':
-          router.push('/admin-dashboard')
-          break
-        case 'driver':
-          router.push('/driver-dashboard')
-          break
-        default:
-          router.push('/dashboard')
-      }
-    }
-  }, [auth.isLoggedIn, auth.profile, router, isRedirecting])
 
   const { 
     values: loginValues,
@@ -118,9 +94,7 @@ export function LoginForm() {
       try {
         const { error } = await auth.login(values.email, values.password)
         if (error) throw error
-
-        // Let the useEffect handle redirection after profile is loaded
-        console.log('Login successful, waiting for profile load')
+        console.log('Login successful')
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')

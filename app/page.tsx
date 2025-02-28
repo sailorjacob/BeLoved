@@ -1,7 +1,5 @@
 "use client"
 
-import { useEffect } from "react"
-import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { useAuth } from "./contexts/auth-context"
 import { LoginForm } from "./components/login-form"
@@ -11,17 +9,6 @@ import { ClientLayout } from "@/app/components/client-layout"
 
 export default function Home() {
   const { user, profile } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    if (profile?.user_type === "super_admin") {
-      router.push("/super-admin-dashboard")
-    } else if (profile?.user_type === "admin") {
-      router.push("/admin-dashboard")
-    } else if (profile?.user_type === "driver") {
-      router.push("/driver-dashboard")
-    }
-  }, [profile, router])
 
   return (
     <ClientLayout>

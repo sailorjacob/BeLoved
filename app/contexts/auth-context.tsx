@@ -5,7 +5,7 @@ import { createContext, useContext, useState, useEffect, useRef } from "react"
 import { supabase } from "@/lib/supabase"
 import type { User } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -58,39 +58,96 @@ const AuthContext = createContext<AuthContextType>({
   updateProfile: async () => ({ error: new Error('Not implemented') })
 })
 
+const publicPaths = ['/login', '/auth/callback', '/']
+
+function getRedirectPath(userType: string): string {
+  switch (userType) {
+    case 'super_admin':
+      return '/super-admin-dashboard'
+    case 'admin':
+      return '/admin-dashboard'
+    case 'driver':
+      return '/driver-dashboard'
+    case 'member':
+      return '/dashboard'
+    default:
+      return '/dashboard'
+  }
+}
+
 console.log('Auth context file loaded')
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   console.log('AuthProvider rendering')
   
   const router = useRouter()
+  const pathname = usePathname()
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
   const [isInitialized, setIsInitialized] = useState(false)
-  const [isMounted, setIsMounted] = useState(true)
+  const [isRedirecting, setIsRedirecting] = useState(false)
   const mountedRef = useRef(true)
+
+  const handleRedirect = async (profile: Profile | null, isLoggedIn: boolean) => {
+    if (isRedirecting) return
+    
+    const currentPath = pathname || '/'
+    console.log('Checking redirect:', { currentPath, isLoggedIn, profile })
+
+    // Handle public paths
+    if (publicPaths.includes(currentPath)) {
+      if (isLoggedIn && profile) {
+        const redirectPath = getRedirectPath(profile.user_type)
+        if (currentPath !== redirectPath) {
+          setIsRedirecting(true)
+          console.log('Redirecting to dashboard:', redirectPath)
+          await router.push(redirectPath)
+          setIsRedirecting(false)
+        }
+      }
+      return
+    }
+
+    // Handle protected paths
+    if (!isLoggedIn) {
+      setIsRedirecting(true)
+      console.log('Redirecting to login')
+      await router.push('/login')
+      setIsRedirecting(false)
+      return
+    }
+
+    // Ensure user is on correct dashboard
+    if (profile) {
+      const correctPath = getRedirectPath(profile.user_type)
+      if (currentPath !== correctPath) {
+        setIsRedirecting(true)
+        console.log('Redirecting to correct dashboard:', correctPath)
+        await router.push(correctPath)
+        setIsRedirecting(false)
+      }
+    }
+  }
 
   useEffect(() => {
     console.log('Setting up auth effect')
     mountedRef.current = true
-    setIsMounted(true)
 
     const initializeAuth = async () => {
       try {
         console.log('Initializing auth...')
         const { data: { session } } = await supabase.auth.getSession()
         
-        if (!mountedRef.current) {
-          console.log('Component unmounted during initialization')
-          return
-        }
+        if (!mountedRef.current) return
 
         if (!session?.user) {
           console.log('No session found')
-          setAuthState({
+          const newState = {
             ...defaultAuthState,
             isLoading: false
-          })
+          }
+          setAuthState(newState)
           setIsInitialized(true)
+          handleRedirect(null, false)
           return
         }
 
@@ -101,24 +158,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', session.user.id)
           .single()
 
-        if (!mountedRef.current) {
-          console.log('Component unmounted during profile fetch')
-          return
-        }
+        if (!mountedRef.current) return
 
         if (profileError || !profile) {
           console.error('Profile fetch error:', profileError)
           await supabase.auth.signOut()
-          setAuthState({
+          const newState = {
             ...defaultAuthState,
             isLoading: false
-          })
+          }
+          setAuthState(newState)
           setIsInitialized(true)
+          handleRedirect(null, false)
           return
         }
 
         console.log('Profile found:', { user_type: profile.user_type, id: profile.id })
-        setAuthState({
+        const newState = {
           user: session.user,
           profile,
           isLoggedIn: true,
@@ -126,16 +182,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAdmin: profile.user_type === 'admin',
           isSuperAdmin: profile.user_type === 'super_admin',
           isLoading: false
-        })
+        }
+        setAuthState(newState)
         setIsInitialized(true)
+        handleRedirect(profile, true)
       } catch (error) {
         console.error('Auth initialization error:', error)
         if (mountedRef.current) {
-          setAuthState({
+          const newState = {
             ...defaultAuthState,
             isLoading: false
-          })
+          }
+          setAuthState(newState)
           setIsInitialized(true)
+          handleRedirect(null, false)
         }
       }
     }
@@ -143,28 +203,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth()
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (!mountedRef.current) {
-        console.log('Auth state change ignored - component unmounted')
-        return
-      }
+      if (!mountedRef.current) return
 
       console.log('Auth state change:', event, session?.user?.id)
       
       if (event === 'SIGNED_OUT') {
-        setAuthState({
+        const newState = {
           ...defaultAuthState,
           isLoading: false
-        })
+        }
+        setAuthState(newState)
+        handleRedirect(null, false)
         return
       }
 
       try {
         if (!session?.user) {
           console.log('No session in auth state change')
-          setAuthState({
+          const newState = {
             ...defaultAuthState,
             isLoading: false
-          })
+          }
+          setAuthState(newState)
+          handleRedirect(null, false)
           return
         }
 
@@ -175,23 +236,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .eq('id', session.user.id)
           .single()
 
-        if (!mountedRef.current) {
-          console.log('Component unmounted during profile fetch in auth state change')
-          return
-        }
+        if (!mountedRef.current) return
 
         if (profileError || !profile) {
           console.error('Profile fetch error on auth change:', profileError)
           await supabase.auth.signOut()
-          setAuthState({
+          const newState = {
             ...defaultAuthState,
             isLoading: false
-          })
+          }
+          setAuthState(newState)
+          handleRedirect(null, false)
           return
         }
 
         console.log('Setting auth state with profile:', { user_type: profile.user_type, id: profile.id })
-        setAuthState({
+        const newState = {
           user: session.user,
           profile,
           isLoggedIn: true,
@@ -199,14 +259,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isAdmin: profile.user_type === 'admin',
           isSuperAdmin: profile.user_type === 'super_admin',
           isLoading: false
-        })
+        }
+        setAuthState(newState)
+        handleRedirect(profile, true)
       } catch (error) {
         console.error('Error handling auth state change:', error)
         if (mountedRef.current) {
-          setAuthState({
+          const newState = {
             ...defaultAuthState,
             isLoading: false
-          })
+          }
+          setAuthState(newState)
+          handleRedirect(null, false)
         }
       }
     })
@@ -214,13 +278,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return () => {
       console.log('Cleaning up auth provider')
       mountedRef.current = false
-      setIsMounted(false)
       subscription.unsubscribe()
     }
-  }, [])
+  }, [router, pathname])
 
   // Don't render children until auth is initialized
-  if (!isInitialized) {
+  if (!isInitialized || isRedirecting) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
@@ -290,8 +353,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.signOut()
     if (error) {
       console.error('Error signing out:', error)
-    } else {
-      router.push('/login')
     }
   }
 
