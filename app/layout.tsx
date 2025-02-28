@@ -16,8 +16,19 @@ export default function RootLayout({
 }: {
   children: ReactNode
 }) {
+  // Development-only CSP meta tag
+  const devCsp = process.env.NODE_ENV === 'development' ? (
+    <meta
+      httpEquiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; style-src 'self' 'unsafe-inline';"
+    />
+  ) : null;
+
   return (
     <html lang="en">
+      <head>
+        {devCsp}
+      </head>
       <body className={inter.className}>
         <ClientLayout>{children}</ClientLayout>
       </body>
