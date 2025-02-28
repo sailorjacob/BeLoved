@@ -52,9 +52,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [state, setState] = useState<AuthState>(defaultAuthState)
-  const isInitialMount = useRef(true)
   const isRedirecting = useRef(false)
   const lastAuthEvent = useRef<string | null>(null)
+  const hasInitialized = useRef(false)
 
   const updateAuthState = useCallback(async () => {
     try {
@@ -87,7 +87,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Handle redirects based on auth state
   useEffect(() => {
-    if (state.isLoading || isRedirecting.current) {
+    if (state.isLoading || !hasInitialized.current || isRedirecting.current) {
       return
     }
 
@@ -100,7 +100,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[AuthProvider] Auth state for redirect:', {
           isLoggedIn: state.isLoggedIn,
           role: state.role,
-          lastAuthEvent: lastAuthEvent.current
+          lastAuthEvent: lastAuthEvent.current,
+          hasInitialized: hasInitialized.current
         })
 
         if (state.isLoggedIn && state.role) {
@@ -123,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // Small delay to ensure auth state is stable
-    const timeoutId = setTimeout(handleRedirect, 100)
+    const timeoutId = setTimeout(handleRedirect, 500)
     return () => clearTimeout(timeoutId)
   }, [state.isLoggedIn, state.role, pathname, router])
 
@@ -134,6 +135,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const setup = async () => {
       if (mounted) {
         await updateAuthState()
+        hasInitialized.current = true
       }
     }
 

@@ -18,7 +18,8 @@ class AuthService {
   private static instance: AuthService
   private sessionPromise: Promise<AuthUser> | null = null
   private lastSessionCheck: number = 0
-  private sessionCacheTimeout: number = 1000 // 1 second cache
+  private sessionCacheTimeout: number = 2000 // 2 second cache
+  private cachedAuthUser: AuthUser | null = null
   
   private constructor() {}
 
@@ -32,9 +33,9 @@ class AuthService {
   async getSession() {
     try {
       const now = Date.now()
-      if (this.sessionPromise && (now - this.lastSessionCheck) < this.sessionCacheTimeout) {
-        console.log('[AuthService] Using cached session promise')
-        return (await this.sessionPromise).session
+      if (this.cachedAuthUser && (now - this.lastSessionCheck) < this.sessionCacheTimeout) {
+        console.log('[AuthService] Using cached session')
+        return this.cachedAuthUser.session
       }
 
       const { data: { session }, error } = await supabase.auth.getSession()
@@ -67,9 +68,15 @@ class AuthService {
   async getCurrentUser(): Promise<AuthUser> {
     const now = Date.now()
     
-    // Return cached promise if it exists and is recent
-    if (this.sessionPromise && (now - this.lastSessionCheck) < this.sessionCacheTimeout) {
+    // Return cached user if it exists and is recent
+    if (this.cachedAuthUser && (now - this.lastSessionCheck) < this.sessionCacheTimeout) {
       console.log('[AuthService] Using cached auth user')
+      return this.cachedAuthUser
+    }
+
+    // If there's a promise in flight, wait for it
+    if (this.sessionPromise) {
+      console.log('[AuthService] Using existing session promise')
       return this.sessionPromise
     }
 
@@ -81,13 +88,15 @@ class AuthService {
         
         if (!session?.user) {
           console.log('[AuthService] No session user')
-          return {
+          const noUser = {
             user: null,
             session: null,
             profile: null,
             isLoggedIn: false,
             role: null
           }
+          this.cachedAuthUser = noUser
+          return noUser
         }
 
         const profile = await this.getProfile(session.user.id)
@@ -102,16 +111,21 @@ class AuthService {
         }
         
         console.log('[AuthService] Returning auth user:', authUser)
+        this.cachedAuthUser = authUser
         return authUser
       } catch (error) {
         console.error('[AuthService] Error getting current user:', error)
-        return {
+        const errorUser = {
           user: null,
           session: null,
           profile: null,
           isLoggedIn: false,
           role: null
         }
+        this.cachedAuthUser = errorUser
+        return errorUser
+      } finally {
+        this.sessionPromise = null
       }
     })()
 
@@ -141,6 +155,11 @@ class AuthService {
         password
       })
       if (error) throw error
+      
+      // Clear cache on login
+      this.cachedAuthUser = null
+      this.sessionPromise = null
+      this.lastSessionCheck = 0
       
       console.log('[AuthService] Login successful:', data)
       return data
@@ -195,6 +214,11 @@ class AuthService {
     try {
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      
+      // Clear cache on logout
+      this.cachedAuthUser = null
+      this.sessionPromise = null
+      this.lastSessionCheck = 0
     } catch (error) {
       console.error('[AuthService] Logout error:', error)
       throw error
