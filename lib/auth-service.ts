@@ -17,34 +17,83 @@ export interface AuthUser {
 class AuthService {
   private static instance: AuthService
   private sessionPromise: Promise<AuthUser> | null = null
+  private initialized: boolean = false
+  private initPromise: Promise<void> | null = null
   
   private constructor() {
-    // Listen for auth state changes
-    supabase.auth.onAuthStateChange((event, session) => {
-      console.log('[AuthService] Auth state change event:', event)
-      this.sessionPromise = null
-      
-      // Handle token refresh errors
-      if (event === 'TOKEN_REFRESHED' || event === 'SIGNED_OUT') {
+    this.initAuth()
+  }
+
+  private async initAuth() {
+    if (this.initialized || this.initPromise) {
+      return this.initPromise
+    }
+
+    this.initPromise = (async () => {
+      try {
+        // Set up auth state change listener
+        const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+          console.log('[AuthService] Auth state change event:', event)
+          
+          if (event === 'SIGNED_OUT') {
+            this.clearSession()
+          } else if (event === 'TOKEN_REFRESHED') {
+            this.sessionPromise = null
+          }
+        })
+
+        // Initial session check
+        const session = await this.recoverSession()
+        if (!session) {
+          this.clearSession()
+        }
+
+        this.initialized = true
+      } catch (error) {
+        console.error('[AuthService] Error initializing auth:', error)
         this.clearSession()
+      } finally {
+        this.initPromise = null
       }
-    })
+    })()
+
+    return this.initPromise
   }
 
   private clearSession() {
     this.sessionPromise = null
-    localStorage.removeItem('supabase.auth.token')
-    localStorage.removeItem('supabase.auth.refreshToken')
+    try {
+      localStorage.removeItem('supabase.auth.token')
+      localStorage.removeItem('supabase.auth.refreshToken')
+    } catch (error) {
+      console.error('[AuthService] Error clearing session:', error)
+    }
   }
 
   private async recoverSession(): Promise<Session | null> {
     try {
       const { data: { session }, error } = await supabase.auth.getSession()
+      
       if (error) {
         console.error('[AuthService] Error recovering session:', error)
         this.clearSession()
         return null
       }
+
+      if (!session) {
+        console.log('[AuthService] No session found during recovery')
+        this.clearSession()
+        return null
+      }
+
+      // Verify the session is still valid
+      const { data: { user }, error: userError } = await supabase.auth.getUser()
+      if (userError || !user) {
+        console.error('[AuthService] Session invalid:', userError)
+        this.clearSession()
+        return null
+      }
+
       return session
     } catch (error) {
       console.error('[AuthService] Error recovering session:', error)
@@ -90,6 +139,9 @@ class AuthService {
   }
 
   async getCurrentUser(): Promise<AuthUser> {
+    // Ensure auth is initialized
+    await this.initAuth()
+
     // If there's a promise in flight, wait for it
     if (this.sessionPromise) {
       return this.sessionPromise
@@ -151,15 +203,16 @@ class AuthService {
 
   async login(email: string, password: string) {
     try {
+      // Clear any existing session before login attempt
+      this.clearSession()
+      
       console.log('[AuthService] Attempting login for:', email)
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password
       })
-      if (error) throw error
       
-      // Clear any existing session data before setting new session
-      this.clearSession()
+      if (error) throw error
       console.log('[AuthService] Login successful:', data)
       return data
     } catch (error) {
