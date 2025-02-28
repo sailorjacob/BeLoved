@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const mountedRef = useRef(true)
   const redirectInProgressRef = useRef(false)
   const lastRedirectPathRef = useRef<string | null>(null)
+  const pendingRedirectRef = useRef<string | null>(null)
   const initializationInProgressRef = useRef(false)
   const initializationTimeoutRef = useRef<NodeJS.Timeout>()
 
@@ -99,6 +100,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.isLoading]) // Add state.isLoading as dependency
 
+  // Handle pending redirects
+  useEffect(() => {
+    if (pendingRedirectRef.current && !redirectInProgressRef.current) {
+      const targetPath = pendingRedirectRef.current
+      console.log('[AuthProvider] Processing pending redirect to:', targetPath)
+      redirectInProgressRef.current = true
+      window.location.href = targetPath
+      pendingRedirectRef.current = null
+    }
+  }, [state.isLoading])
+
   const handleRedirect = useCallback(async (profile: Profile | null, isLoggedIn: boolean) => {
     if (!mountedRef.current || redirectInProgressRef.current) return
 
@@ -109,21 +121,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (isLoggedIn && profile && (currentPath === '/login' || currentPath === '/')) {
       const targetPath = getRedirectPath(profile.user_type)
       if (targetPath !== currentPath && targetPath !== lastRedirectPathRef.current) {
-        console.log('[AuthProvider] Redirecting to:', targetPath)
-        redirectInProgressRef.current = true
+        console.log('[AuthProvider] Setting pending redirect to:', targetPath)
+        pendingRedirectRef.current = targetPath
         lastRedirectPathRef.current = targetPath
-        try {
-          await router.replace(targetPath)
-        } catch (error) {
-          console.error('[AuthProvider] Redirect error:', error)
-        } finally {
-          redirectInProgressRef.current = false
-        }
       }
     } else {
       console.log('[AuthProvider] No redirect needed')
     }
-  }, [pathname, router])
+  }, [pathname])
 
   const fetchProfile = useCallback(async (userId: string) => {
     let retries = 3
@@ -172,7 +177,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           isLoading: false
         })
         if (mountedRef.current) {
-          handleRedirect(null, false)
+          window.location.href = '/login'
         }
         return
       }
@@ -191,7 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             console.error('[AuthProvider] No profile found for user')
             await supabase.auth.signOut()
             updateAuthState({ ...defaultAuthState, isLoading: false })
-            handleRedirect(null, false)
+            window.location.href = '/login'
             return
           }
 
@@ -211,8 +216,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Force redirect on SIGNED_IN event
           if (event === 'SIGNED_IN') {
             const targetPath = getRedirectPath(profile.user_type)
-            console.log('[AuthProvider] Forcing redirect after sign in:', targetPath)
-            router.replace(targetPath)
+            console.log('[AuthProvider] Setting pending redirect after sign in:', targetPath)
+            pendingRedirectRef.current = targetPath
           } else {
             handleRedirect(profile, true)
           }
@@ -220,7 +225,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           console.error('[AuthProvider] Error in auth state change flow:', error)
           if (mountedRef.current) {
             updateAuthState({ ...defaultAuthState, isLoading: false })
-            handleRedirect(null, false)
+            window.location.href = '/login'
           }
         }
       }
@@ -229,10 +234,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (mountedRef.current) {
         await supabase.auth.signOut()
         updateAuthState({ ...defaultAuthState, isLoading: false })
-        handleRedirect(null, false)
+        window.location.href = '/login'
       }
     }
-  }, [updateAuthState, handleRedirect, fetchProfile, router])
+  }, [updateAuthState, handleRedirect, fetchProfile])
 
   useEffect(() => {
     console.log('[AuthProvider] Setting up auth effect')
@@ -383,7 +388,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return { error: error as Error }
       }
     }
-  }), [state, fetchProfile, router])
+  }), [state, fetchProfile])
 
   if (state.isLoading) {
     console.log('[AuthProvider] Showing loading state')
