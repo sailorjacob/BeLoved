@@ -23,59 +23,81 @@ const getSecurityHeaders = () => ({
 })
 
 export async function middleware(request: NextRequest) {
-  // Skip middleware completely in development
-  if (process.env.NODE_ENV === 'development') {
-    return NextResponse.next()
-  }
-
+  // Create response and supabase client
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req: request, res })
-  const { data: { session } } = await supabase.auth.getSession()
   const pathname = request.nextUrl.pathname
 
-  // Apply security headers in production
-  if (process.env.NODE_ENV === 'production') {
-    const securityHeaders = getSecurityHeaders()
-    Object.entries(securityHeaders).forEach(([key, value]) => {
-      res.headers.set(key, value)
-    })
-  }
+  console.log('[Middleware] Processing request:', pathname)
 
-  // Skip auth check for public routes
-  if (publicPaths.includes(pathname)) {
+  // Skip middleware completely in development
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[Middleware] Skipping in development')
     return res
   }
 
-  // For non-public routes, check session
-  if (!session) {
+  try {
+    // Apply security headers in production
+    if (process.env.NODE_ENV === 'production') {
+      const securityHeaders = getSecurityHeaders()
+      Object.entries(securityHeaders).forEach(([key, value]) => {
+        res.headers.set(key, value)
+      })
+    }
+
+    // Skip auth check for public routes
+    if (publicPaths.includes(pathname)) {
+      console.log('[Middleware] Public path, skipping auth check:', pathname)
+      return res
+    }
+
+    // Get session
+    const { data: { session } } = await supabase.auth.getSession()
+    
+    console.log('[Middleware] Session check:', session ? 'Found' : 'Not found')
+
+    // For non-public routes, check session
+    if (!session) {
+      console.log('[Middleware] No session, redirecting to login')
+      return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // Get user profile to check role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('id', session.user.id)
+      .single()
+
+    console.log('[Middleware] User profile:', profile)
+
+    // Role-based access control
+    if (profile?.user_type === 'member' && pathname.includes('/admin')) {
+      console.log('[Middleware] Member accessing admin route, redirecting')
+      return NextResponse.redirect(new URL('/dashboard', request.url))
+    }
+
+    if (profile?.user_type === 'driver' && !pathname.includes('/driver')) {
+      console.log('[Middleware] Driver accessing non-driver route, redirecting')
+      return NextResponse.redirect(new URL('/driver-dashboard', request.url))
+    }
+
+    if (profile?.user_type === 'admin' && pathname.includes('/super-admin')) {
+      console.log('[Middleware] Admin accessing super-admin route, redirecting')
+      return NextResponse.redirect(new URL('/admin-dashboard', request.url))
+    }
+
+    if (profile?.user_type === 'super_admin' && pathname === '/dashboard') {
+      console.log('[Middleware] Super admin accessing member dashboard, redirecting')
+      return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
+    }
+
+    return res
+  } catch (error) {
+    console.error('[Middleware] Error:', error)
+    // On error, redirect to login
     return NextResponse.redirect(new URL('/login', request.url))
   }
-
-  // Get user profile to check role
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('user_type')
-    .eq('id', session.user.id)
-    .single()
-
-  // Role-based access control
-  if (profile?.user_type === 'member' && pathname.includes('/admin')) {
-    return NextResponse.redirect(new URL('/dashboard', request.url))
-  }
-
-  if (profile?.user_type === 'driver' && !pathname.includes('/driver')) {
-    return NextResponse.redirect(new URL('/driver-dashboard', request.url))
-  }
-
-  if (profile?.user_type === 'admin' && pathname.includes('/super-admin')) {
-    return NextResponse.redirect(new URL('/admin-dashboard', request.url))
-  }
-
-  if (profile?.user_type === 'super_admin' && pathname === '/dashboard') {
-    return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
-  }
-
-  return res
 }
 
 export const config = {
