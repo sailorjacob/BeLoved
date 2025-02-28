@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/auth-context'
 
@@ -11,113 +11,58 @@ interface LayoutProps {
 
 export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/'] }: LayoutProps) {
   const router = useRouter()
-  const { isLoggedIn, isLoading, user, profile } = useAuth()
+  const { isLoggedIn, isLoading, profile } = useAuth()
   const [isRedirecting, setIsRedirecting] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
-  const mountedRef = useRef(true)
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
-    setIsMounted(true)
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      setIsMounted(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    if (!isMounted || !mountedRef.current) return
-
     const handleAuth = async () => {
-      if (!isLoading && !isRedirecting) {
-        const pathname = window.location.pathname
-        console.log('Layout checking path:', pathname, { isLoggedIn, profile })
+      if (isLoading) return
 
-        // Allow access to public paths
-        if (publicPaths.includes(pathname)) {
-          // If logged in on a public path, redirect to appropriate dashboard
-          if (isLoggedIn && profile && mountedRef.current) {
-            setIsRedirecting(true)
-            console.log('Layout: redirecting logged in user from public path')
-            switch (profile.user_type) {
-              case 'super_admin':
-                await router.push('/super-admin-dashboard')
-                break
-              case 'admin':
-                await router.push('/admin-dashboard')
-                break
-              case 'driver':
-                await router.push('/driver-dashboard')
-                break
-              case 'member':
-                await router.push('/dashboard')
-                break
-            }
+      const pathname = window.location.pathname
+      console.log('Layout checking path:', pathname, { isLoggedIn, profile })
+
+      // If we're on a public path
+      if (publicPaths.includes(pathname)) {
+        // Only redirect if logged in with a profile
+        if (isLoggedIn && profile) {
+          setIsRedirecting(true)
+          const redirectPath = getRedirectPath(profile.user_type)
+          if (pathname !== redirectPath) {
+            console.log('Layout: redirecting to dashboard:', redirectPath)
+            await router.push(redirectPath)
           }
-          return
         }
-
-        // Redirect to login if not logged in
-        if (!isLoggedIn && mountedRef.current) {
+      } else {
+        // Non-public path
+        if (!isLoggedIn) {
           setIsRedirecting(true)
           console.log('Layout: redirecting to login')
           await router.push('/login')
           return
         }
 
-        // Redirect based on user type if on incorrect dashboard
-        if (profile && mountedRef.current) {
-          const isOnAdminPath = pathname.includes('admin')
-          const isOnDriverPath = pathname.includes('driver')
-          const isOnSuperAdminPath = pathname.includes('super-admin')
-          const isOnMemberPath = pathname === '/dashboard'
-
-          let shouldRedirect = false
-          let redirectPath = ''
-
-          switch (profile.user_type) {
-            case 'super_admin':
-              if (!isOnSuperAdminPath) {
-                shouldRedirect = true
-                redirectPath = '/super-admin-dashboard'
-              }
-              break
-            case 'admin':
-              if (isOnSuperAdminPath || !isOnAdminPath) {
-                shouldRedirect = true
-                redirectPath = '/admin-dashboard'
-              }
-              break
-            case 'driver':
-              if (!isOnDriverPath) {
-                shouldRedirect = true
-                redirectPath = '/driver-dashboard'
-              }
-              break
-            case 'member':
-              if (!isOnMemberPath) {
-                shouldRedirect = true
-                redirectPath = '/dashboard'
-              }
-              break
-          }
-
-          if (shouldRedirect && mountedRef.current) {
-            console.log('Layout: redirecting to:', redirectPath)
+        // Check if user is on the correct dashboard
+        if (profile) {
+          const correctPath = getRedirectPath(profile.user_type)
+          if (pathname !== correctPath) {
             setIsRedirecting(true)
-            await router.push(redirectPath)
+            console.log('Layout: redirecting to correct dashboard:', correctPath)
+            await router.push(correctPath)
+            return
           }
         }
       }
+
+      setHasCheckedAuth(true)
+      setIsRedirecting(false)
     }
 
     handleAuth()
-  }, [isLoading, isLoggedIn, profile, router, publicPaths, isRedirecting, isMounted])
+  }, [isLoading, isLoggedIn, profile, router, publicPaths])
 
-  if (!isMounted) return null
-
-  // Only show loading state when checking auth
-  if (isLoading || isRedirecting) {
+  // Only show loading on initial auth check or during redirects
+  if (!hasCheckedAuth || isRedirecting) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
@@ -126,4 +71,19 @@ export function Layout({ children, publicPaths = ['/login', '/auth/callback', '/
   }
 
   return <>{children}</>
+}
+
+function getRedirectPath(userType: string): string {
+  switch (userType) {
+    case 'super_admin':
+      return '/super-admin-dashboard'
+    case 'admin':
+      return '/admin-dashboard'
+    case 'driver':
+      return '/driver-dashboard'
+    case 'member':
+      return '/dashboard'
+    default:
+      return '/dashboard'
+  }
 } 
