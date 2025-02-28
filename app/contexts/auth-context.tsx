@@ -64,6 +64,8 @@ function getRedirectPath(userType: string): string {
 console.log('Auth context file loaded')
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  console.log('[AuthProvider] Rendering')
+  
   const router = useRouter()
   const pathname = usePathname()
   const [state, setState] = useState<AuthState>(defaultAuthState)
@@ -74,6 +76,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateAuthState = useCallback((updates: Partial<AuthState>) => {
     if (!mountedRef.current) return
+    console.log('[AuthProvider] Updating state:', updates)
     setState(prev => ({ ...prev, ...updates }))
   }, [])
 
@@ -81,6 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!mountedRef.current || redirectInProgressRef.current) return
 
     const currentPath = pathname || '/'
+    console.log('[AuthProvider] Checking redirect:', { currentPath, isLoggedIn, userType: profile?.user_type })
+    
     let targetPath: string | null = null
 
     // Determine target path
@@ -99,15 +104,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Only redirect if necessary and not to the same path
     if (targetPath && targetPath !== currentPath && targetPath !== lastRedirectPathRef.current) {
+      console.log('[AuthProvider] Redirecting to:', targetPath)
       redirectInProgressRef.current = true
       lastRedirectPathRef.current = targetPath
       try {
         await router.replace(targetPath)
       } catch (error) {
-        console.error('Redirect error:', error)
+        console.error('[AuthProvider] Redirect error:', error)
       } finally {
         redirectInProgressRef.current = false
       }
+    } else {
+      console.log('[AuthProvider] No redirect needed')
     }
   }, [pathname, router])
 
@@ -207,63 +215,90 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [updateAuthState, handleRedirect, fetchProfile])
 
   useEffect(() => {
+    console.log('[AuthProvider] Setting up auth effect')
     mountedRef.current = true
 
     const initializeAuth = async () => {
-      if (initializationInProgressRef.current) return
+      console.log('[AuthProvider] Starting auth initialization')
+      if (initializationInProgressRef.current) {
+        console.log('[AuthProvider] Initialization already in progress')
+        return
+      }
       initializationInProgressRef.current = true
 
       try {
+        console.log('[AuthProvider] Getting session')
         const { data: { session }, error } = await supabase.auth.getSession()
+        console.log('[AuthProvider] Session result:', { hasSession: !!session, hasError: !!error })
         
         if (error) {
-          console.error('Session initialization error:', error)
+          console.error('[AuthProvider] Session initialization error:', error)
           updateAuthState({ ...defaultAuthState, isLoading: false })
           return
         }
 
-        if (!mountedRef.current) return
+        if (!mountedRef.current) {
+          console.log('[AuthProvider] Component unmounted during initialization')
+          return
+        }
 
         await handleAuthStateChange('INITIAL_SESSION', session)
       } catch (error) {
-        console.error('Auth initialization error:', error)
+        console.error('[AuthProvider] Auth initialization error:', error)
         if (mountedRef.current) {
           updateAuthState({ ...defaultAuthState, isLoading: false })
         }
       } finally {
+        console.log('[AuthProvider] Initialization complete')
         initializationInProgressRef.current = false
       }
     }
 
     initializeAuth()
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(handleAuthStateChange)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('[AuthProvider] Auth state change:', event)
+      handleAuthStateChange(event, session)
+    })
 
     return () => {
+      console.log('[AuthProvider] Cleaning up')
       mountedRef.current = false
       subscription?.unsubscribe()
     }
   }, [handleAuthStateChange])
 
+  // Log state changes
+  useEffect(() => {
+    console.log('[AuthProvider] Current state:', state)
+  }, [state])
+
   const contextValue = useMemo(() => ({
     ...state,
     login: async (email: string, password: string) => {
+      console.log('[AuthProvider] Login attempt')
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        console.log('[AuthProvider] Login result:', { success: !error })
         return { error, data }
       } catch (error) {
+        console.error('[AuthProvider] Login error:', error)
         return { error: error as Error }
       }
     },
     signIn: async (email: string, password: string) => {
+      console.log('[AuthProvider] SignIn attempt')
       try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+        console.log('[AuthProvider] SignIn result:', { success: !error })
         return { error, data }
       } catch (error) {
+        console.error('[AuthProvider] SignIn error:', error)
         return { error: error as Error }
       }
     },
     signUp: async (email: string, password: string, userData?: { full_name?: string, phone?: string }) => {
+      console.log('[AuthProvider] SignUp attempt')
       try {
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -275,28 +310,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }
           }
         })
+        console.log('[AuthProvider] SignUp result:', { success: !error })
         return { error, data }
       } catch (error) {
+        console.error('[AuthProvider] SignUp error:', error)
         return { error: error as Error }
       }
     },
     logout: async () => {
+      console.log('[AuthProvider] Logout attempt')
       await supabase.auth.signOut()
     },
     updateProfile: async (data: Partial<Profile>) => {
+      console.log('[AuthProvider] Profile update attempt')
       try {
         const { error } = await supabase
           .from('profiles')
           .update(data)
           .eq('id', state.user?.id)
+        console.log('[AuthProvider] Profile update result:', { success: !error })
         return { error }
       } catch (error) {
+        console.error('[AuthProvider] Profile update error:', error)
         return { error: error as Error }
       }
     }
   }), [state])
 
   if (state.isLoading) {
+    console.log('[AuthProvider] Showing loading state')
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
