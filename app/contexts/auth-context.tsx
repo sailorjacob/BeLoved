@@ -115,27 +115,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Handle pending redirects
   useEffect(() => {
-    const handleRedirect = async () => {
-      if (!pendingRedirectRef.current || redirectInProgressRef.current || state.isLoading) return
+    if (!pendingRedirectRef.current || redirectInProgressRef.current || state.isLoading) return
+    if (!authCheckCompletedRef.current) return
 
-      const targetPath = pendingRedirectRef.current
-      console.log('[AuthProvider] Processing pending redirect to:', targetPath)
-      redirectInProgressRef.current = true
-      
-      try {
-        await router.replace(targetPath)
-        pendingRedirectRef.current = null
-      } catch (error) {
-        console.error('[AuthProvider] Redirect error:', error)
-      } finally {
-        redirectInProgressRef.current = false
-      }
-    }
-
-    if (authCheckCompletedRef.current) {
-      handleRedirect()
-    }
-  }, [state.isLoading, router, authCheckCompletedRef.current])
+    const targetPath = pendingRedirectRef.current
+    console.log('[AuthProvider] Processing pending redirect to:', targetPath)
+    
+    // Use window.location.href for more reliable redirect
+    window.location.href = targetPath
+    pendingRedirectRef.current = null
+    redirectInProgressRef.current = true
+  }, [state.isLoading])
 
   const handleAuthStateChange = useCallback(async (event: string, session: any) => {
     if (!mountedRef.current) return

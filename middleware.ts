@@ -5,6 +5,11 @@ import type { NextRequest } from 'next/server'
 const publicPaths = ['/', '/login', '/auth/callback']
 
 export async function middleware(request: NextRequest) {
+  // Skip middleware completely in development
+  if (process.env.NODE_ENV === 'development') {
+    return NextResponse.next()
+  }
+
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req: request, res })
   const { data: { session } } = await supabase.auth.getSession()
@@ -44,50 +49,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(new URL('/super-admin-dashboard', request.url))
   }
 
-  // Set up CSP
-  const nonce = Buffer.from(crypto.randomUUID()).toString('base64')
-  const isDevelopment = process.env.NODE_ENV === 'development'
-
-  // In development, use a more permissive CSP
-  const cspHeader = isDevelopment 
-    ? `
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval';
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' blob: data:;
-      font-src 'self';
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      upgrade-insecure-requests;
-    `.replace(/\s{2,}/g, ' ').trim()
-    : `
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'nonce-${nonce}' 'strict-dynamic';
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' blob: data:;
-      font-src 'self';
-      object-src 'none';
-      base-uri 'self';
-      form-action 'self';
-      frame-ancestors 'none';
-      block-all-mixed-content;
-      upgrade-insecure-requests;
-    `.replace(/\s{2,}/g, ' ').trim()
-
-  const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-nonce', nonce)
-  requestHeaders.set('Content-Security-Policy', cspHeader)
-
-  const response = NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  })
-
-  response.headers.set('Content-Security-Policy', cspHeader)
-
-  return response
+  return res
 }
 
 export const config = {
