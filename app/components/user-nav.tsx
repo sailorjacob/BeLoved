@@ -23,55 +23,75 @@ export function UserNav() {
       case 'super_admin':
         return (
           <>
-            <DropdownMenuItem onClick={() => window.location.href = '/super-admin-dashboard'}>
-              Super Admin Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
-              Profile
-            </DropdownMenuItem>
+            <a href="/super-admin-dashboard">
+              <DropdownMenuItem>
+                Super Admin Dashboard
+              </DropdownMenuItem>
+            </a>
+            <a href="/profile">
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </a>
           </>
         )
       case 'admin':
         return (
           <>
-            <DropdownMenuItem onClick={() => window.location.href = '/admin-dashboard'}>
-              Admin Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
-              Profile
-            </DropdownMenuItem>
+            <a href="/admin-dashboard">
+              <DropdownMenuItem>
+                Admin Dashboard
+              </DropdownMenuItem>
+            </a>
+            <a href="/profile">
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </a>
           </>
         )
       case 'driver':
         return (
           <>
-            <DropdownMenuItem onClick={() => window.location.href = '/driver-dashboard'}>
-              Driver Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
-              Profile
-            </DropdownMenuItem>
+            <a href="/driver-dashboard">
+              <DropdownMenuItem>
+                Driver Dashboard
+              </DropdownMenuItem>
+            </a>
+            <a href="/profile">
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </a>
           </>
         )
       case 'member':
         return (
           <>
-            <DropdownMenuItem onClick={() => window.location.href = '/schedule-ride'}>
-              Schedule Ride
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = '/my-rides'}>
-              My Rides
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
-              Profile
-            </DropdownMenuItem>
+            <a href="/schedule-ride">
+              <DropdownMenuItem>
+                Schedule Ride
+              </DropdownMenuItem>
+            </a>
+            <a href="/my-rides">
+              <DropdownMenuItem>
+                My Rides
+              </DropdownMenuItem>
+            </a>
+            <a href="/profile">
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </a>
           </>
         )
       default:
         return (
-          <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
-            Profile
-          </DropdownMenuItem>
+          <a href="/profile">
+            <DropdownMenuItem>
+              Profile
+            </DropdownMenuItem>
+          </a>
         )
     }
   }

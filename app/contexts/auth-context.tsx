@@ -60,6 +60,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (publicPaths.includes(pathname)) return true
     if (!role) return false
 
+    // Super admin can access all paths
+    if (role === 'super_admin') return true
+
     // Check if the current path is allowed for the user's role
     const allowedPaths = pathsByRole[role] || []
     return allowedPaths.some(path => pathname.startsWith(path))
@@ -92,10 +95,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             const dashboardPath = getDashboardPath(newState.role)
             console.log('[Auth] Redirecting to dashboard:', dashboardPath)
             router.replace(dashboardPath)
-          } else if (!canAccessCurrentPath(newState.role)) {
-            // If on a path the user can't access, redirect to their dashboard
-            console.log('[Auth] Access denied, redirecting to appropriate dashboard')
-            router.replace(getDashboardPath(newState.role))
           }
         } else if (!publicPaths.includes(pathname || '')) {
           // If not logged in and trying to access a protected path

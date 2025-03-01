@@ -10,6 +10,11 @@ const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved
 export default function SuperAdminDashboardPage() {
   const { isLoggedIn, role, isLoading } = useAuth()
 
+  // If not logged in as super admin, show nothing
+  if (!isLoggedIn || role !== 'super_admin') {
+    return null
+  }
+
   // Show loading state while checking auth
   if (isLoading) {
     return (
@@ -19,7 +24,6 @@ export default function SuperAdminDashboardPage() {
     )
   }
 
-  // Show the dashboard content
   return (
     <main className="container mx-auto p-4 min-h-screen flex flex-col">
       <div className="flex justify-between items-center mb-8">
