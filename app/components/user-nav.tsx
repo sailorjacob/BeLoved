@@ -26,10 +26,10 @@ export function UserNav() {
       case 'super_admin':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.push("/super-admin-dashboard")}>
+            <DropdownMenuItem onClick={() => router.replace("/super-admin-dashboard")}>
               Super Admin Dashboard
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/profile")}>
+            <DropdownMenuItem onClick={() => router.replace("/profile")}>
               Profile
             </DropdownMenuItem>
           </>
@@ -37,10 +37,10 @@ export function UserNav() {
       case 'admin':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.push("/admin-dashboard")}>
+            <DropdownMenuItem onClick={() => router.replace("/admin-dashboard")}>
               Admin Dashboard
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/profile")}>
+            <DropdownMenuItem onClick={() => router.replace("/profile")}>
               Profile
             </DropdownMenuItem>
           </>
@@ -48,10 +48,10 @@ export function UserNav() {
       case 'driver':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.push("/driver-dashboard")}>
+            <DropdownMenuItem onClick={() => router.replace("/driver-dashboard")}>
               Driver Dashboard
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/profile")}>
+            <DropdownMenuItem onClick={() => router.replace("/profile")}>
               Profile
             </DropdownMenuItem>
           </>
@@ -59,20 +59,20 @@ export function UserNav() {
       case 'member':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.push("/schedule-ride")}>
+            <DropdownMenuItem onClick={() => router.replace("/schedule-ride")}>
               Schedule Ride
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/my-rides")}>
+            <DropdownMenuItem onClick={() => router.replace("/my-rides")}>
               My Rides
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push("/profile")}>
+            <DropdownMenuItem onClick={() => router.replace("/profile")}>
               Profile
             </DropdownMenuItem>
           </>
         )
       default:
         return (
-          <DropdownMenuItem onClick={() => router.push("/profile")}>
+          <DropdownMenuItem onClick={() => router.replace("/profile")}>
             Profile
           </DropdownMenuItem>
         )
