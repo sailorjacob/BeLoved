@@ -88,10 +88,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Setting state:', newState)
         setAuthState(newState)
 
-        // Only redirect from root path to dashboard
-        if (newState.isLoggedIn && newState.role && pathname === '/') {
+        // Only redirect if we're on the root path and logged in
+        if (pathname === '/' && newState.isLoggedIn && newState.role) {
           const dashboardPath = getDashboardPath(newState.role)
-          console.log('[Auth] Redirecting to dashboard:', dashboardPath)
+          console.log('[Auth] Redirecting from root to dashboard:', dashboardPath)
           router.replace(dashboardPath)
         }
       } catch (error) {
@@ -110,7 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth()
       } else if (event === 'SIGNED_OUT') {
         setAuthState({ ...defaultAuthState, isLoading: false })
-        router.replace('/')
+        if (pathname !== '/') {
+          router.replace('/')
+        }
       }
     })
 
