@@ -4,35 +4,27 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '@/app/components/user-nav'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
+import { useEffect } from 'react'
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
 
-function LoadingSpinner() {
-  return (
-    <div className="flex items-center justify-center min-h-screen">
-      <div className="flex flex-col items-center gap-4">
-        <div className="relative w-16 h-16">
-          <Image
-            src={LOGO_URL}
-            alt="BeLoved Transportation Logo"
-            fill
-            className="object-contain"
-            priority
-          />
-        </div>
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
-        <p className="text-sm text-gray-500">Loading...</p>
-      </div>
-    </div>
-  )
-}
-
 export default function SuperAdminDashboardPage() {
-  const { isLoggedIn, isSuperAdmin, isLoading } = useAuth()
+  const { isLoggedIn, role, isLoading } = useAuth()
+  const router = useRouter()
 
-  // Show loading state while checking auth
-  if (isLoading || !isLoggedIn || !isSuperAdmin) {
-    return <LoadingSpinner />
+  useEffect(() => {
+    if (!isLoading && (!isLoggedIn || role !== 'super_admin')) {
+      router.push('/login')
+    }
+  }, [isLoading, isLoggedIn, role, router])
+
+  if (isLoading || !isLoggedIn || role !== 'super_admin') {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500" />
+      </div>
+    )
   }
 
   return (
