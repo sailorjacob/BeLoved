@@ -26,6 +26,7 @@ export interface AuthContextType extends AuthState {
   signUp: (email: string, password: string, userData?: { full_name?: string, phone?: string }) => Promise<AuthResponse>
   logout: () => Promise<void>
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>
+  refreshAuth: () => Promise<void>
 }
 
 const defaultAuthState: AuthState = {
@@ -41,48 +42,50 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
 
-  useEffect(() => {
-    let mounted = true
-
-    const checkAuth = async () => {
-      try {
-        const authUser = await authService.getCurrentUser()
-        
-        if (!mounted) return
-
-        const newState = {
-          isLoading: false,
-          isLoggedIn: !!authUser.isLoggedIn,
-          user: authUser.user,
-          profile: authUser.profile,
-          role: authUser.role
-        }
-
-        console.log('[Auth] Setting state:', newState)
-        setAuthState(newState)
-      } catch (error) {
-        console.error('[Auth] Error:', error)
-        if (mounted) {
-          setAuthState({ ...defaultAuthState, isLoading: false })
-        }
+  const checkAuth = async () => {
+    try {
+      console.log('[Auth] Checking auth state...')
+      const authUser = await authService.getCurrentUser()
+      
+      const newState = {
+        isLoading: false,
+        isLoggedIn: !!authUser.isLoggedIn,
+        user: authUser.user,
+        profile: authUser.profile,
+        role: authUser.role
       }
-    }
 
-    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
-      console.log('[Auth] Auth state change:', event, session)
-      if (!mounted) return
+      console.log('[Auth] Setting new state:', {
+        isLoggedIn: newState.isLoggedIn,
+        role: newState.role,
+        hasUser: !!newState.user,
+        hasProfile: !!newState.profile
+      })
+      
+      setAuthState(newState)
+    } catch (error) {
+      console.error('[Auth] Error checking auth:', error)
+      setAuthState({ ...defaultAuthState, isLoading: false })
+    }
+  }
+
+  useEffect(() => {
+    console.log('[Auth] Initial auth check')
+    checkAuth()
+
+    const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
+      console.log('[Auth] Auth state change:', event, session?.user?.email)
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-        checkAuth()
+        await checkAuth()
       } else if (event === 'SIGNED_OUT') {
+        console.log('[Auth] User signed out')
         setAuthState({ ...defaultAuthState, isLoading: false })
       }
     })
 
-    checkAuth()
-
     return () => {
-      mounted = false
+      console.log('[Auth] Cleaning up auth subscription')
       subscription?.unsubscribe()
     }
   }, [])
@@ -91,8 +94,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     ...authState,
     login: async (email, password) => {
       try {
+        console.log('[Auth] Attempting login:', email)
         const data = await authService.login(email, password)
-        console.log('[Auth] Login success:', data)
+        console.log('[Auth] Login successful')
+        await checkAuth() // Immediately refresh auth state after login
         return { error: null, data }
       } catch (error) {
         console.error('[Auth] Login error:', error)
@@ -108,6 +113,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     logout: async () => {
+      console.log('[Auth] Logging out')
       await authService.logout()
       setAuthState({ ...defaultAuthState, isLoading: false })
     },
@@ -115,16 +121,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (!authState.user?.id) throw new Error('No user ID available')
         await authService.updateProfile(authState.user.id, data)
-        const authUser = await authService.getCurrentUser()
-        setAuthState(prev => ({
-          ...prev,
-          profile: authUser.profile
-        }))
+        await checkAuth() // Refresh auth state after profile update
         return { error: null }
       } catch (error) {
         return { error: error as Error }
       }
-    }
+    },
+    refreshAuth: checkAuth // Expose checkAuth as a method to manually refresh
   }
 
   if (authState.isLoading) {

@@ -53,33 +53,13 @@ export async function middleware(request: NextRequest) {
       return res
     }
 
-    // Check if user is authenticated
+    // Only check if user is authenticated
     const { data: { session } } = await supabase.auth.getSession()
     console.log('[Middleware] Session check:', session ? 'Found' : 'Not found')
 
     if (!session) {
       console.log('[Middleware] No session, redirecting to home')
       return NextResponse.redirect(new URL('/', request.url))
-    }
-
-    // Get user profile to check role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_type')
-      .eq('id', session.user.id)
-      .single()
-
-    const userRole = profile?.user_type
-
-    // Check if user has access to the requested path
-    const hasAccess = protectedPaths[userRole as keyof typeof protectedPaths]?.some(
-      path => pathname.startsWith(path)
-    )
-
-    if (!hasAccess) {
-      console.log('[Middleware] Access denied, redirecting to appropriate dashboard')
-      const dashboardPath = getDashboardPath(userRole)
-      return NextResponse.redirect(new URL(dashboardPath, request.url))
     }
 
     return res
