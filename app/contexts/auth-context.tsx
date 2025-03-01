@@ -49,16 +49,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const checkAuth = async () => {
       try {
         const authUser = await authService.getCurrentUser()
+        console.log('[AuthProvider] Current user:', authUser)
         
         if (!mounted) return
 
-        setAuthState({
+        const newState = {
           isLoading: false,
           isLoggedIn: !!authUser.isLoggedIn,
           user: authUser.user,
           profile: authUser.profile,
           role: authUser.role
-        })
+        }
+
+        console.log('[AuthProvider] Setting new state:', newState)
+        setAuthState(newState)
       } catch (error) {
         console.error('[Auth] Error:', error)
         if (mounted) {
@@ -67,29 +71,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
 
-    const { data: { subscription } } = authService.onAuthStateChange((event) => {
+    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
+      console.log('[AuthProvider] Auth state change:', event, session)
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         checkAuth()
       } else if (event === 'SIGNED_OUT') {
-        setAuthState({ ...defaultAuthState, isLoading: false })
+        if (mounted) {
+          console.log('[AuthProvider] Setting signed out state')
+          setAuthState({ ...defaultAuthState, isLoading: false })
+          router.push('/login')
+        }
       }
     })
 
     checkAuth()
 
     return () => {
+      console.log('[AuthProvider] Cleanup')
       mounted = false
       subscription?.unsubscribe()
     }
-  }, [])
+  }, [router])
 
   const contextValue: AuthContextType = {
     ...authState,
     login: async (email, password) => {
       try {
         const data = await authService.login(email, password)
+        console.log('[AuthProvider] Login success:', data)
         return { error: null, data }
       } catch (error) {
+        console.error('[AuthProvider] Login error:', error)
         return { error: error as Error }
       }
     },
@@ -120,6 +132,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }
+
+  console.log('[AuthProvider] Current auth state:', authState)
 
   if (authState.isLoading) {
     return (

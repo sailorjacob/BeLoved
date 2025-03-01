@@ -13,16 +13,44 @@ export default function SuperAdminDashboardPage() {
   const { isLoggedIn, role, isLoading } = useAuth()
   const router = useRouter()
 
+  console.log('[SuperAdminDashboard] Auth state:', { isLoggedIn, role, isLoading })
+
   useEffect(() => {
-    if (!isLoading && (!isLoggedIn || role !== 'super_admin')) {
-      router.push('/login')
+    console.log('[SuperAdminDashboard] Checking auth...', { isLoggedIn, role, isLoading })
+    
+    if (!isLoading) {
+      if (!isLoggedIn) {
+        console.log('[SuperAdminDashboard] Not logged in, redirecting to login')
+        router.push('/login')
+      } else if (role !== 'super_admin') {
+        console.log('[SuperAdminDashboard] Not super admin, redirecting to appropriate dashboard')
+        switch (role) {
+          case 'admin':
+            router.push('/admin-dashboard')
+            break
+          case 'driver':
+            router.push('/driver-dashboard')
+            break
+          case 'member':
+            router.push('/dashboard')
+            break
+          default:
+            router.push('/login')
+        }
+      }
     }
   }, [isLoading, isLoggedIn, role, router])
 
+  // Show loading state while checking auth or if not logged in
   if (isLoading || !isLoggedIn || role !== 'super_admin') {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500" />
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500" />
+          <p className="text-sm text-gray-500">
+            {isLoading ? 'Loading...' : 'Redirecting...'}
+          </p>
+        </div>
       </div>
     )
   }
