@@ -14,17 +14,25 @@ export default function SuperAdminDashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
+    // Only redirect if we're done loading and the user is either not logged in or not a super admin
     if (!isLoading && (!isLoggedIn || role !== 'super_admin')) {
+      console.log('[SuperAdminDashboard] Access denied, redirecting to login')
       router.replace('/login')
     }
   }, [isLoading, isLoggedIn, role, router])
 
-  if (isLoading || !isLoggedIn || role !== 'super_admin') {
+  // Show loading state while checking auth
+  if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500" />
       </div>
     )
+  }
+
+  // If not logged in or not a super admin, show nothing (redirect will happen)
+  if (!isLoggedIn || role !== 'super_admin') {
+    return null
   }
 
   return (

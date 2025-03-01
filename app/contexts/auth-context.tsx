@@ -63,22 +63,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           role: authUser.role
         }
 
+        console.log('[Auth] Setting state:', newState)
         setAuthState(newState)
+
+        // If logged in and on a public path, redirect to appropriate dashboard
+        if (newState.isLoggedIn && publicPaths.includes(pathname || '')) {
+          const dashboardPath = getDashboardPath(newState.role)
+          console.log('[Auth] Redirecting to dashboard:', dashboardPath)
+          router.replace(dashboardPath)
+        }
       } catch (error) {
         console.error('[Auth] Error:', error)
         if (mounted) {
           setAuthState({ ...defaultAuthState, isLoading: false })
+          if (!publicPaths.includes(pathname || '')) {
+            router.replace('/login')
+          }
         }
       }
     }
 
-    const { data: { subscription } } = authService.onAuthStateChange((event) => {
+    const { data: { subscription } } = authService.onAuthStateChange((event, session) => {
+      console.log('[Auth] Auth state change:', event, session)
       if (!mounted) return
       
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         checkAuth()
       } else if (event === 'SIGNED_OUT') {
         setAuthState({ ...defaultAuthState, isLoading: false })
+        if (!publicPaths.includes(pathname || '')) {
+          router.replace('/login')
+        }
       }
     })
 
@@ -88,29 +103,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription?.unsubscribe()
     }
-  }, [])
-
-  // Handle navigation based on auth state
-  useEffect(() => {
-    if (authState.isLoading) return
-
-    const isPublicPath = publicPaths.includes(pathname || '')
-
-    if (!authState.isLoggedIn && !isPublicPath) {
-      router.replace('/login')
-    } else if (authState.isLoggedIn && isPublicPath) {
-      const dashboardPath = getDashboardPath(authState.role)
-      router.replace(dashboardPath)
-    }
-  }, [authState.isLoggedIn, authState.role, pathname, router, authState.isLoading])
+  }, [pathname, router])
 
   const contextValue: AuthContextType = {
     ...authState,
     login: async (email, password) => {
       try {
         const data = await authService.login(email, password)
+        console.log('[Auth] Login success:', data)
+        // After successful login, checkAuth will be called by the auth state change event
         return { error: null, data }
       } catch (error) {
+        console.error('[Auth] Login error:', error)
         return { error: error as Error }
       }
     },
@@ -124,6 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     },
     logout: async () => {
       await authService.logout()
+      setAuthState({ ...defaultAuthState, isLoading: false })
       router.replace('/login')
     },
     updateProfile: async (data) => {
