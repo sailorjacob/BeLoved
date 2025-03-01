@@ -13,11 +13,9 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Link from "next/link"
 import { useAuth } from "@/app/contexts/auth-context"
-import { useRouter } from "next/navigation"
 
 export function UserNav() {
   const { user, profile, logout, role } = useAuth()
-  const router = useRouter()
 
   if (!user) return null
 
@@ -26,55 +24,75 @@ export function UserNav() {
       case 'super_admin':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.replace("/super-admin-dashboard")}>
-              Super Admin Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.replace("/profile")}>
-              Profile
-            </DropdownMenuItem>
+            <Link href="/super-admin-dashboard" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Super Admin Dashboard
+              </DropdownMenuItem>
+            </Link>
+            <Link href="/profile" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </Link>
           </>
         )
       case 'admin':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.replace("/admin-dashboard")}>
-              Admin Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.replace("/profile")}>
-              Profile
-            </DropdownMenuItem>
+            <Link href="/admin-dashboard" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Admin Dashboard
+              </DropdownMenuItem>
+            </Link>
+            <Link href="/profile" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </Link>
           </>
         )
       case 'driver':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.replace("/driver-dashboard")}>
-              Driver Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.replace("/profile")}>
-              Profile
-            </DropdownMenuItem>
+            <Link href="/driver-dashboard" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Driver Dashboard
+              </DropdownMenuItem>
+            </Link>
+            <Link href="/profile" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </Link>
           </>
         )
       case 'member':
         return (
           <>
-            <DropdownMenuItem onClick={() => router.replace("/schedule-ride")}>
-              Schedule Ride
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.replace("/my-rides")}>
-              My Rides
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.replace("/profile")}>
-              Profile
-            </DropdownMenuItem>
+            <Link href="/schedule-ride" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Schedule Ride
+              </DropdownMenuItem>
+            </Link>
+            <Link href="/my-rides" passHref legacyBehavior>
+              <DropdownMenuItem>
+                My Rides
+              </DropdownMenuItem>
+            </Link>
+            <Link href="/profile" passHref legacyBehavior>
+              <DropdownMenuItem>
+                Profile
+              </DropdownMenuItem>
+            </Link>
           </>
         )
       default:
         return (
-          <DropdownMenuItem onClick={() => router.replace("/profile")}>
-            Profile
-          </DropdownMenuItem>
+          <Link href="/profile" passHref legacyBehavior>
+            <DropdownMenuItem>
+              Profile
+            </DropdownMenuItem>
+          </Link>
         )
     }
   }
