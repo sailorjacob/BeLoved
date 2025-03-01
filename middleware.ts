@@ -2,7 +2,7 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-const publicPaths = ['/', '/login', '/auth/callback', '/signup', '/forgot-password']
+const publicPaths = ['/', '/auth/callback', '/signup', '/forgot-password']
 
 // Protected paths by role
 const protectedPaths = {
@@ -58,8 +58,8 @@ export async function middleware(request: NextRequest) {
     console.log('[Middleware] Session check:', session ? 'Found' : 'Not found')
 
     if (!session) {
-      console.log('[Middleware] No session, redirecting to login')
-      return NextResponse.redirect(new URL('/login', request.url))
+      console.log('[Middleware] No session, redirecting to home')
+      return NextResponse.redirect(new URL('/', request.url))
     }
 
     // Get user profile to check role
@@ -85,7 +85,7 @@ export async function middleware(request: NextRequest) {
     return res
   } catch (error) {
     console.error('[Middleware] Error:', error)
-    return NextResponse.redirect(new URL('/login', request.url))
+    return NextResponse.redirect(new URL('/', request.url))
   }
 }
 
@@ -100,7 +100,7 @@ function getDashboardPath(role: string | null): string {
     case 'member':
       return '/dashboard'
     default:
-      return '/login'
+      return '/'
   }
 }
 

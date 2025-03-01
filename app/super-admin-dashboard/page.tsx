@@ -17,7 +17,7 @@ export default function SuperAdminDashboardPage() {
     // Only redirect if we're done loading and the user is either not logged in or not a super admin
     if (!isLoading && (!isLoggedIn || role !== 'super_admin')) {
       console.log('[SuperAdminDashboard] Access denied, redirecting to login')
-      router.replace('/login')
+      router.replace('/')
     }
   }, [isLoading, isLoggedIn, role, router])
 
