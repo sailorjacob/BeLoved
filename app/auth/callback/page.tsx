@@ -24,27 +24,27 @@ export default function AuthCallbackPage() {
           // Redirect based on user type
           switch (profile?.user_type) {
             case 'super_admin':
-              router.push('/super-admin-dashboard')
+              router.replace('/super-admin-dashboard')
               break
             case 'admin':
-              router.push('/admin-dashboard')
+              router.replace('/admin-dashboard')
               break
             case 'driver':
-              router.push('/driver-dashboard')
+              router.replace('/driver-dashboard')
               break
             case 'member':
-              router.push('/dashboard')
+              router.replace('/dashboard')
               break
             default:
               // If no profile or unknown user type, redirect to login
-              router.push('/login')
+              router.replace('/login')
           }
         } else {
-          router.push('/login')
+          router.replace('/login')
         }
       } catch (error) {
         console.error('Error in auth callback:', error)
-        router.push('/login')
+        router.replace('/login')
       }
     }
 

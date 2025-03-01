@@ -105,9 +105,11 @@ export function LoginForm() {
       setSubmitSuccess(null)
       
       try {
+        console.log('Attempting login with email:', values.email)
         const { error } = await auth.login(values.email, values.password)
         if (error) throw error
-        console.log('Login successful')
+        console.log('Login successful, waiting for auth state change')
+        setSubmitSuccess('Login successful! Redirecting...')
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')

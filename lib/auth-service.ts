@@ -55,9 +55,11 @@ class AuthService {
 
   async getCurrentUser(): Promise<AuthUser> {
     try {
+      console.log('[AuthService] Getting current user')
       const session = await this.getSession()
       
       if (!session?.user) {
+        console.log('[AuthService] No session found')
         return {
           user: null,
           session: null,
@@ -67,8 +69,21 @@ class AuthService {
         }
       }
 
+      console.log('[AuthService] Session found, fetching profile')
       const profile = await this.getProfile(session.user.id)
       
+      if (!profile) {
+        console.error('[AuthService] No profile found for user:', session.user.id)
+        return {
+          user: session.user,
+          session,
+          profile: null,
+          isLoggedIn: true,
+          role: null
+        }
+      }
+
+      console.log('[AuthService] Profile found:', profile)
       return {
         user: session.user,
         session,
