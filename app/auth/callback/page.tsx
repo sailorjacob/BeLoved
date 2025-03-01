@@ -37,14 +37,14 @@ export default function AuthCallbackPage() {
               break
             default:
               // If no profile or unknown user type, redirect to login
-              router.replace('/login')
+              router.replace('/')
           }
         } else {
-          router.replace('/login')
+          router.replace('/')
         }
       } catch (error) {
         console.error('Error in auth callback:', error)
-        router.replace('/login')
+        router.replace('/')
       }
     }
 

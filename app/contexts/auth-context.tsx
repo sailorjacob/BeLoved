@@ -40,7 +40,7 @@ const defaultAuthState: AuthState = {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 // Paths that don't require authentication
-const publicPaths = ['/', '/login', '/signup', '/forgot-password']
+const publicPaths = ['/', '/signup', '/forgot-password']
 
 // Role-specific paths
 const pathsByRole = {
@@ -86,9 +86,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setAuthState(newState)
 
         // Handle navigation
-        if (newState.isLoggedIn) {
-          if (publicPaths.includes(pathname || '')) {
-            // If on a public path while logged in, redirect to appropriate dashboard
+        if (newState.isLoggedIn && newState.role) {
+          if (pathname === '/') {
+            // If on root path while logged in, redirect to appropriate dashboard
             const dashboardPath = getDashboardPath(newState.role)
             console.log('[Auth] Redirecting to dashboard:', dashboardPath)
             router.replace(dashboardPath)
@@ -99,15 +99,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else if (!publicPaths.includes(pathname || '')) {
           // If not logged in and trying to access a protected path
-          console.log('[Auth] Not authenticated, redirecting to login')
-          router.replace('/login')
+          console.log('[Auth] Not authenticated, redirecting to home')
+          router.replace('/')
         }
       } catch (error) {
         console.error('[Auth] Error:', error)
         if (mounted) {
           setAuthState({ ...defaultAuthState, isLoading: false })
           if (!publicPaths.includes(pathname || '')) {
-            router.replace('/login')
+            router.replace('/')
           }
         }
       }
@@ -122,7 +122,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === 'SIGNED_OUT') {
         setAuthState({ ...defaultAuthState, isLoading: false })
         if (!publicPaths.includes(pathname || '')) {
-          router.replace('/login')
+          router.replace('/')
         }
       }
     })
@@ -159,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout: async () => {
       await authService.logout()
       setAuthState({ ...defaultAuthState, isLoading: false })
-      router.replace('/login')
+      router.replace('/')
     },
     updateProfile: async (data) => {
       try {
@@ -203,7 +203,7 @@ function getDashboardPath(role: UserRole | null): string {
     case 'member':
       return '/dashboard'
     default:
-      return '/login'
+      return '/'
   }
 }
 
