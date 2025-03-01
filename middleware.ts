@@ -2,6 +2,7 @@ import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Only these paths don't require authentication
 const publicPaths = ['/', '/auth/callback', '/signup', '/forgot-password']
 
 // Protected paths by role
@@ -31,7 +32,6 @@ const getSecurityHeaders = () => ({
 })
 
 export async function middleware(request: NextRequest) {
-  // Create response and supabase client
   const res = NextResponse.next()
   const supabase = createMiddlewareClient({ req: request, res })
   const pathname = request.nextUrl.pathname
@@ -53,7 +53,7 @@ export async function middleware(request: NextRequest) {
       return res
     }
 
-    // Get session and user profile
+    // Check if user is authenticated
     const { data: { session } } = await supabase.auth.getSession()
     console.log('[Middleware] Session check:', session ? 'Found' : 'Not found')
 

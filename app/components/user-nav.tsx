@@ -1,6 +1,6 @@
 "use client"
 
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -13,92 +13,83 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
+import Link from "next/link"
+import type { UserRole } from '@/lib/auth-service'
+
+function getMenuItems(role: UserRole | null) {
+  switch (role) {
+    case 'super_admin':
+      return [
+        {
+          label: "Super Admin Dashboard",
+          href: "/super-admin-dashboard",
+        },
+      ]
+    case 'admin':
+      return [
+        {
+          label: "Admin Dashboard",
+          href: "/admin-dashboard",
+        },
+      ]
+    case 'driver':
+      return [
+        {
+          label: "Driver Dashboard",
+          href: "/driver-dashboard",
+        },
+      ]
+    case 'member':
+      return [
+        {
+          label: "Member Dashboard",
+          href: "/dashboard",
+        },
+      ]
+    default:
+      return []
+  }
+}
 
 export function UserNav() {
-  const { user, profile, logout, role } = useAuth()
+  const { user, profile, role, logout } = useAuth()
   const router = useRouter()
 
-  if (!user) return null
-
-  const handleNavigation = (path: string) => {
-    router.push(path)
-  }
-
-  const getMenuItems = () => {
-    switch (role) {
-      case 'super_admin':
-        return (
-          <>
-            <DropdownMenuItem onClick={() => handleNavigation('/super-admin-dashboard')}>
-              Super Admin Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
-              Profile
-            </DropdownMenuItem>
-          </>
-        )
-      case 'admin':
-        return (
-          <>
-            <DropdownMenuItem onClick={() => handleNavigation('/admin-dashboard')}>
-              Admin Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
-              Profile
-            </DropdownMenuItem>
-          </>
-        )
-      case 'driver':
-        return (
-          <>
-            <DropdownMenuItem onClick={() => handleNavigation('/driver-dashboard')}>
-              Driver Dashboard
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
-              Profile
-            </DropdownMenuItem>
-          </>
-        )
-      case 'member':
-        return (
-          <>
-            <DropdownMenuItem onClick={() => handleNavigation('/schedule-ride')}>
-              Schedule Ride
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleNavigation('/my-rides')}>
-              My Rides
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
-              Profile
-            </DropdownMenuItem>
-          </>
-        )
-      default:
-        return (
-          <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
-            Profile
-          </DropdownMenuItem>
-        )
-    }
-  }
+  const menuItems = getMenuItems(role)
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Avatar className="cursor-pointer">
-            <AvatarFallback>{profile?.full_name?.[0]?.toUpperCase() || user.email?.[0]?.toUpperCase()}</AvatarFallback>
+          <Avatar className="h-8 w-8">
+            <AvatarImage src="/avatars/01.png" alt={profile?.full_name || user?.email || ""} />
+            <AvatarFallback>{profile?.full_name?.[0] || user?.email?.[0] || "U"}</AvatarFallback>
           </Avatar>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end">
-        <DropdownMenuLabel>{profile?.full_name || user.email}</DropdownMenuLabel>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <DropdownMenuLabel className="font-normal">
+          <div className="flex flex-col space-y-1">
+            <p className="text-sm font-medium leading-none">{profile?.full_name || "User"}</p>
+            <p className="text-xs leading-none text-muted-foreground">
+              {user?.email}
+            </p>
+          </div>
+        </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
-          {getMenuItems()}
-        </DropdownMenuGroup>
+        {menuItems.map((item) => (
+          <DropdownMenuItem key={item.href} asChild>
+            <Link href={item.href}>{item.label}</Link>
+          </DropdownMenuItem>
+        ))}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={logout}>
+        <DropdownMenuItem
+          className="cursor-pointer"
+          onClick={async () => {
+            await logout()
+            router.push('/')
+          }}
+        >
           Log out
         </DropdownMenuItem>
       </DropdownMenuContent>

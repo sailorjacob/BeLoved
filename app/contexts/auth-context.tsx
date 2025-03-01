@@ -4,7 +4,6 @@ import type React from "react"
 import { createContext, useContext, useState, useEffect } from "react"
 import type { User } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
-import { useRouter, usePathname } from 'next/navigation'
 import { authService, type UserRole } from '@/lib/auth-service'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
@@ -39,34 +38,8 @@ const defaultAuthState: AuthState = {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
-// Paths that don't require authentication
-const publicPaths = ['/', '/signup', '/forgot-password']
-
-// Role-specific paths
-const pathsByRole = {
-  super_admin: ['/super-admin-dashboard'],
-  admin: ['/admin-dashboard'],
-  driver: ['/driver-dashboard'],
-  member: ['/dashboard']
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
-  const router = useRouter()
-  const pathname = usePathname()
-
-  const canAccessCurrentPath = (role: UserRole | null): boolean => {
-    if (!pathname) return false
-    if (publicPaths.includes(pathname)) return true
-    if (!role) return false
-
-    // Super admin can access all paths
-    if (role === 'super_admin') return true
-
-    // Check if the current path is allowed for the user's role
-    const allowedPaths = pathsByRole[role] || []
-    return allowedPaths.some(path => pathname.startsWith(path))
-  }
 
   useEffect(() => {
     let mounted = true
@@ -87,13 +60,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
         console.log('[Auth] Setting state:', newState)
         setAuthState(newState)
-
-        // Only redirect if we're on the root path and logged in
-        if (pathname === '/' && newState.isLoggedIn && newState.role) {
-          const dashboardPath = getDashboardPath(newState.role)
-          console.log('[Auth] Redirecting from root to dashboard:', dashboardPath)
-          router.replace(dashboardPath)
-        }
       } catch (error) {
         console.error('[Auth] Error:', error)
         if (mounted) {
@@ -110,9 +76,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth()
       } else if (event === 'SIGNED_OUT') {
         setAuthState({ ...defaultAuthState, isLoading: false })
-        if (pathname !== '/') {
-          router.replace('/')
-        }
       }
     })
 
@@ -122,7 +85,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       mounted = false
       subscription?.unsubscribe()
     }
-  }, [pathname, router])
+  }, [])
 
   const contextValue: AuthContextType = {
     ...authState,
@@ -130,7 +93,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         const data = await authService.login(email, password)
         console.log('[Auth] Login success:', data)
-        // After successful login, checkAuth will be called by the auth state change event
         return { error: null, data }
       } catch (error) {
         console.error('[Auth] Login error:', error)
@@ -148,7 +110,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout: async () => {
       await authService.logout()
       setAuthState({ ...defaultAuthState, isLoading: false })
-      router.replace('/')
     },
     updateProfile: async (data) => {
       try {
@@ -179,21 +140,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       {children}
     </AuthContext.Provider>
   )
-}
-
-function getDashboardPath(role: UserRole | null): string {
-  switch (role) {
-    case 'super_admin':
-      return '/super-admin-dashboard'
-    case 'admin':
-      return '/admin-dashboard'
-    case 'driver':
-      return '/driver-dashboard'
-    case 'member':
-      return '/dashboard'
-    default:
-      return '/'
-  }
 }
 
 export function useAuth() {

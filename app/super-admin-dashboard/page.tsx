@@ -4,13 +4,11 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '@/app/components/user-nav'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
 
 export default function SuperAdminDashboardPage() {
   const { isLoggedIn, role, isLoading } = useAuth()
-  const router = useRouter()
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -21,10 +19,17 @@ export default function SuperAdminDashboardPage() {
     )
   }
 
-  // Redirect if not logged in or not a super admin
+  // Show unauthorized message if not logged in or not a super admin
   if (!isLoggedIn || role !== 'super_admin') {
-    router.replace('/')
-    return null
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold text-red-500">Unauthorized Access</h1>
+          <p className="mt-2">You must be logged in as a super admin to view this page.</p>
+          <a href="/" className="mt-4 inline-block text-blue-500 hover:underline">Return to Home</a>
+        </div>
+      </div>
+    )
   }
 
   // Show the dashboard content
