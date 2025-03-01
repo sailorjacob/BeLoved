@@ -4,21 +4,11 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '@/app/components/user-nav'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { useEffect } from 'react'
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
 
 export default function SuperAdminDashboardPage() {
   const { isLoggedIn, role, isLoading } = useAuth()
-  const router = useRouter()
-
-  useEffect(() => {
-    // Only redirect if we're not loading and either not logged in or not a super admin
-    if (!isLoading && (!isLoggedIn || role !== 'super_admin')) {
-      router.push('/')
-    }
-  }, [isLoading, isLoggedIn, role, router])
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -29,11 +19,7 @@ export default function SuperAdminDashboardPage() {
     )
   }
 
-  // If not logged in or not a super admin, show nothing (redirect will happen)
-  if (!isLoggedIn || role !== 'super_admin') {
-    return null
-  }
-
+  // Show the dashboard content
   return (
     <main className="container mx-auto p-4 min-h-screen flex flex-col">
       <div className="flex justify-between items-center mb-8">

@@ -11,7 +11,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import Link from "next/link"
 import { useAuth } from "@/app/contexts/auth-context"
 
 export function UserNav() {
@@ -24,75 +23,55 @@ export function UserNav() {
       case 'super_admin':
         return (
           <>
-            <Link href="/super-admin-dashboard" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Super Admin Dashboard
-              </DropdownMenuItem>
-            </Link>
-            <Link href="/profile" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </Link>
+            <DropdownMenuItem onClick={() => window.location.href = '/super-admin-dashboard'}>
+              Super Admin Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       case 'admin':
         return (
           <>
-            <Link href="/admin-dashboard" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Admin Dashboard
-              </DropdownMenuItem>
-            </Link>
-            <Link href="/profile" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </Link>
+            <DropdownMenuItem onClick={() => window.location.href = '/admin-dashboard'}>
+              Admin Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       case 'driver':
         return (
           <>
-            <Link href="/driver-dashboard" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Driver Dashboard
-              </DropdownMenuItem>
-            </Link>
-            <Link href="/profile" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </Link>
+            <DropdownMenuItem onClick={() => window.location.href = '/driver-dashboard'}>
+              Driver Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       case 'member':
         return (
           <>
-            <Link href="/schedule-ride" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Schedule Ride
-              </DropdownMenuItem>
-            </Link>
-            <Link href="/my-rides" passHref legacyBehavior>
-              <DropdownMenuItem>
-                My Rides
-              </DropdownMenuItem>
-            </Link>
-            <Link href="/profile" passHref legacyBehavior>
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </Link>
+            <DropdownMenuItem onClick={() => window.location.href = '/schedule-ride'}>
+              Schedule Ride
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/my-rides'}>
+              My Rides
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       default:
         return (
-          <Link href="/profile" passHref legacyBehavior>
-            <DropdownMenuItem>
-              Profile
-            </DropdownMenuItem>
-          </Link>
+          <DropdownMenuItem onClick={() => window.location.href = '/profile'}>
+            Profile
+          </DropdownMenuItem>
         )
     }
   }
