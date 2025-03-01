@@ -4,6 +4,14 @@ import type { NextRequest } from 'next/server'
 
 const publicPaths = ['/', '/login', '/auth/callback', '/signup', '/forgot-password']
 
+// Protected paths by role
+const protectedPaths = {
+  super_admin: ['/super-admin-dashboard'],
+  admin: ['/admin-dashboard'],
+  driver: ['/driver-dashboard'],
+  member: ['/dashboard']
+}
+
 // CSP Headers for production
 const getSecurityHeaders = () => ({
   'Content-Security-Policy': `
@@ -45,20 +53,54 @@ export async function middleware(request: NextRequest) {
       return res
     }
 
-    // Get session
+    // Get session and user profile
     const { data: { session } } = await supabase.auth.getSession()
     console.log('[Middleware] Session check:', session ? 'Found' : 'Not found')
 
-    // For non-public routes, check session
     if (!session) {
       console.log('[Middleware] No session, redirecting to login')
       return NextResponse.redirect(new URL('/login', request.url))
+    }
+
+    // Get user profile to check role
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('user_type')
+      .eq('id', session.user.id)
+      .single()
+
+    const userRole = profile?.user_type
+
+    // Check if user has access to the requested path
+    const hasAccess = protectedPaths[userRole as keyof typeof protectedPaths]?.some(
+      path => pathname.startsWith(path)
+    )
+
+    if (!hasAccess) {
+      console.log('[Middleware] Access denied, redirecting to appropriate dashboard')
+      const dashboardPath = getDashboardPath(userRole)
+      return NextResponse.redirect(new URL(dashboardPath, request.url))
     }
 
     return res
   } catch (error) {
     console.error('[Middleware] Error:', error)
     return NextResponse.redirect(new URL('/login', request.url))
+  }
+}
+
+function getDashboardPath(role: string | null): string {
+  switch (role) {
+    case 'super_admin':
+      return '/super-admin-dashboard'
+    case 'admin':
+      return '/admin-dashboard'
+    case 'driver':
+      return '/driver-dashboard'
+    case 'member':
+      return '/dashboard'
+    default:
+      return '/login'
   }
 }
 

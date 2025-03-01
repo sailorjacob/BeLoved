@@ -39,12 +39,31 @@ const defaultAuthState: AuthState = {
 
 const AuthContext = createContext<AuthContextType | null>(null)
 
+// Paths that don't require authentication
 const publicPaths = ['/', '/login', '/signup', '/forgot-password']
+
+// Role-specific paths
+const pathsByRole = {
+  super_admin: ['/super-admin-dashboard'],
+  admin: ['/admin-dashboard'],
+  driver: ['/driver-dashboard'],
+  member: ['/dashboard']
+}
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [authState, setAuthState] = useState<AuthState>(defaultAuthState)
   const router = useRouter()
   const pathname = usePathname()
+
+  const canAccessCurrentPath = (role: UserRole | null): boolean => {
+    if (!pathname) return false
+    if (publicPaths.includes(pathname)) return true
+    if (!role) return false
+
+    // Check if the current path is allowed for the user's role
+    const allowedPaths = pathsByRole[role] || []
+    return allowedPaths.some(path => pathname.startsWith(path))
+  }
 
   useEffect(() => {
     let mounted = true
@@ -66,11 +85,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Setting state:', newState)
         setAuthState(newState)
 
-        // If logged in and on a public path, redirect to appropriate dashboard
-        if (newState.isLoggedIn && publicPaths.includes(pathname || '')) {
-          const dashboardPath = getDashboardPath(newState.role)
-          console.log('[Auth] Redirecting to dashboard:', dashboardPath)
-          router.replace(dashboardPath)
+        // Handle navigation
+        if (newState.isLoggedIn) {
+          if (publicPaths.includes(pathname || '')) {
+            // If on a public path while logged in, redirect to appropriate dashboard
+            const dashboardPath = getDashboardPath(newState.role)
+            console.log('[Auth] Redirecting to dashboard:', dashboardPath)
+            router.replace(dashboardPath)
+          } else if (!canAccessCurrentPath(newState.role)) {
+            // If on a path the user can't access, redirect to their dashboard
+            console.log('[Auth] Access denied, redirecting to appropriate dashboard')
+            router.replace(getDashboardPath(newState.role))
+          }
+        } else if (!publicPaths.includes(pathname || '')) {
+          // If not logged in and trying to access a protected path
+          console.log('[Auth] Not authenticated, redirecting to login')
+          router.replace('/login')
         }
       } catch (error) {
         console.error('[Auth] Error:', error)
