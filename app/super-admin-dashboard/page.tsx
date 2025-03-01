@@ -4,16 +4,21 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '@/app/components/user-nav'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
 import Image from 'next/image'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 
 const LOGO_URL = "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
 
 export default function SuperAdminDashboardPage() {
   const { isLoggedIn, role, isLoading } = useAuth()
+  const router = useRouter()
 
-  // If not logged in as super admin, show nothing
-  if (!isLoggedIn || role !== 'super_admin') {
-    return null
-  }
+  useEffect(() => {
+    // Only redirect if we're done loading and not a super admin
+    if (!isLoading && (!isLoggedIn || role !== 'super_admin')) {
+      router.replace('/')
+    }
+  }, [isLoading, isLoggedIn, role, router])
 
   // Show loading state while checking auth
   if (isLoading) {
@@ -24,24 +29,30 @@ export default function SuperAdminDashboardPage() {
     )
   }
 
-  return (
-    <main className="container mx-auto p-4 min-h-screen flex flex-col">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-2">
-          <div className="relative w-12 h-12">
-            <Image
-              src={LOGO_URL}
-              alt="BeLoved Transportation Logo"
-              fill
-              className="object-contain"
-              priority
-            />
+  // Show the dashboard content if logged in as super admin
+  if (isLoggedIn && role === 'super_admin') {
+    return (
+      <main className="container mx-auto p-4 min-h-screen flex flex-col">
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-2">
+            <div className="relative w-12 h-12">
+              <Image
+                src={LOGO_URL}
+                alt="BeLoved Transportation Logo"
+                fill
+                className="object-contain"
+                priority
+              />
+            </div>
+            <h1 className="text-4xl font-bold">Super Admin Dashboard</h1>
           </div>
-          <h1 className="text-4xl font-bold">Super Admin Dashboard</h1>
+          <UserNav />
         </div>
-        <UserNav />
-      </div>
-      <SuperAdminDashboard />
-    </main>
-  )
+        <SuperAdminDashboard />
+      </main>
+    )
+  }
+
+  // Show nothing while redirecting
+  return null
 } 

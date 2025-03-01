@@ -88,26 +88,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         console.log('[Auth] Setting state:', newState)
         setAuthState(newState)
 
-        // Handle navigation
-        if (newState.isLoggedIn && newState.role) {
-          if (pathname === '/') {
-            // If on root path while logged in, redirect to appropriate dashboard
-            const dashboardPath = getDashboardPath(newState.role)
-            console.log('[Auth] Redirecting to dashboard:', dashboardPath)
-            router.replace(dashboardPath)
-          }
-        } else if (!publicPaths.includes(pathname || '')) {
-          // If not logged in and trying to access a protected path
-          console.log('[Auth] Not authenticated, redirecting to home')
-          router.replace('/')
+        // Only redirect from root path to dashboard
+        if (newState.isLoggedIn && newState.role && pathname === '/') {
+          const dashboardPath = getDashboardPath(newState.role)
+          console.log('[Auth] Redirecting to dashboard:', dashboardPath)
+          router.replace(dashboardPath)
         }
       } catch (error) {
         console.error('[Auth] Error:', error)
         if (mounted) {
           setAuthState({ ...defaultAuthState, isLoading: false })
-          if (!publicPaths.includes(pathname || '')) {
-            router.replace('/')
-          }
         }
       }
     }
@@ -120,9 +110,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         checkAuth()
       } else if (event === 'SIGNED_OUT') {
         setAuthState({ ...defaultAuthState, isLoading: false })
-        if (!publicPaths.includes(pathname || '')) {
-          router.replace('/')
-        }
+        router.replace('/')
       }
     })
 

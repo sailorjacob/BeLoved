@@ -12,86 +12,72 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/app/contexts/auth-context"
+import { useRouter } from 'next/navigation'
 
 export function UserNav() {
   const { user, profile, logout, role } = useAuth()
+  const router = useRouter()
 
   if (!user) return null
+
+  const handleNavigation = (path: string) => {
+    router.push(path)
+  }
 
   const getMenuItems = () => {
     switch (role) {
       case 'super_admin':
         return (
           <>
-            <a href="/super-admin-dashboard">
-              <DropdownMenuItem>
-                Super Admin Dashboard
-              </DropdownMenuItem>
-            </a>
-            <a href="/profile">
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </a>
+            <DropdownMenuItem onClick={() => handleNavigation('/super-admin-dashboard')}>
+              Super Admin Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       case 'admin':
         return (
           <>
-            <a href="/admin-dashboard">
-              <DropdownMenuItem>
-                Admin Dashboard
-              </DropdownMenuItem>
-            </a>
-            <a href="/profile">
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </a>
+            <DropdownMenuItem onClick={() => handleNavigation('/admin-dashboard')}>
+              Admin Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       case 'driver':
         return (
           <>
-            <a href="/driver-dashboard">
-              <DropdownMenuItem>
-                Driver Dashboard
-              </DropdownMenuItem>
-            </a>
-            <a href="/profile">
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </a>
+            <DropdownMenuItem onClick={() => handleNavigation('/driver-dashboard')}>
+              Driver Dashboard
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       case 'member':
         return (
           <>
-            <a href="/schedule-ride">
-              <DropdownMenuItem>
-                Schedule Ride
-              </DropdownMenuItem>
-            </a>
-            <a href="/my-rides">
-              <DropdownMenuItem>
-                My Rides
-              </DropdownMenuItem>
-            </a>
-            <a href="/profile">
-              <DropdownMenuItem>
-                Profile
-              </DropdownMenuItem>
-            </a>
+            <DropdownMenuItem onClick={() => handleNavigation('/schedule-ride')}>
+              Schedule Ride
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleNavigation('/my-rides')}>
+              My Rides
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+              Profile
+            </DropdownMenuItem>
           </>
         )
       default:
         return (
-          <a href="/profile">
-            <DropdownMenuItem>
-              Profile
-            </DropdownMenuItem>
-          </a>
+          <DropdownMenuItem onClick={() => handleNavigation('/profile')}>
+            Profile
+          </DropdownMenuItem>
         )
     }
   }
