@@ -107,50 +107,23 @@ export function LoginForm() {
       
       try {
         console.log('Attempting login with email:', values.email)
-        const { error, data } = await auth.login(values.email, values.password)
+        const { error } = await auth.login(values.email, values.password)
         if (error) throw error
 
-        console.log('Login successful, waiting for auth state update')
-        
-        // Wait for initial auth state update
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Get fresh auth state
-        const authState = await auth.refreshAuth()
-        
-        console.log('Current auth state after refresh:', {
-          isLoggedIn: authState.isLoggedIn,
-          role: authState.role,
-          hasProfile: !!authState.profile,
-          profileType: authState.profile?.user_type,
-          fullProfile: authState.profile
-        })
-        
-        // Check profile type from the returned auth state
-        const userType = authState.profile?.user_type
+        // Get profile type directly from auth context
+        const userType = auth.profile?.user_type
         console.log('User type from profile:', userType)
         
-        // Verify we have a valid session and profile
-        if (!authState.isLoggedIn || !authState.profile) {
-          console.log('No valid session or profile found after refresh')
-          throw new Error('Failed to establish session. Please try logging in again.')
-        }
-        
-        // Handle redirection based on verified role
+        // Handle redirection based on role
         if (userType === 'super_admin') {
-          console.log('Found super_admin role, redirecting to dashboard')
           router.replace('/super-admin-dashboard')
         } else if (userType === 'admin') {
-          console.log('Found admin role, redirecting to dashboard')
           router.replace('/admin-dashboard')
         } else if (userType === 'driver') {
-          console.log('Found driver role, redirecting to dashboard')
           router.replace('/driver-dashboard')
         } else if (userType === 'member') {
-          console.log('Found member role, redirecting to dashboard')
           router.replace('/dashboard')
         } else {
-          console.log('No valid role found:', userType)
           throw new Error('Unable to determine user role. Please contact support.')
         }
 
@@ -158,7 +131,6 @@ export function LoginForm() {
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
-        // Clear auth state on error
         await auth.logout()
         throw error
       }

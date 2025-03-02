@@ -30,11 +30,9 @@ interface AuthContextType extends AuthState {
   signUp: (email: string, password: string, userData?: { 
     full_name?: string
     phone?: string
-    user_type?: UserRole 
   }) => Promise<AuthResponse>
   logout: () => Promise<void>
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>
-  refreshAuth: () => Promise<AuthState>
 }
 
 const initialState: AuthState = {
@@ -100,40 +98,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const refreshAuth = useCallback(async (): Promise<AuthState> => {
-    console.log('[Auth] Checking auth state...')
-    try {
-      const authUser = await authService.getCurrentUser()
-      
-      console.log('[Auth] Setting new state:', {
-        isLoggedIn: authUser.isLoggedIn,
-        role: authUser.role,
-        hasUser: !!authUser.user,
-        hasProfile: !!authUser.profile
-      })
-
-      const newState: AuthState = {
-        isLoading: false,
-        user: authUser.user,
-        session: authUser.session,
-        profile: authUser.profile,
-        isLoggedIn: authUser.isLoggedIn,
-        role: authUser.role
-      }
-
-      setAuthState(newState)
-      return newState
-    } catch (error) {
-      console.error('[Auth] Error refreshing auth state:', error)
-      const errorState: AuthState = {
-        ...initialState,
-        isLoading: false
-      }
-      setAuthState(errorState)
-      throw error
-    }
-  }, [])
-
   const login = useCallback(async (email: string, password: string): Promise<AuthResponse> => {
     try {
       console.log('[Auth] Attempting login...')
@@ -177,10 +141,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const contextValue: AuthContextType = {
     ...authState,
-    login: login,
+    login,
     signUp: async (email, password, userData) => {
       try {
-        const data = await authService.signup(email, password, userData)
+        const data = await authService.signup(email, password, {
+          ...userData,
+          user_type: 'member' // Default to member role
+        })
         return { error: null, data }
       } catch (error) {
         return { error: error as Error }
@@ -190,12 +157,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         console.log('[Auth] Logging out')
         await authService.logout()
-        console.log('[Auth] Clearing auth state')
         setAuthState({ ...initialState, isLoading: false })
-        console.log('[Auth] Logout complete')
       } catch (error) {
         console.error('[Auth] Error during logout:', error)
-        // Still clear the state even if there's an error
         setAuthState({ ...initialState, isLoading: false })
       }
     },
@@ -203,13 +167,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         if (!authState.user?.id) throw new Error('No user ID available')
         await authService.updateProfile(authState.user.id, data)
-        await checkAuth() // Refresh auth state after profile update
+        await checkAuth()
         return { error: null }
       } catch (error) {
         return { error: error as Error }
       }
-    },
-    refreshAuth: refreshAuth // Expose refreshAuth as a method to manually refresh
+    }
   }
 
   if (authState.isLoading) {
