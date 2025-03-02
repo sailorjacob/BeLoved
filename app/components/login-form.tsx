@@ -112,53 +112,41 @@ export function LoginForm() {
 
         console.log('Login successful, waiting for auth state update')
         // Wait longer for auth state to fully update
-        await new Promise(resolve => setTimeout(resolve, 1000))
+        await new Promise(resolve => setTimeout(resolve, 1500))
         
         // Get current auth state
         await auth.refreshAuth()
         
+        // Get fresh auth state after refresh
+        const currentAuth = auth
+        
         console.log('Current auth state after refresh:', {
-          isLoggedIn: auth.isLoggedIn,
-          role: auth.role,
-          hasProfile: !!auth.profile,
-          profileType: auth.profile?.user_type
+          isLoggedIn: currentAuth.isLoggedIn,
+          role: currentAuth.role,
+          hasProfile: !!currentAuth.profile,
+          profileType: currentAuth.profile?.user_type,
+          fullProfile: currentAuth.profile
         })
         
-        // Redirect based on role
-        if (!auth.role) {
-          console.log('No role found in auth state, checking profile directly')
-          if (auth.profile?.user_type) {
-            console.log('Found role in profile:', auth.profile.user_type)
-            const role = auth.profile.user_type
-            if (role === 'super_admin') {
-              console.log('Redirecting to super admin dashboard')
-              router.replace('/super-admin-dashboard')
-            } else if (role === 'admin') {
-              console.log('Redirecting to admin dashboard')
-              router.replace('/admin-dashboard')
-            } else if (role === 'driver') {
-              console.log('Redirecting to driver dashboard')
-              router.replace('/driver-dashboard')
-            } else if (role === 'member') {
-              console.log('Redirecting to member dashboard')
-              router.replace('/dashboard')
-            }
-          } else {
-            console.log('No role found in profile either, staying on home page')
-            setSubmitError('Unable to determine user role. Please contact support.')
-          }
+        // Check profile type directly
+        const userType = currentAuth.profile?.user_type
+        console.log('User type from profile:', userType)
+        
+        if (userType === 'super_admin') {
+          console.log('Found super_admin role, redirecting to dashboard')
+          router.replace('/super-admin-dashboard')
+        } else if (userType === 'admin') {
+          console.log('Found admin role, redirecting to dashboard')
+          router.replace('/admin-dashboard')
+        } else if (userType === 'driver') {
+          console.log('Found driver role, redirecting to dashboard')
+          router.replace('/driver-dashboard')
+        } else if (userType === 'member') {
+          console.log('Found member role, redirecting to dashboard')
+          router.replace('/dashboard')
         } else {
-          console.log('Found role in auth state:', auth.role)
-          if (auth.role === 'super_admin') {
-            console.log('Redirecting to super admin dashboard')
-            router.replace('/super-admin-dashboard')
-          } else if (auth.role === 'admin') {
-            router.replace('/admin-dashboard')
-          } else if (auth.role === 'driver') {
-            router.replace('/driver-dashboard')
-          } else if (auth.role === 'member') {
-            router.replace('/dashboard')
-          }
+          console.log('No valid role found:', userType)
+          setSubmitError('Unable to determine user role. Please contact support.')
         }
 
         setSubmitSuccess('Login successful!')
