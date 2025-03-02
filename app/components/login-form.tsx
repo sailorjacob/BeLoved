@@ -75,11 +75,26 @@ export function LoginForm() {
   
   // Handle redirection after successful login
   useEffect(() => {
-    if (pendingRedirect && auth.isLoggedIn && auth.role) {
-      console.log('[LoginForm] Executing pending redirect to:', pendingRedirect)
-      window.location.replace(pendingRedirect)
+    let mounted = true;
+
+    const handleRedirect = async () => {
+      if (pendingRedirect && auth.isLoggedIn && auth.role) {
+        console.log('[LoginForm] Executing pending redirect to:', pendingRedirect)
+        try {
+          await router.push(pendingRedirect)
+        } catch (error) {
+          console.error('[LoginForm] Router push failed, falling back to window.location:', error)
+          window.location.href = pendingRedirect
+        }
+      }
     }
-  }, [pendingRedirect, auth.isLoggedIn, auth.role])
+
+    handleRedirect();
+
+    return () => {
+      mounted = false;
+    }
+  }, [pendingRedirect, auth.isLoggedIn, auth.role, router])
   
   // If we're already logged in or still loading, don't show the form
   if (auth.isLoading) {
@@ -112,12 +127,14 @@ export function LoginForm() {
     initialValues: loginInitialValues,
     validationRules: loginValidationRules,
     onSubmit: async (values) => {
-      setHasAttemptedLogin(true)
-      setSubmitError(null)
-      setSubmitSuccess(null)
-      setPendingRedirect(null)
+      let mounted = true;
       
       try {
+        setHasAttemptedLogin(true)
+        setSubmitError(null)
+        setSubmitSuccess(null)
+        setPendingRedirect(null)
+        
         console.log('Attempting login with email:', values.email)
         const { error, data } = await auth.login(values.email, values.password)
         if (error) throw error
@@ -131,7 +148,7 @@ export function LoginForm() {
         let attempts = 0
         let profile = null
 
-        while (attempts < maxAttempts) {
+        while (attempts < maxAttempts && mounted) {
           attempts++
           console.log(`[LoginForm] Attempt ${attempts} to fetch profile...`)
           
@@ -149,6 +166,8 @@ export function LoginForm() {
         if (!profile?.user_type) {
           throw new Error('Unable to fetch user profile after multiple attempts')
         }
+
+        if (!mounted) return;
 
         console.log('[LoginForm] Profile fetched successfully:', {
           id: profile.id,
@@ -177,11 +196,14 @@ export function LoginForm() {
             throw new Error(`Invalid user type: ${profile.user_type}`)
         }
 
+        if (!mounted) return;
+
         console.log('[LoginForm] Setting pending redirect to:', dashboardUrl)
         setSubmitSuccess('Login successful! Redirecting...')
         setPendingRedirect(dashboardUrl)
 
       } catch (error) {
+        if (!mounted) return;
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
         await auth.logout()
