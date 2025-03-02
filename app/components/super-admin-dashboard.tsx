@@ -628,7 +628,17 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           <Button variant="destructive" onClick={() => {
             console.log('[SuperAdminDashboard] Navigating to providers page via direct navigation')
             // Use direct navigation for maximum reliability
-            window.location.href = '/super-admin/providers'
+            try {
+              window.location.href = '/super-admin/providers'
+              // Add a small delay to log that navigation was initiated
+              setTimeout(() => {
+                console.log('[SuperAdminDashboard] Navigation to providers page initiated')
+              }, 100)
+            } catch (error) {
+              console.error('[SuperAdminDashboard] Error during navigation:', error)
+              // Fallback if direct navigation fails
+              window.open('/super-admin/providers', '_self')
+            }
           }}>
             Manage Providers
           </Button>
@@ -641,6 +651,32 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           </Button>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
+          <h3 className="font-medium mb-2">Dashboard Error</h3>
+          <p>Failed to fetch dashboard data. Using demo data instead.</p>
+          <div className="mt-3 flex space-x-4">
+            <Button 
+              size="sm" 
+              variant="destructive" 
+              onClick={() => fetchDashboardData()}
+            >
+              Retry
+            </Button>
+            <Button 
+              size="sm" 
+              variant="outline" 
+              onClick={() => {
+                console.log('[SuperAdminDashboard] Demo mode: Navigating to providers page')
+                window.location.href = '/super-admin/providers'
+              }}
+            >
+              Go to Provider Management
+            </Button>
+          </div>
+        </div>
+      )}
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

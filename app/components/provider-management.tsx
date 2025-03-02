@@ -161,29 +161,57 @@ export function ProviderManagement() {
       if (fetchAttemptedRef.current) return;
       fetchAttemptedRef.current = true;
       setIsLoading(true)
+      console.log('[ProviderManagement] Attempting to fetch data from database...')
 
-      // Fetch providers
-      const { data: providerData, error: providerError } = await supabase
-        .from('transportation_providers')
-        .select('*')
+      // Check if we can access the supabase client
+      if (!supabase) {
+        console.error('[ProviderManagement] Supabase client is not available')
+        throw new Error('Database connection not available')
+      }
 
-      if (providerError) throw providerError
+      // Attempt to fetch providers with error handling
+      try {
+        console.log('[ProviderManagement] Fetching providers...')
+        const { data: providerData, error: providerError } = await supabase
+          .from('transportation_providers')
+          .select('*')
 
-      // Fetch admins with their provider details
-      const { data: adminData, error: adminError } = await supabase
-        .from('profiles')
-        .select(`
-          *,
-          provider:transportation_providers(*)
-        `)
-        .eq('user_role', 'admin')
+        if (providerError) {
+          console.error('[ProviderManagement] Error fetching providers:', providerError)
+          throw providerError
+        }
+        
+        console.log('[ProviderManagement] Providers fetched:', providerData?.length || 0)
+        setProviders(providerData || [])
+      } catch (providerError) {
+        console.error('[ProviderManagement] Provider fetch failed:', providerError)
+        throw new Error('Could not fetch providers')
+      }
 
-      if (adminError) throw adminError
+      // Attempt to fetch admins with error handling
+      try {
+        console.log('[ProviderManagement] Fetching admins...')
+        const { data: adminData, error: adminError } = await supabase
+          .from('profiles')
+          .select(`
+            *,
+            provider:transportation_providers(*)
+          `)
+          .eq('user_role', 'admin')
 
-      setProviders(providerData || [])
-      setAdmins(adminData || [])
+        if (adminError) {
+          console.error('[ProviderManagement] Error fetching admins:', adminError)
+          throw adminError
+        }
+        
+        console.log('[ProviderManagement] Admins fetched:', adminData?.length || 0)
+        setAdmins(adminData || [])
+      } catch (adminError) {
+        console.error('[ProviderManagement] Admin fetch failed:', adminError)
+        throw new Error('Could not fetch admins')
+      }
     } catch (error) {
-      console.error('Error fetching data:', error)
+      console.error('[ProviderManagement] Error fetching data:', error)
       toast.error('Failed to fetch data - using demo data instead')
       // Load demo data as fallback
       setIsUsingDemoData(true)
