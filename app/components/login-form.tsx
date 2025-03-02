@@ -77,7 +77,7 @@ export function LoginForm() {
   useEffect(() => {
     if (pendingRedirect && auth.isLoggedIn && auth.role) {
       console.log('[LoginForm] Executing pending redirect to:', pendingRedirect)
-      window.location.href = pendingRedirect
+      window.location.replace(pendingRedirect)
     }
   }, [pendingRedirect, auth.isLoggedIn, auth.role])
   
