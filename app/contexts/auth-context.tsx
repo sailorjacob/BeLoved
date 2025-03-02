@@ -124,30 +124,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         break
     }
 
-    // Only redirect from login page and avoid infinite redirects
+    // Get current path to avoid redirection loops
     const currentPath = window.location.pathname
-    const isLoginPage = currentPath === '/login' || currentPath === '/'
+    console.log('[AuthContext] Current path:', currentPath, 'Target dashboard:', dashboardUrl)
     
-    if (isLoginPage) {
-      console.log('[AuthContext] Redirecting to role dashboard:', dashboardUrl)
+    // Check if we're already on the dashboard to avoid loops
+    const isAlreadyOnDashboard = currentPath === dashboardUrl || 
+                                 currentPath.startsWith(`${dashboardUrl}/`)
+    
+    // Only redirect if not already on dashboard
+    if (isAlreadyOnDashboard) {
+      console.log('[AuthContext] Already on correct dashboard, skipping redirect')
+      // Still mark as redirected to avoid future redirect attempts
       redirectedRef.current = true
-      
-      // Use both approaches for reliability
-      try {
-        router.push(dashboardUrl)
-      } catch (error) {
-        console.error('[AuthContext] Router push failed:', error)
-      }
-      
-      // Fallback to direct navigation
-      setTimeout(() => {
-        if (mountedRef.current) {
-          console.log('[AuthContext] Fallback redirect via window.location')
-          window.location.href = dashboardUrl
-        }
-      }, 500)
+      return
     }
+    
+    // Only redirect from login/home or if explicitly requested
+    const isLoginOrHome = currentPath === '/login' || currentPath === '/'
+    if (!isLoginOrHome) {
+      console.log('[AuthContext] Not on login/home page, skipping auto-redirect')
+      return
+    }
+    
+    console.log('[AuthContext] Redirecting to role dashboard:', dashboardUrl)
+    
+    // Mark as redirected to prevent multiple redirects
+    redirectedRef.current = true
+    
+    // Use both approaches for reliability
+    try {
+      router.push(dashboardUrl)
+    } catch (error) {
+      console.error('[AuthContext] Router push failed:', error)
+    }
+    
+    // Fallback to direct navigation
+    setTimeout(() => {
+      if (mountedRef.current) {
+        console.log('[AuthContext] Fallback redirect via window.location')
+        window.location.href = dashboardUrl
+      }
+    }, 500)
   }, [router])
+
+  // Reset redirect flag on path change
+  useEffect(() => {
+    // This effect runs on component mount
+    const handleRouteChange = () => {
+      // When the route changes, we can reset the redirected flag
+      // This allows for redirections when navigating between pages
+      redirectedRef.current = false;
+    };
+    
+    // Add event listener for route changes
+    window.addEventListener('popstate', handleRouteChange);
+    
+    return () => {
+      window.removeEventListener('popstate', handleRouteChange);
+    };
+  }, []);
 
   // Watch for role changes to trigger redirection
   useEffect(() => {
