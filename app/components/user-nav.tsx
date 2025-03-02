@@ -17,6 +17,17 @@ import Link from "next/link"
 import type { UserRole } from '@/lib/auth-service'
 
 function getMenuItems(role: UserRole | null) {
+  const baseItems = [
+    {
+      label: "My Profile",
+      href: "/profile",
+    },
+    {
+      label: "My Rides",
+      href: "/my-rides",
+    },
+  ]
+
   switch (role) {
     case 'super_admin':
       return [
@@ -24,6 +35,7 @@ function getMenuItems(role: UserRole | null) {
           label: "Super Admin Dashboard",
           href: "/super-admin-dashboard",
         },
+        ...baseItems
       ]
     case 'admin':
       return [
@@ -31,6 +43,7 @@ function getMenuItems(role: UserRole | null) {
           label: "Admin Dashboard",
           href: "/admin-dashboard",
         },
+        ...baseItems
       ]
     case 'driver':
       return [
@@ -38,6 +51,7 @@ function getMenuItems(role: UserRole | null) {
           label: "Driver Dashboard",
           href: "/driver-dashboard",
         },
+        ...baseItems
       ]
     case 'member':
       return [
@@ -45,9 +59,10 @@ function getMenuItems(role: UserRole | null) {
           label: "Member Dashboard",
           href: "/dashboard",
         },
+        ...baseItems
       ]
     default:
-      return []
+      return baseItems
   }
 }
 
@@ -77,11 +92,13 @@ export function UserNav() {
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {menuItems.map((item) => (
-          <DropdownMenuItem key={item.href} asChild>
-            <Link href={item.href}>{item.label}</Link>
-          </DropdownMenuItem>
-        ))}
+        <DropdownMenuGroup>
+          {menuItems.map((item) => (
+            <DropdownMenuItem key={item.href} asChild>
+              <Link href={item.href}>{item.label}</Link>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer"
