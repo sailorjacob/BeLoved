@@ -146,24 +146,33 @@ export function LoginForm() {
         })
 
         // Handle redirection based on role
+        console.log('[LoginForm] Redirecting to dashboard for role:', profile.user_type)
+        let dashboardUrl = '/'
+        
         switch (profile.user_type) {
           case 'super_admin':
-            router.replace('/super-admin-dashboard')
+            dashboardUrl = '/super-admin-dashboard'
             break
           case 'admin':
-            router.replace('/admin-dashboard')
+            dashboardUrl = '/admin-dashboard'
             break
           case 'driver':
-            router.replace('/driver-dashboard')
+            dashboardUrl = '/driver-dashboard'
             break
           case 'member':
-            router.replace('/dashboard')
+            dashboardUrl = '/dashboard'
             break
           default:
             throw new Error(`Invalid user type: ${profile.user_type}`)
         }
 
-        setSubmitSuccess('Login successful!')
+        console.log('[LoginForm] Redirecting to:', dashboardUrl)
+        setSubmitSuccess('Login successful! Redirecting...')
+        
+        // Force navigation after a short delay to ensure state is updated
+        setTimeout(() => {
+          router.push(dashboardUrl)
+        }, 100)
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')

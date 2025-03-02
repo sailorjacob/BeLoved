@@ -10,9 +10,20 @@ export default function SuperAdminDashboardPage() {
   const router = useRouter()
 
   useEffect(() => {
-    if (!isLoading && (!isLoggedIn || role !== 'super_admin')) {
-      console.log('[SuperAdminDashboard] Unauthorized access, redirecting to home')
-      router.replace('/')
+    console.log('[SuperAdminDashboard] Auth state:', { isLoggedIn, role, isLoading })
+    
+    if (!isLoading) {
+      if (!isLoggedIn) {
+        console.log('[SuperAdminDashboard] Not logged in, redirecting to home')
+        router.replace('/')
+        return
+      }
+      
+      if (role !== 'super_admin') {
+        console.log('[SuperAdminDashboard] Not super admin, redirecting to home')
+        router.replace('/')
+        return
+      }
     }
   }, [isLoggedIn, role, isLoading, router])
 
@@ -28,5 +39,6 @@ export default function SuperAdminDashboardPage() {
     return null
   }
 
+  console.log('[SuperAdminDashboard] Rendering dashboard for super admin')
   return <SuperAdminDashboard />
 } 
