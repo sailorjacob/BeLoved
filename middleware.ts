@@ -18,13 +18,14 @@ const publicPaths = [
 
 // Role-specific common paths
 const roleCommonPaths = {
-  super_admin: ['/profile'],
-  admin: ['/profile'],
-  driver: ['/profile', '/trips'],
-  member: ['/profile', '/my-rides']
+  super_admin: ['/profile', '/super-admin-dashboard'],
+  admin: ['/profile', '/admin-dashboard'],
+  driver: ['/profile', '/trips', '/driver-dashboard'],
+  member: ['/profile', '/my-rides', '/dashboard']
 }
 
-// Protected paths by role
+// Protected paths by role - these are paths exclusive to each role 
+// (for redirecting unauthorized users to appropriate dashboards)
 const protectedPaths = {
   super_admin: ['/super-admin-dashboard'],
   admin: ['/admin-dashboard'],

@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/auth-context'
 import { SuperAdminDashboard } from '@/app/components/super-admin-dashboard'
@@ -8,130 +8,64 @@ import { UserNav } from '@/app/components/user-nav'
 import Image from 'next/image'
 
 export default function SuperAdminDashboardPage() {
-  const { isLoggedIn, role, isLoading } = useAuth()
+  const { isLoggedIn, isLoading: authLoading, role } = useAuth()
   const router = useRouter()
-  const [hasError, setHasError] = useState(false)
-  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [isReady, setIsReady] = useState(false)
+  const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
 
   useEffect(() => {
-    console.log('[SuperAdminDashboardPage] Component mounted')
-    console.log('[SuperAdminDashboardPage] Auth state:', { isLoggedIn, role, isLoading })
+    console.log('[SuperAdminPage] Initial render, auth state:', { isLoggedIn, role, authLoading })
     
-    if (!isLoading) {
+    // Only run the check once auth is no longer loading
+    if (!authLoading) {
+      console.log('[SuperAdminPage] Auth loading complete, checking access:', { isLoggedIn, role })
+      setHasCheckedAuth(true)
+      
       if (!isLoggedIn) {
-        console.log('[SuperAdminDashboardPage] Not logged in, redirecting to home')
+        console.log('[SuperAdminPage] User not logged in, redirecting to home')
         router.push('/')
         return
       }
       
       if (role !== 'super_admin') {
-        console.log('[SuperAdminDashboardPage] Not super admin, redirecting to home')
-        router.push('/')
+        console.log('[SuperAdminPage] User does not have super_admin role, redirecting to appropriate dashboard')
+        const dashboardPath = role === 'admin' 
+          ? '/admin-dashboard'
+          : role === 'driver'
+            ? '/driver-dashboard'
+            : '/member-dashboard'
+        router.push(dashboardPath)
         return
       }
-
-      console.log('[SuperAdminDashboardPage] Auth check passed, user is super admin')
+      
+      // If we got here, user is logged in as super_admin
+      console.log('[SuperAdminPage] User authenticated as super_admin, showing dashboard')
+      // Add a small delay to ensure any route transitions have completed
+      setTimeout(() => {
+        setIsReady(true)
+      }, 300)
     }
-  }, [isLoggedIn, role, isLoading, router])
+  }, [isLoggedIn, role, router, authLoading])
 
-  // Show loading state while checking auth
-  if (isLoading) {
-    console.log('[SuperAdminDashboardPage] Loading auth state...')
+  // If still loading auth or not ready, show loading spinner
+  if (authLoading || !hasCheckedAuth || !isReady) {
     return (
-      <div className="flex justify-center items-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="flex flex-col items-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600 mb-4"></div>
+          <p className="text-lg text-gray-600">Loading dashboard...</p>
+          {hasCheckedAuth && !isReady && (
+            <p className="text-sm text-gray-500 mt-2">Preparing your dashboard content...</p>
+          )}
+        </div>
       </div>
     )
   }
 
-  // Don't render anything if not authenticated
+  // Don't render the dashboard if auth requirements aren't met
   if (!isLoggedIn || role !== 'super_admin') {
-    console.log('[SuperAdminDashboardPage] Not authenticated or not super admin, returning null')
     return null
   }
 
-  // Wrap the dashboard component in an error boundary
-  const renderDashboard = () => {
-    try {
-      console.log('[SuperAdminDashboardPage] Attempting to render dashboard')
-      return <SuperAdminDashboard />
-    } catch (error) {
-      console.error('[SuperAdminDashboardPage] Error rendering dashboard:', error)
-      setHasError(true)
-      setErrorMessage(error instanceof Error ? error.message : 'Unknown error rendering dashboard')
-      return (
-        <div className="bg-red-50 border border-red-200 rounded p-4 mt-4">
-          <h3 className="text-lg font-medium text-red-800">Error rendering dashboard</h3>
-          <p className="text-red-700 mt-2">There was an error rendering the dashboard content.</p>
-          {errorMessage && <p className="mt-2 text-sm text-red-600">{errorMessage}</p>}
-          <button 
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded" 
-            onClick={() => window.location.reload()}
-          >
-            Reload page
-          </button>
-        </div>
-      )
-    }
-  }
-
-  console.log('[SuperAdminDashboardPage] Rendering dashboard for super admin')
-  return (
-    <main className="container mx-auto p-4">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-2">
-          <div className="relative w-12 h-12">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
-              alt="BeLoved Transportation Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          <h1 className="text-4xl font-bold">Super Admin Dashboard</h1>
-        </div>
-        <UserNav />
-      </div>
-      
-      {hasError ? (
-        <div className="bg-red-50 border border-red-200 rounded p-4">
-          <h3 className="text-lg font-medium text-red-800">Dashboard Error</h3>
-          <p className="text-red-700 mt-2">There was an error loading the dashboard content.</p>
-          {errorMessage && <p className="mt-2 text-sm text-red-600">{errorMessage}</p>}
-          <button 
-            className="mt-4 px-4 py-2 bg-red-600 text-white rounded" 
-            onClick={() => window.location.reload()}
-          >
-            Reload page
-          </button>
-        </div>
-      ) : (
-        <div>
-          {/* Fallback content in case dashboard doesn't render */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-            <div className="bg-white shadow rounded-lg p-4 border border-gray-200">
-              <h3 className="font-medium text-gray-700">Total Providers</h3>
-              <p className="text-2xl font-bold mt-2">12</p>
-            </div>
-            <div className="bg-white shadow rounded-lg p-4 border border-gray-200">
-              <h3 className="font-medium text-gray-700">Total Drivers</h3>
-              <p className="text-2xl font-bold mt-2">45</p>
-            </div>
-            <div className="bg-white shadow rounded-lg p-4 border border-gray-200">
-              <h3 className="font-medium text-gray-700">Total Revenue</h3>
-              <p className="text-2xl font-bold mt-2">$15,780.50</p>
-            </div>
-            <div className="bg-white shadow rounded-lg p-4 border border-gray-200">
-              <h3 className="font-medium text-gray-700">Completed Rides</h3>
-              <p className="text-2xl font-bold mt-2">320</p>
-            </div>
-          </div>
-          
-          {/* Now try to render the actual dashboard component */}
-          {renderDashboard()}
-        </div>
-      )}
-    </main>
-  )
+  return <SuperAdminDashboard />
 } 
