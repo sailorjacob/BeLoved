@@ -80,10 +80,14 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Allow access to the user's dashboard
+    // Get the user's allowed paths
+    const userRole = profile.user_type as keyof typeof protectedPaths
+    const allowedPaths = protectedPaths[userRole] || []
     const userDashboard = getDashboardPath(profile.user_type)
-    if (pathname === userDashboard || pathname.startsWith(userDashboard)) {
-      console.log('[Middleware] Allowing access to dashboard:', pathname)
+
+    // Allow access to the user's dashboard and its subpaths
+    if (pathname === userDashboard || pathname.startsWith(userDashboard) || allowedPaths.some(path => pathname.startsWith(path))) {
+      console.log('[Middleware] Allowing access to path:', pathname)
       return res
     }
 
