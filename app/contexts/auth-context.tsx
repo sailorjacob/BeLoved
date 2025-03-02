@@ -34,7 +34,7 @@ interface AuthContextType extends AuthState {
   }) => Promise<AuthResponse>
   logout: () => Promise<void>
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>
-  refreshAuth: () => Promise<void>
+  refreshAuth: () => Promise<AuthState>
 }
 
 const initialState: AuthState = {
@@ -100,7 +100,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
-  const refreshAuth = useCallback(async () => {
+  const refreshAuth = useCallback(async (): Promise<AuthState> => {
     console.log('[Auth] Checking auth state...')
     try {
       const authUser = await authService.getCurrentUser()
@@ -112,20 +112,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         hasProfile: !!authUser.profile
       })
 
-      setAuthState({
+      const newState: AuthState = {
         isLoading: false,
         user: authUser.user,
         session: authUser.session,
         profile: authUser.profile,
         isLoggedIn: authUser.isLoggedIn,
         role: authUser.role
-      })
+      }
+
+      setAuthState(newState)
+      return newState
     } catch (error) {
       console.error('[Auth] Error refreshing auth state:', error)
-      setAuthState({
+      const errorState: AuthState = {
         ...initialState,
         isLoading: false
-      })
+      }
+      setAuthState(errorState)
       throw error
     }
   }, [])

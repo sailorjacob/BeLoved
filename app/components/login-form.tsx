@@ -107,7 +107,7 @@ export function LoginForm() {
       
       try {
         console.log('Attempting login with email:', values.email)
-        const { error } = await auth.login(values.email, values.password)
+        const { error, data } = await auth.login(values.email, values.password)
         if (error) throw error
 
         console.log('Login successful, waiting for auth state update')
@@ -115,29 +115,23 @@ export function LoginForm() {
         // Wait for initial auth state update
         await new Promise(resolve => setTimeout(resolve, 1000))
         
-        // Get current auth state
-        await auth.refreshAuth()
-        
-        // Wait for state to be fully updated
-        await new Promise(resolve => setTimeout(resolve, 1000))
-        
-        // Get fresh auth state after waiting
-        const currentAuth = auth
+        // Get fresh auth state
+        const authState = await auth.refreshAuth()
         
         console.log('Current auth state after refresh:', {
-          isLoggedIn: currentAuth.isLoggedIn,
-          role: currentAuth.role,
-          hasProfile: !!currentAuth.profile,
-          profileType: currentAuth.profile?.user_type,
-          fullProfile: currentAuth.profile
+          isLoggedIn: authState.isLoggedIn,
+          role: authState.role,
+          hasProfile: !!authState.profile,
+          profileType: authState.profile?.user_type,
+          fullProfile: authState.profile
         })
         
-        // Check profile type directly from auth context
-        const userType = currentAuth.profile?.user_type
+        // Check profile type from the returned auth state
+        const userType = authState.profile?.user_type
         console.log('User type from profile:', userType)
         
         // Verify we have a valid session and profile
-        if (!currentAuth.isLoggedIn || !currentAuth.profile) {
+        if (!authState.isLoggedIn || !authState.profile) {
           console.log('No valid session or profile found after refresh')
           throw new Error('Failed to establish session. Please try logging in again.')
         }
