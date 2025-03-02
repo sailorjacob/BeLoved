@@ -83,13 +83,21 @@ class AuthService {
         }
       }
 
-      console.log('[AuthService] Profile found:', profile)
+      console.log('[AuthService] Profile found:', {
+        id: profile.id,
+        email: profile.email,
+        user_type: profile.user_type
+      })
+      
+      const role = profile.user_type as UserRole
+      console.log('[AuthService] Setting role:', role)
+      
       return {
         user: session.user,
         session,
         profile,
         isLoggedIn: true,
-        role: (profile?.user_type as UserRole) || null
+        role
       }
     } catch (error) {
       console.error('[AuthService] Error getting current user:', error)
