@@ -72,6 +72,19 @@ export function UserNav() {
 
   const menuItems = getMenuItems(role)
 
+  const handleLogout = async () => {
+    try {
+      console.log('[UserNav] Initiating logout')
+      await logout()
+      console.log('[UserNav] Redirecting to home')
+      router.replace('/')
+    } catch (error) {
+      console.error('[UserNav] Error during logout:', error)
+      // Still redirect to home on error
+      router.replace('/')
+    }
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -102,10 +115,7 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer"
-          onClick={async () => {
-            await logout()
-            router.push('/')
-          }}
+          onClick={handleLogout}
         >
           Log out
         </DropdownMenuItem>

@@ -113,9 +113,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     },
     logout: async () => {
-      console.log('[Auth] Logging out')
-      await authService.logout()
-      setAuthState({ ...defaultAuthState, isLoading: false })
+      try {
+        console.log('[Auth] Logging out')
+        await authService.logout()
+        console.log('[Auth] Clearing auth state')
+        setAuthState({ ...defaultAuthState, isLoading: false })
+        console.log('[Auth] Logout complete')
+      } catch (error) {
+        console.error('[Auth] Error during logout:', error)
+        // Still clear the state even if there's an error
+        setAuthState({ ...defaultAuthState, isLoading: false })
+      }
     },
     updateProfile: async (data) => {
       try {

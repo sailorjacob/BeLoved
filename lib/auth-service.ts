@@ -160,11 +160,21 @@ class AuthService {
 
   async logout() {
     try {
+      console.log('[AuthService] Attempting logout')
+      const { data: { session } } = await supabase.auth.getSession()
+      
+      if (!session) {
+        console.log('[AuthService] No active session found, clearing local state')
+        return
+      }
+
       const { error } = await supabase.auth.signOut()
       if (error) throw error
+      
+      console.log('[AuthService] Logout successful')
     } catch (error) {
       console.error('[AuthService] Logout error:', error)
-      throw error
+      // Don't throw the error, just log it
     }
   }
 
