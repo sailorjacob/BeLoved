@@ -57,158 +57,141 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null)
   const mountedRef = useRef(true)
   const checkingRef = useRef(false)
-  const redirectedRef = useRef(false)
-
+  
+  // Define checkAuth first to avoid reference before declaration
   const checkAuth = useCallback(async () => {
-    // Prevent concurrent auth checks
+    // Skip if already checking to prevent race conditions
     if (checkingRef.current) {
-      console.log('[AuthContext] Auth check already in progress, skipping')
+      console.log('[AuthContext] Already checking auth, skipping')
       return
     }
-
+    
+    // Skip if component is unmounted
+    if (!mountedRef.current) {
+      console.log('[AuthContext] Component unmounted, skipping auth check')
+      return
+    }
+    
+    console.log('[AuthContext] Checking auth state')
+    checkingRef.current = true
+    setIsLoading(true)
+    
     try {
-      checkingRef.current = true
-      console.log('[AuthContext] Checking auth state')
-      setIsLoading(true)
+      const authUser = await authService.getCurrentUser()
       
-      const currentUser = await authService.getCurrentUser()
-      console.log('[AuthContext] Current user state:', {
-        isLoggedIn: currentUser.isLoggedIn,
-        userId: currentUser.user?.id,
-        role: currentUser.role
-      })
-
+      // Check if component is still mounted after async call
       if (!mountedRef.current) return
-
-      setUser(currentUser.user)
-      setSession(currentUser.session)
-      setProfile(currentUser.profile)
-      setRole(currentUser.role)
-      setIsLoggedIn(currentUser.isLoggedIn)
+      
+      const userId = authUser.user?.id
+      
+      console.log('[AuthContext] Current user state:', {
+        isLoggedIn: authUser.isLoggedIn,
+        userId: userId,
+        role: authUser.role
+      })
+      
+      setUser(authUser.user)
+      setSession(authUser.session)
+      setProfile(authUser.profile)
+      setRole(authUser.role)
+      setIsLoggedIn(authUser.isLoggedIn)
     } catch (error) {
       console.error('[AuthContext] Error checking auth:', error)
+      
+      // Check if component is still mounted
       if (!mountedRef.current) return
       
-      // Reset state on error
       setUser(null)
       setSession(null)
       setProfile(null)
       setRole(null)
       setIsLoggedIn(false)
     } finally {
+      // Check if component is still mounted
       if (mountedRef.current) {
         setIsLoading(false)
       }
       checkingRef.current = false
     }
   }, [])
-
-  // Helper function to redirect based on role
-  const redirectToRoleDashboard = useCallback((userRole: UserRole) => {
-    // Skip if already redirected or not mounted
-    if (redirectedRef.current || !mountedRef.current) return
-
-    let dashboardUrl = '/'
-    switch (userRole) {
-      case 'super_admin':
-        dashboardUrl = '/super-admin-dashboard'
-        break
-      case 'admin':
-        dashboardUrl = '/admin-dashboard'
-        break
-      case 'driver':
-        dashboardUrl = '/driver-dashboard'
-        break
-      case 'member':
-        dashboardUrl = '/dashboard'
-        break
-    }
-
-    // Get current path to avoid redirection loops
-    const currentPath = window.location.pathname
-    console.log('[AuthContext] Current path:', currentPath, 'Target dashboard:', dashboardUrl)
+  
+  // Simplified redirection with safeguards
+  const attemptRedirectOnLogin = useCallback((userRole: UserRole) => {
+    if (!userRole || !mountedRef.current) return;
     
-    // Check if we're already on the dashboard to avoid loops
-    const isAlreadyOnDashboard = currentPath === dashboardUrl || 
-                                 currentPath.startsWith(`${dashboardUrl}/`)
-    
-    // Only redirect if not already on dashboard
-    if (isAlreadyOnDashboard) {
-      console.log('[AuthContext] Already on correct dashboard, skipping redirect')
-      // Still mark as redirected to avoid future redirect attempts
-      redirectedRef.current = true
-      return
-    }
-    
-    // Only redirect from login/home or if explicitly requested
-    const isLoginOrHome = currentPath === '/login' || currentPath === '/'
-    if (!isLoginOrHome) {
-      console.log('[AuthContext] Not on login/home page, skipping auto-redirect')
-      return
-    }
-    
-    console.log('[AuthContext] Redirecting to role dashboard:', dashboardUrl)
-    
-    // Mark as redirected to prevent multiple redirects
-    redirectedRef.current = true
-    
-    // Use both approaches for reliability
     try {
-      router.push(dashboardUrl)
-    } catch (error) {
-      console.error('[AuthContext] Router push failed:', error)
-    }
-    
-    // Fallback to direct navigation
-    setTimeout(() => {
-      if (mountedRef.current) {
-        console.log('[AuthContext] Fallback redirect via window.location')
-        window.location.href = dashboardUrl
+      // Use session storage to track redirect attempts
+      // This ensures redirect attempts persist even on component remounts
+      const redirectKey = `redirect_${Date.now()}`;
+      
+      // Get current path
+      const currentPath = window.location.pathname;
+      
+      // Only redirect from login/home
+      if (currentPath !== '/' && currentPath !== '/login') {
+        console.log('[AuthContext] Not on login/home page, skipping redirect');
+        return;
       }
-    }, 500)
-  }, [router])
-
-  // Reset redirect flag on path change
-  useEffect(() => {
-    // This effect runs on component mount
-    const handleRouteChange = () => {
-      // When the route changes, we can reset the redirected flag
-      // This allows for redirections when navigating between pages
-      redirectedRef.current = false;
-    };
-    
-    // Add event listener for route changes
-    window.addEventListener('popstate', handleRouteChange);
-    
-    return () => {
-      window.removeEventListener('popstate', handleRouteChange);
-    };
+      
+      // Check if we've already attempted to redirect
+      if (sessionStorage.getItem('auth_redirect_attempted') === 'true') {
+        console.log('[AuthContext] Already attempted redirect, not trying again');
+        return;
+      }
+      
+      // Determine target dashboard
+      let dashboardUrl = '/';
+      switch (userRole) {
+        case 'super_admin': dashboardUrl = '/super-admin-dashboard'; break;
+        case 'admin': dashboardUrl = '/admin-dashboard'; break;
+        case 'driver': dashboardUrl = '/driver-dashboard'; break;
+        case 'member': dashboardUrl = '/dashboard'; break;
+      }
+      
+      // Set redirect flag
+      sessionStorage.setItem('auth_redirect_attempted', 'true');
+      console.log('[AuthContext] Setting redirect attempt flag in session storage');
+      
+      // Use direct window navigation
+      console.log('[AuthContext] Redirecting to:', dashboardUrl);
+      window.location.href = dashboardUrl;
+      
+      // Clear the flag after a minute to allow future redirects
+      setTimeout(() => {
+        if (sessionStorage.getItem('auth_redirect_attempted') === 'true') {
+          console.log('[AuthContext] Clearing redirect flag after timeout');
+          sessionStorage.removeItem('auth_redirect_attempted');
+        }
+      }, 60000);
+    } catch (error) {
+      console.error('[AuthContext] Error during redirect attempt:', error);
+    }
   }, []);
-
-  // Watch for role changes to trigger redirection
+  
+  // Create effect to trigger redirect when role changes
   useEffect(() => {
     if (role && isLoggedIn && !isLoading) {
-      redirectToRoleDashboard(role)
+      console.log('[AuthContext] User authenticated, role:', role);
+      attemptRedirectOnLogin(role);
     }
-  }, [role, isLoggedIn, isLoading, redirectToRoleDashboard])
-
-  // Reset redirect flag when user logs out
+  }, [role, isLoggedIn, isLoading, attemptRedirectOnLogin]);
+  
+  // Effect to initialize auth
   useEffect(() => {
-    if (!isLoggedIn) {
-      redirectedRef.current = false
-    }
-  }, [isLoggedIn])
-
-  // When a user signs in, we'll directly handle redirection 
-  useEffect(() => {
-    console.log('[AuthContext] Auth provider mounted')
+    console.log('[AuthContext] Auth provider mounted');
+    mountedRef.current = true;
     
-    // Set up cleanup
-    mountedRef.current = true
+    // Clear redirect flag on component mount if needed
+    const lastRedirectTime = parseInt(sessionStorage.getItem('auth_redirect_timestamp') || '0', 10);
+    const currentTime = Date.now();
+    if (currentTime - lastRedirectTime > 60000) {
+      // Reset if last redirect was more than a minute ago
+      sessionStorage.removeItem('auth_redirect_attempted');
+    }
     
     // Initial auth check
-    checkAuth()
-
+    checkAuth();
+    
     // Set up auth state change subscription
     const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
       if (!mountedRef.current) return
@@ -241,7 +224,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     }
   }, [checkAuth])
-
+  
   const value = {
     isLoading,
     isLoggedIn,
