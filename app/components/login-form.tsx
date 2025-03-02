@@ -111,13 +111,17 @@ export function LoginForm() {
         if (error) throw error
 
         console.log('Login successful, waiting for auth state update')
-        // Wait longer for auth state to fully update
-        await new Promise(resolve => setTimeout(resolve, 1500))
+        
+        // Wait for initial auth state update
+        await new Promise(resolve => setTimeout(resolve, 1000))
         
         // Get current auth state
         await auth.refreshAuth()
         
-        // Get fresh auth state after refresh
+        // Wait for state to be fully updated
+        await new Promise(resolve => setTimeout(resolve, 1000))
+        
+        // Get fresh auth state after waiting
         const currentAuth = auth
         
         console.log('Current auth state after refresh:', {
@@ -128,10 +132,17 @@ export function LoginForm() {
           fullProfile: currentAuth.profile
         })
         
-        // Check profile type directly
+        // Check profile type directly from auth context
         const userType = currentAuth.profile?.user_type
         console.log('User type from profile:', userType)
         
+        // Verify we have a valid session and profile
+        if (!currentAuth.isLoggedIn || !currentAuth.profile) {
+          console.log('No valid session or profile found after refresh')
+          throw new Error('Failed to establish session. Please try logging in again.')
+        }
+        
+        // Handle redirection based on verified role
         if (userType === 'super_admin') {
           console.log('Found super_admin role, redirecting to dashboard')
           router.replace('/super-admin-dashboard')
@@ -146,13 +157,15 @@ export function LoginForm() {
           router.replace('/dashboard')
         } else {
           console.log('No valid role found:', userType)
-          setSubmitError('Unable to determine user role. Please contact support.')
+          throw new Error('Unable to determine user role. Please contact support.')
         }
 
         setSubmitSuccess('Login successful!')
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
+        // Clear auth state on error
+        await auth.logout()
         throw error
       }
     }
