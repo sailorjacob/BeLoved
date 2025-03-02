@@ -7,7 +7,7 @@ import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { authService } from '@/lib/auth-service'
 
 interface LoginFormData {
@@ -72,10 +72,18 @@ export function LoginForm() {
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [pendingRedirect, setPendingRedirect] = useState<string | null>(null)
   const router = useRouter()
+  const mountedRef = useRef(true)
+  
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false
+    }
+  }, [])
   
   // Handle redirection after successful login
   useEffect(() => {
-    let mounted = true;
+    if (!mountedRef.current) return
 
     const handleRedirect = async () => {
       if (pendingRedirect && auth.isLoggedIn && auth.role) {
@@ -83,17 +91,15 @@ export function LoginForm() {
         try {
           await router.push(pendingRedirect)
         } catch (error) {
-          console.error('[LoginForm] Router push failed, falling back to window.location:', error)
-          window.location.href = pendingRedirect
+          if (mountedRef.current) {
+            console.error('[LoginForm] Router push failed, falling back to window.location:', error)
+            window.location.href = pendingRedirect
+          }
         }
       }
     }
 
-    handleRedirect();
-
-    return () => {
-      mounted = false;
-    }
+    handleRedirect()
   }, [pendingRedirect, auth.isLoggedIn, auth.role, router])
   
   // If we're already logged in or still loading, don't show the form
@@ -127,9 +133,9 @@ export function LoginForm() {
     initialValues: loginInitialValues,
     validationRules: loginValidationRules,
     onSubmit: async (values) => {
-      let mounted = true;
-      
       try {
+        if (!mountedRef.current) return
+        
         setHasAttemptedLogin(true)
         setSubmitError(null)
         setSubmitSuccess(null)
@@ -148,7 +154,7 @@ export function LoginForm() {
         let attempts = 0
         let profile = null
 
-        while (attempts < maxAttempts && mounted) {
+        while (attempts < maxAttempts && mountedRef.current) {
           attempts++
           console.log(`[LoginForm] Attempt ${attempts} to fetch profile...`)
           
@@ -163,11 +169,11 @@ export function LoginForm() {
           await new Promise(resolve => setTimeout(resolve, 1000))
         }
 
+        if (!mountedRef.current) return
+
         if (!profile?.user_type) {
           throw new Error('Unable to fetch user profile after multiple attempts')
         }
-
-        if (!mounted) return;
 
         console.log('[LoginForm] Profile fetched successfully:', {
           id: profile.id,
@@ -176,6 +182,8 @@ export function LoginForm() {
         })
 
         // Set redirection based on role
+        if (!mountedRef.current) return
+
         console.log('[LoginForm] Setting redirect for role:', profile.user_type)
         let dashboardUrl = '/'
         
@@ -196,14 +204,14 @@ export function LoginForm() {
             throw new Error(`Invalid user type: ${profile.user_type}`)
         }
 
-        if (!mounted) return;
+        if (!mountedRef.current) return
 
         console.log('[LoginForm] Setting pending redirect to:', dashboardUrl)
         setSubmitSuccess('Login successful! Redirecting...')
         setPendingRedirect(dashboardUrl)
 
       } catch (error) {
-        if (!mounted) return;
+        if (!mountedRef.current) return
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
         await auth.logout()
@@ -222,6 +230,8 @@ export function LoginForm() {
     initialValues: signUpInitialValues,
     validationRules: signUpValidationRules,
     onSubmit: async (values) => {
+      if (!mountedRef.current) return
+      
       setHasAttemptedSignup(true)
       setSubmitError(null)
       setSubmitSuccess(null)
@@ -243,6 +253,7 @@ export function LoginForm() {
         throw error
       }
 
+      if (!mountedRef.current) return
       setSubmitSuccess('Account created! Please check your email to confirm your account before signing in.')
     }
   })

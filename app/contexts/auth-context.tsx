@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import { createContext, useContext, useState, useEffect, useCallback } from "react"
+import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react"
 import type { User, Session } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { authService, type UserRole } from '@/lib/auth-service'
@@ -53,9 +53,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
   const [role, setRole] = useState<UserRole | null>(null)
+  const mountedRef = useRef(true)
+  const checkingRef = useRef(false)
 
   const checkAuth = useCallback(async () => {
+    // Prevent concurrent auth checks
+    if (checkingRef.current) {
+      console.log('[AuthContext] Auth check already in progress, skipping')
+      return
+    }
+
     try {
+      checkingRef.current = true
       console.log('[AuthContext] Checking auth state')
       setIsLoading(true)
       
@@ -66,6 +75,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         role: currentUser.role
       })
 
+      if (!mountedRef.current) return
+
       setUser(currentUser.user)
       setSession(currentUser.session)
       setProfile(currentUser.profile)
@@ -73,6 +84,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setIsLoggedIn(currentUser.isLoggedIn)
     } catch (error) {
       console.error('[AuthContext] Error checking auth:', error)
+      if (!mountedRef.current) return
+      
       // Reset state on error
       setUser(null)
       setSession(null)
@@ -80,15 +93,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole(null)
       setIsLoggedIn(false)
     } finally {
-      setIsLoading(false)
+      if (mountedRef.current) {
+        setIsLoading(false)
+      }
+      checkingRef.current = false
     }
   }, [])
 
   useEffect(() => {
     console.log('[AuthContext] Initial auth check')
+    
+    // Set up cleanup
+    mountedRef.current = true
+    
+    // Initial auth check
     checkAuth()
 
+    // Set up auth state change subscription
     const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
+      if (!mountedRef.current) return
       console.log('[AuthContext] Auth state changed:', event)
       
       if (event === 'SIGNED_IN') {
@@ -107,9 +130,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })
 
+    // Cleanup function
     return () => {
       console.log('[AuthContext] Cleaning up subscription')
-      subscription.unsubscribe()
+      mountedRef.current = false
+      if (subscription?.unsubscribe) {
+        subscription.unsubscribe()
+      }
     }
   }, [checkAuth])
 
@@ -124,7 +151,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] Attempting login')
       try {
         const data = await authService.login(email, password)
-        await checkAuth()
+        if (mountedRef.current) {
+          await checkAuth()
+        }
         return { error: null, data }
       } catch (error) {
         console.error('[AuthContext] Login error:', error)
@@ -139,7 +168,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       console.log('[AuthContext] Attempting signup')
       try {
         const data = await authService.signup(email, password, userData)
-        await checkAuth()
+        if (mountedRef.current) {
+          await checkAuth()
+        }
         return { error: null, data }
       } catch (error) {
         console.error('[AuthContext] Signup error:', error)
@@ -149,18 +180,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logout: async () => {
       console.log('[AuthContext] Attempting logout')
       await authService.logout()
-      setUser(null)
-      setSession(null)
-      setProfile(null)
-      setRole(null)
-      setIsLoggedIn(false)
+      if (mountedRef.current) {
+        setUser(null)
+        setSession(null)
+        setProfile(null)
+        setRole(null)
+        setIsLoggedIn(false)
+      }
     },
     updateProfile: async (data: Partial<Profile>): Promise<{ error: Error | null }> => {
       console.log('[AuthContext] Updating profile')
       try {
         if (!user?.id) throw new Error('No user ID available')
         await authService.updateProfile(user.id, data)
-        await checkAuth()
+        if (mountedRef.current) {
+          await checkAuth()
+        }
         return { error: null }
       } catch (error) {
         console.error('[AuthContext] Update profile error:', error)
