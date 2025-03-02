@@ -1,0 +1,50 @@
+import {
+  AlertTriangle,
+  ArrowRight,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Command,
+  File,
+  FileText,
+  HelpCircle,
+  Image,
+  Laptop,
+  Loader2,
+  Moon,
+  MoreVertical,
+  Pizza,
+  Plus,
+  Settings,
+  SunMedium,
+  Trash,
+  User,
+  X,
+  type LucideIcon
+} from "lucide-react"
+
+export type Icon = LucideIcon
+
+export const Icons = {
+  logo: Command,
+  spinner: Loader2,
+  chevronLeft: ChevronLeft,
+  chevronRight: ChevronRight,
+  trash: Trash,
+  user: User,
+  post: FileText,
+  page: File,
+  media: Image,
+  settings: Settings,
+  billing: Pizza,
+  ellipsis: MoreVertical,
+  add: Plus,
+  warning: AlertTriangle,
+  arrowRight: ArrowRight,
+  help: HelpCircle,
+  sun: SunMedium,
+  moon: Moon,
+  laptop: Laptop,
+  close: X,
+  check: Check
+} 

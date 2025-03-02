@@ -6,9 +6,19 @@ import { LoginForm } from "./components/login-form"
 import { Scheduler } from "./components/scheduler"
 import { UserNav } from "./components/user-nav"
 import { ClientLayout } from "@/app/components/client-layout"
+import { useEffect, useState } from 'react'
+import { Icons } from '@/components/icons'
 
 export default function Home() {
-  const { user, profile, isLoading } = useAuth()
+  const { user, profile, isLoading, isLoggedIn, isInitialized, role } = useAuth()
+  const [showLogin, setShowLogin] = useState(false)
+
+  // Only show login form after we've checked auth status
+  useEffect(() => {
+    if (isInitialized && !isLoggedIn) {
+      setShowLogin(true)
+    }
+  }, [isInitialized, isLoggedIn])
 
   return (
     <ClientLayout>
@@ -38,9 +48,18 @@ export default function Home() {
               <Scheduler />
             ) : null
           ) : (
-            <div className="flex flex-col items-center">
+            showLogin ? (
               <LoginForm />
-            </div>
+            ) : (
+              <div className="text-center">
+                <div className="flex items-center justify-center my-8">
+                  <Icons.spinner className="h-8 w-8 animate-spin" />
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  Checking authentication status...
+                </p>
+              </div>
+            )
           )}
         </div>
       </main>

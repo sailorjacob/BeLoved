@@ -9,67 +9,16 @@ import { useRouter } from 'next/navigation'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
-// GLOBAL AUTH STATE to ensure single source of truth
-// This exists outside React's component lifecycle
-const GLOBAL_AUTH_STATE: {
-  hasInitialized: boolean;
-  isPerformingRedirect: boolean;
-  instanceCount: number;
-  lastInstance: string | null;
-  redirectAttempted: boolean;
-} = {
-  hasInitialized: false,
-  isPerformingRedirect: false,
-  instanceCount: 0,
-  lastInstance: null,
-  redirectAttempted: false
+// Simple logging with timestamps
+const logWithTime = (area: string, message: string, data?: any) => {
+  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
+  console.log(`[${timestamp}][${area}] ${message}`, data || '');
 };
 
-// Create a unique ID for this instance of the provider
-const createInstanceId = () => `auth-instance-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-
-// Global redirection handler that works independently of component state
-function safeRedirect(destPath: string, reason: string) {
-  // Check if already redirecting
-  if (GLOBAL_AUTH_STATE.isPerformingRedirect) {
-    console.log(`[AUTH-GLOBAL] Already redirecting, skipping redirect to ${destPath}`);
-    return;
-  }
-  
-  // Check if we're already on this path
-  if (window.location.pathname === destPath) {
-    console.log(`[AUTH-GLOBAL] Already at ${destPath}, skipping redirect`);
-    return;
-  }
-  
-  // Check session storage for recent redirects (prevents loops)
-  const now = Date.now();
-  const lastRedirectTime = parseInt(sessionStorage.getItem('last_redirect_time') || '0', 10);
-  const lastRedirectPath = sessionStorage.getItem('last_redirect_path') || '';
-  
-  // If we redirected less than 2 seconds ago to the same path, skip this redirect
-  if (lastRedirectPath === destPath && now - lastRedirectTime < 2000) {
-    console.log(`[AUTH-GLOBAL] Prevented redirect loop to ${destPath} (redirected ${now - lastRedirectTime}ms ago)`);
-    return;
-  }
-  
-  // Mark as redirecting
-  GLOBAL_AUTH_STATE.isPerformingRedirect = true;
-  GLOBAL_AUTH_STATE.redirectAttempted = true;
-  
-  // Store redirect info
-  sessionStorage.setItem('last_redirect_time', now.toString());
-  sessionStorage.setItem('last_redirect_path', destPath);
-  sessionStorage.setItem('redirect_reason', reason);
-  
-  console.log(`[AUTH-GLOBAL] REDIRECTING TO: ${destPath} | Reason: ${reason}`);
-  
-  // Use window.location for reliable navigation
-  window.location.href = destPath;
-}
-
+// Auth state interface for the context
 interface AuthState {
   isLoading: boolean
+  isInitialized: boolean
   isLoggedIn: boolean
   user: User | null
   session: Session | null
@@ -77,6 +26,7 @@ interface AuthState {
   role: UserRole | null
 }
 
+// Response format for auth operations
 interface AuthResponse {
   error: Error | null
   data?: {
@@ -85,6 +35,7 @@ interface AuthResponse {
   }
 }
 
+// Context provides auth state and methods
 interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<AuthResponse>
   signUp: (email: string, password: string, userData?: { 
@@ -93,100 +44,153 @@ interface AuthContextType extends AuthState {
   }) => Promise<AuthResponse>
   logout: () => Promise<void>
   updateProfile: (data: Partial<Profile>) => Promise<{ error: Error | null }>
+  isAdmin: boolean
+  isSuperAdmin: boolean
+  isDriver: boolean
+  isMember: boolean
 }
 
+// Default state for the context
+const defaultState: AuthState = {
+  isLoading: true,
+  isInitialized: false,
+  isLoggedIn: false,
+  user: null,
+  session: null,
+  profile: null,
+  role: null
+}
+
+// Create the context
 const AuthContext = createContext<AuthContextType | null>(null)
 
+// Navigation management to prevent loops
+class NavigationManager {
+  private static lastNavigationTime: number = 0;
+  private static isNavigating: boolean = false;
+  private static MIN_INTERVAL_MS: number = 3000; // 3 seconds between redirects
+
+  // Clear navigation flags on session expiration or logout
+  static reset(): void {
+    localStorage.removeItem('last_navigation');
+    localStorage.removeItem('last_navigation_path');
+    this.isNavigating = false;
+  }
+
+  // Check if we can navigate now
+  static canNavigate(path: string): boolean {
+    // Don't navigate if already navigating
+    if (this.isNavigating) {
+      logWithTime('Navigation', `Already navigating, won't navigate to ${path}`);
+      return false;
+    }
+
+    // Get current time and last navigation time
+    const now = Date.now();
+    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
+    const lastNavPath = localStorage.getItem('last_navigation_path') || '';
+    
+    // If navigating to the same path and it's too soon, prevent it
+    if (lastNavPath === path && now - lastNavTime < this.MIN_INTERVAL_MS) {
+      logWithTime('Navigation', `Prevented navigation loop to ${path} (last navigated ${now - lastNavTime}ms ago)`);
+      return false;
+    }
+
+    return true;
+  }
+
+  // Perform navigation with safeguards
+  static navigate(path: string, reason: string): void {
+    if (!this.canNavigate(path)) return;
+
+    this.isNavigating = true;
+    const now = Date.now();
+    
+    // Store navigation info
+    localStorage.setItem('last_navigation', now.toString());
+    localStorage.setItem('last_navigation_path', path);
+    
+    logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason})`);
+    
+    // Use window.location.href for more reliable navigation
+    window.location.href = path;
+    
+    // Reset flag after a delay
+    setTimeout(() => {
+      this.isNavigating = false;
+    }, 5000);
+  }
+}
+
+// Main auth provider component
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const instanceId = useRef(createInstanceId());
-  const router = useRouter()
-  const [isLoading, setIsLoading] = useState(true)
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
-  const [user, setUser] = useState<User | null>(null)
-  const [session, setSession] = useState<Session | null>(null)
-  const [profile, setProfile] = useState<Profile | null>(null)
-  const [role, setRole] = useState<UserRole | null>(null)
-  const mountedRef = useRef(true)
-  const checkingRef = useRef(false)
+  const router = useRouter();
+  const instanceId = useRef(`auth-${Date.now()}`);
   
-  // Track instances to detect duplicate providers
+  // Auth state
+  const [isLoading, setIsLoading] = useState(true);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [role, setRole] = useState<UserRole | null>(null);
+  
+  // Refs for state management
+  const mountedRef = useRef(true);
+  const checkingRef = useRef(false);
+  
+  // Log instance creation
   useEffect(() => {
-    GLOBAL_AUTH_STATE.instanceCount++;
-    GLOBAL_AUTH_STATE.lastInstance = instanceId.current;
-    
-    console.log(`[AUTH-PROVIDER] Provider mounted #${GLOBAL_AUTH_STATE.instanceCount} (${instanceId.current})`);
-    
+    logWithTime('AuthProvider', `Instance created: ${instanceId.current}`);
     return () => {
-      GLOBAL_AUTH_STATE.instanceCount--;
-      console.log(`[AUTH-PROVIDER] Provider unmounted (${instanceId.current}), ${GLOBAL_AUTH_STATE.instanceCount} remaining`);
+      mountedRef.current = false;
+      logWithTime('AuthProvider', `Instance cleanup: ${instanceId.current}`);
     };
   }, []);
-  
-  // Auto-redirect logic based on user role
-  const handleRoleBasedRedirection = useCallback((userRole: UserRole | null) => {
-    // Skip if no role or already redirecting
-    if (!userRole || GLOBAL_AUTH_STATE.redirectAttempted) return;
-    
-    // Only redirect from login or home page
-    const currentPath = window.location.pathname;
-    if (currentPath !== '/' && currentPath !== '/login') {
-      console.log(`[AUTH-PROVIDER] Not on login/home (${currentPath}), skipping auto-redirect`);
-      return;
-    }
-    
-    // Get target dashboard based on role
-    let dashboardUrl = '/';
-    switch (userRole) {
-      case 'super_admin': dashboardUrl = '/super-admin-dashboard'; break;
-      case 'admin': dashboardUrl = '/admin-dashboard'; break;
-      case 'driver': dashboardUrl = '/driver-dashboard'; break;
-      case 'member': dashboardUrl = '/dashboard'; break;
-    }
-    
-    // Use the global redirect function for safe redirection
-    safeRedirect(dashboardUrl, `User role: ${userRole}`);
-  }, []);
-  
-  // Check auth state - getting the current authenticated user
-  const checkAuth = useCallback(async () => {
-    // Skip if already checking
+
+  // Check if user is authenticated and get profile
+  const checkAuth = useCallback(async (skipRedirect = false) => {
+    // Prevent concurrent checks
     if (checkingRef.current) {
-      console.log('[AUTH-PROVIDER] Auth check already in progress');
+      logWithTime('AuthProvider', 'Auth check already in progress, skipping');
       return;
     }
     
     try {
       checkingRef.current = true;
-      console.log('[AUTH-PROVIDER] Checking auth state');
+      logWithTime('AuthProvider', 'Starting auth check');
       setIsLoading(true);
       
-      const currentUser = await authService.getCurrentUser();
+      const authUser = await authService.getCurrentUser();
       
-      // Skip state updates if unmounted
+      // Skip if component unmounted
       if (!mountedRef.current) return;
       
-      console.log('[AUTH-PROVIDER] Auth state result:', {
-        isLoggedIn: currentUser.isLoggedIn,
-        userId: currentUser.user?.id,
-        role: currentUser.role
+      logWithTime('AuthProvider', 'Auth check result:', {
+        isLoggedIn: authUser.isLoggedIn,
+        userId: authUser.user?.id,
+        role: authUser.role
       });
       
-      setUser(currentUser.user);
-      setSession(currentUser.session);
-      setProfile(currentUser.profile);
-      setRole(currentUser.role);
-      setIsLoggedIn(currentUser.isLoggedIn);
+      // Update state with auth check results
+      setUser(authUser.user);
+      setSession(authUser.session);
+      setProfile(authUser.profile);
+      setRole(authUser.role);
+      setIsLoggedIn(authUser.isLoggedIn);
       
-      // Handle redirection if authenticated with role
-      if (currentUser.isLoggedIn && currentUser.role) {
-        handleRoleBasedRedirection(currentUser.role);
+      // Only redirect if desired role path is available and user is logged in
+      if (!skipRedirect && authUser.isLoggedIn && authUser.role) {
+        await handleRoleBasedRedirect(authUser.role);
       }
     } catch (error) {
-      console.error('[AUTH-PROVIDER] Error checking auth:', error);
+      logWithTime('AuthProvider', 'Error checking auth:', error);
       
-      // Skip state updates if unmounted
+      // Skip if component unmounted
       if (!mountedRef.current) return;
       
+      // Reset auth state on error
       setUser(null);
       setSession(null);
       setProfile(null);
@@ -195,171 +199,219 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } finally {
       if (mountedRef.current) {
         setIsLoading(false);
+        setIsInitialized(true);
       }
       checkingRef.current = false;
     }
-  }, [handleRoleBasedRedirection]);
+  }, []);
+  
+  // Handle role-based redirection
+  const handleRoleBasedRedirect = useCallback(async (userRole: UserRole) => {
+    // Only redirect from home or login page
+    const currentPath = window.location.pathname;
+    if (currentPath !== '/' && currentPath !== '/login') {
+      logWithTime('AuthProvider', `Not on login/home (${currentPath}), skipping redirect`);
+      return;
+    }
+    
+    // Get dashboard path based on role
+    let dashboardPath = '/';
+    switch (userRole) {
+      case 'super_admin': dashboardPath = '/super-admin-dashboard'; break;
+      case 'admin': dashboardPath = '/admin-dashboard'; break;
+      case 'driver': dashboardPath = '/driver-dashboard'; break;
+      case 'member': dashboardPath = '/dashboard'; break;
+    }
+    
+    // Use navigation manager to safely redirect
+    NavigationManager.navigate(dashboardPath, `User role: ${userRole}`);
+  }, []);
   
   // Initialize auth on mount
   useEffect(() => {
-    if (GLOBAL_AUTH_STATE.hasInitialized) {
-      console.log('[AUTH-PROVIDER] Auth already initialized by another provider');
-      return; // Only let one provider initialize
-    }
+    logWithTime('AuthProvider', 'Initializing auth');
     
-    GLOBAL_AUTH_STATE.hasInitialized = true;
-    mountedRef.current = true;
-    
-    console.log('[AUTH-PROVIDER] Initializing auth subscription');
-    
-    // Clear any stale redirection state at app startup
-    const lastRedirectTime = parseInt(sessionStorage.getItem('last_redirect_time') || '0', 10);
-    if (Date.now() - lastRedirectTime > 60000) {
-      sessionStorage.removeItem('last_redirect_time');
-      sessionStorage.removeItem('last_redirect_path');
-      sessionStorage.removeItem('redirect_reason');
-      GLOBAL_AUTH_STATE.redirectAttempted = false;
-    }
-    
-    // Do initial auth check
+    // Initial auth check
     checkAuth();
     
-    // Set up auth state change subscription
+    // Subscribe to auth state changes
     const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
       if (!mountedRef.current) return;
-      console.log('[AUTH-PROVIDER] Auth state changed:', event);
+      logWithTime('AuthProvider', `Auth state changed: ${event}`);
       
       if (event === 'SIGNED_IN') {
-        // Reset redirect flag on new sign-in
-        GLOBAL_AUTH_STATE.redirectAttempted = false;
-        console.log('[AUTH-PROVIDER] User signed in, updating state');
-        await checkAuth();
+        logWithTime('AuthProvider', 'User signed in, updating state');
+        await checkAuth(false); // Check auth with redirection
       } else if (event === 'SIGNED_OUT') {
-        console.log('[AUTH-PROVIDER] User signed out, resetting state');
+        logWithTime('AuthProvider', 'User signed out, resetting state');
         setUser(null);
         setSession(null);
         setProfile(null);
         setRole(null);
         setIsLoggedIn(false);
+        NavigationManager.reset();
       } else if (event === 'USER_UPDATED') {
-        console.log('[AUTH-PROVIDER] User updated, refreshing state');
-        await checkAuth();
+        logWithTime('AuthProvider', 'User updated, refreshing state');
+        await checkAuth(true); // Check auth without redirection
       }
     });
     
-    // Clean up on unmount
     return () => {
-      console.log('[AUTH-PROVIDER] Cleaning up auth subscription');
-      mountedRef.current = false;
-      
-      // Only clean up global state if this is the instance that initialized
-      if (GLOBAL_AUTH_STATE.lastInstance === instanceId.current) {
-        GLOBAL_AUTH_STATE.hasInitialized = false;
-        console.log('[AUTH-PROVIDER] Resetting global auth state');
-      }
-      
       if (subscription?.unsubscribe) {
         subscription.unsubscribe();
       }
     };
   }, [checkAuth]);
   
-  // Auth context value with methods for login, logout, etc.
+  // Login method
   const login = async (email: string, password: string): Promise<AuthResponse> => {
-    setIsLoading(true)
+    logWithTime('AuthProvider', `Login attempt: ${email}`);
+    setIsLoading(true);
+    
     try {
-      const result = await authService.login(email, password)
+      const result = await authService.login(email, password);
       
       if ('error' in result && result.error) {
-        return { error: result.error instanceof Error ? result.error : new Error(String(result.error)) }
+        return { 
+          error: result.error instanceof Error 
+            ? result.error 
+            : new Error(String(result.error))
+        };
       }
       
       if (!mountedRef.current) {
-        return { error: null, data: { user: result.user, session: result.session } }
+        return { 
+          error: null, 
+          data: { user: result.user, session: result.session } 
+        };
       }
       
-      // After login, checkAuth will be called via the auth state change event
-      console.log('[AUTH-PROVIDER] Login successful')
-      return { error: null, data: { user: result.user, session: result.session } }
+      logWithTime('AuthProvider', 'Login successful');
+      // Auth state change will trigger checkAuth
+      return { 
+        error: null, 
+        data: { user: result.user, session: result.session } 
+      };
     } catch (error) {
-      console.error('[AUTH-PROVIDER] Error during login:', error)
-      return { error: error instanceof Error ? error : new Error('Unknown login error') }
+      logWithTime('AuthProvider', 'Login error:', error);
+      return { 
+        error: error instanceof Error 
+          ? error 
+          : new Error('Unknown login error')
+      };
     } finally {
       if (mountedRef.current) {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
-  }
+  };
   
+  // Signup method
   const signUp = async (
-    email: string,
-    password: string,
+    email: string, 
+    password: string, 
     userData?: { full_name?: string; phone?: string }
   ): Promise<AuthResponse> => {
-    setIsLoading(true)
+    logWithTime('AuthProvider', `Signup attempt: ${email}`);
+    setIsLoading(true);
+    
     try {
       const result = await authService.signup(email, password, {
         full_name: userData?.full_name,
         phone: userData?.phone,
-        user_type: 'member' as UserRole, // Default role for new sign-ups
-      })
+        user_type: 'member' as UserRole
+      });
       
       if ('error' in result && result.error) {
-        return { error: result.error instanceof Error ? result.error : new Error(String(result.error)) }
+        return { 
+          error: result.error instanceof Error 
+            ? result.error 
+            : new Error(String(result.error))
+        };
       }
       
       if (!mountedRef.current) {
-        return { error: null, data: { user: result.user, session: result.session } }
+        return { 
+          error: null, 
+          data: { user: result.user, session: result.session } 
+        };
       }
       
-      console.log('[AUTH-PROVIDER] Signup successful')
-      // After signup, checkAuth will be called via the auth state change event
-      return { error: null, data: { user: result.user, session: result.session } }
+      logWithTime('AuthProvider', 'Signup successful');
+      // Auth state change will trigger checkAuth
+      return { 
+        error: null, 
+        data: { user: result.user, session: result.session } 
+      };
     } catch (error) {
-      console.error('[AUTH-PROVIDER] Error during signup:', error)
-      return { error: error instanceof Error ? error : new Error('Unknown signup error') }
+      logWithTime('AuthProvider', 'Signup error:', error);
+      return { 
+        error: error instanceof Error 
+          ? error 
+          : new Error('Unknown signup error')
+      };
     } finally {
       if (mountedRef.current) {
-        setIsLoading(false)
+        setIsLoading(false);
       }
     }
-  }
+  };
   
+  // Logout method
   const logout = async (): Promise<void> => {
+    logWithTime('AuthProvider', 'Logout attempt');
+    
     try {
-      await authService.logout()
-      // After logout, state will be reset via the auth state change event
-      console.log('[AUTH-PROVIDER] Logout successful')
+      await authService.logout();
+      logWithTime('AuthProvider', 'Logout successful');
       
-      // Reset redirection flag on logout
-      GLOBAL_AUTH_STATE.redirectAttempted = false;
+      // Clear navigation flags
+      NavigationManager.reset();
+      
+      // Auth state will be updated via the event listener
     } catch (error) {
-      console.error('[AUTH-PROVIDER] Error during logout:', error)
+      logWithTime('AuthProvider', 'Logout error:', error);
     }
-  }
+  };
   
+  // Profile update method
   const updateProfile = async (data: Partial<Profile>) => {
+    logWithTime('AuthProvider', 'Profile update attempt');
+    
     try {
       if (!user) {
-        return { error: new Error('User not authenticated') }
+        return { error: new Error('User not authenticated') };
       }
       
-      await authService.updateProfile(user.id, data)
+      await authService.updateProfile(user.id, data);
+      logWithTime('AuthProvider', 'Profile update successful');
       
-      // Refresh auth state to get updated profile
+      // Refresh auth state without redirection
       if (mountedRef.current) {
-        await checkAuth()
+        await checkAuth(true);
       }
       
-      return { error: null }
+      return { error: null };
     } catch (error) {
-      console.error('[AUTH-PROVIDER] Error updating profile:', error)
-      return { error: error as Error }
+      logWithTime('AuthProvider', 'Profile update error:', error);
+      return { 
+        error: error instanceof Error 
+          ? error 
+          : new Error('Unknown profile update error')
+      };
     }
-  }
+  };
   
+  // Role helpers
+  const isAdmin = !!role && (role === 'admin' || role === 'super_admin');
+  const isSuperAdmin = role === 'super_admin';
+  const isDriver = role === 'driver';
+  const isMember = role === 'member';
+  
+  // Provide context value
   const value = {
     isLoading,
+    isInitialized,
     isLoggedIn,
     user,
     session,
@@ -369,16 +421,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     signUp,
     logout,
     updateProfile,
-  }
+    isAdmin,
+    isSuperAdmin,
+    isDriver,
+    isMember
+  };
   
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
+// Hook to use auth context
 export function useAuth() {
-  const context = useContext(AuthContext)
+  const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error('useAuth must be used within an AuthProvider');
   }
-  return context
+  return context;
 }
 
