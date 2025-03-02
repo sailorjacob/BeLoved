@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/contexts/auth-context'
 import {
   Card,
   CardContent,
@@ -265,18 +266,27 @@ function GeographicNodes() {
 }
 
 export function SuperAdminDashboard() {
+  const { isLoggedIn, role } = useAuth()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [revenueData, setRevenueData] = useState<RevenueData[]>([])
   const [rideStatuses, setRideStatuses] = useState<RideStatus[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchDashboardData()
-  }, [])
+    console.log('[SuperAdminDashboard] Component mounted, auth state:', { isLoggedIn, role })
+    if (isLoggedIn && role === 'super_admin') {
+      fetchDashboardData()
+    }
+  }, [isLoggedIn, role])
 
   const fetchDashboardData = async () => {
     try {
+      console.log('[SuperAdminDashboard] Fetching dashboard data...')
+      setIsLoading(true)
+      setError(null)
+
       // Fetch basic stats
       const stats = await fetchStats()
       setStats(stats)
@@ -288,8 +298,11 @@ export function SuperAdminDashboard() {
       // Fetch ride status distribution
       const rideStats = await fetchRideStatusDistribution()
       setRideStatuses(rideStats)
+
+      console.log('[SuperAdminDashboard] Data fetched successfully')
     } catch (error) {
-      console.error('Error fetching dashboard data:', error)
+      console.error('[SuperAdminDashboard] Error fetching data:', error)
+      setError('Failed to fetch dashboard data. Please try refreshing the page.')
       toast.error('Failed to fetch dashboard data')
     } finally {
       setIsLoading(false)
@@ -421,6 +434,17 @@ export function SuperAdminDashboard() {
       status,
       count,
     }))
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center min-h-[200px]">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <Button onClick={() => fetchDashboardData()}>Retry</Button>
+        </div>
+      </div>
+    )
   }
 
   if (isLoading) {
