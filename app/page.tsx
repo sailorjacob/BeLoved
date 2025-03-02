@@ -7,17 +7,46 @@ import { Scheduler } from "./components/scheduler"
 import { UserNav } from "./components/user-nav"
 import { useEffect, useState } from 'react'
 import { Icons } from '@/components/icons'
+import { SuperAdminDashboard } from './components/super-admin-dashboard'
+import { useRouter } from 'next/navigation'
 
 export default function Home() {
   const { user, profile, isLoading, isLoggedIn, isInitialized, role } = useAuth()
   const [showLogin, setShowLogin] = useState(false)
+  const router = useRouter()
 
   // Only show login form after we've checked auth status
   useEffect(() => {
-    if (isInitialized && !isLoggedIn) {
-      setShowLogin(true)
+    if (isInitialized) {
+      if (!isLoggedIn) {
+        setShowLogin(true)
+      } else if (role) {
+        // Redirect to appropriate dashboard based on role
+        console.log("[HomePage] User is logged in with role:", role)
+        
+        // Instead of redirect, we'll show dashboards inline for now
+        // This prevents navigation loop issues
+      }
     }
-  }, [isInitialized, isLoggedIn])
+  }, [isInitialized, isLoggedIn, role, router])
+
+  // Helper to render the appropriate content based on user role
+  const renderDashboardContent = () => {
+    console.log("[HomePage] Rendering dashboard for role:", role)
+    
+    switch(role) {
+      case 'super_admin':
+        return <SuperAdminDashboard />
+      case 'admin':
+        return <div className="text-2xl font-semibold">Admin Dashboard</div>
+      case 'driver':
+        return <div className="text-2xl font-semibold">Driver Dashboard</div>
+      case 'member':
+        return <Scheduler />
+      default:
+        return <div className="text-xl">Welcome! Your dashboard is loading...</div>
+    }
+  }
 
   return (
     <main className="container mx-auto p-4 min-h-screen flex flex-col">
@@ -42,9 +71,8 @@ export default function Home() {
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
           </div>
         ) : user ? (
-          profile?.user_type === "member" ? (
-            <Scheduler />
-          ) : null
+          // If user is logged in, render appropriate dashboard
+          renderDashboardContent()
         ) : (
           showLogin ? (
             <LoginForm />
