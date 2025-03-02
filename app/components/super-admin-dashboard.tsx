@@ -625,31 +625,20 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           <p className="text-muted-foreground">System-wide analytics and management</p>
         </div>
         <div className="flex space-x-4">
-          <Link href="/super-admin/providers">
-            <Button variant="destructive" onClick={() => {
-              console.log('[SuperAdminDashboard] Navigating to providers page')
-              try {
-                router.push('/super-admin/providers')
-              } catch (e) {
-                console.error('[SuperAdminDashboard] Router navigation failed:', e)
-                // Link component will handle navigation fallback
-              }
-            }}>
-              Manage Providers
-            </Button>
-          </Link>
-          <Link href="/super-admin/support">
-            <Button variant="destructive" onClick={() => {
-              try {
-                router.push('/super-admin/support')
-              } catch (e) {
-                console.error('[SuperAdminDashboard] Router navigation failed:', e)
-                // Link component will handle navigation fallback
-              }
-            }}>
-              Customer Support
-            </Button>
-          </Link>
+          <Button variant="destructive" onClick={() => {
+            console.log('[SuperAdminDashboard] Navigating to providers page via direct navigation')
+            // Use direct navigation for maximum reliability
+            window.location.href = '/super-admin/providers'
+          }}>
+            Manage Providers
+          </Button>
+          <Button variant="destructive" onClick={() => {
+            console.log('[SuperAdminDashboard] Navigating to support page via direct navigation')
+            // Use direct navigation for maximum reliability
+            window.location.href = '/super-admin/support'
+          }}>
+            Customer Support
+          </Button>
         </div>
       </div>
 

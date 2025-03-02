@@ -18,7 +18,13 @@ const publicPaths = [
 
 // Role-specific common paths
 const roleCommonPaths = {
-  super_admin: ['/profile', '/super-admin-dashboard'],
+  super_admin: [
+    '/profile', 
+    '/super-admin-dashboard', 
+    '/super-admin/providers', 
+    '/super-admin/support', 
+    '/super-admin/locations'
+  ],
   admin: ['/profile', '/admin-dashboard'],
   driver: ['/profile', '/trips', '/driver-dashboard'],
   member: ['/profile', '/my-rides', '/dashboard']
