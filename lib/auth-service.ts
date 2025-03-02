@@ -39,14 +39,32 @@ class AuthService {
 
   async getProfile(userId: string): Promise<Profile | null> {
     try {
+      console.log('[AuthService] Fetching profile for user:', userId)
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('*')
+        .select('id, email, full_name, phone, user_type, created_at, updated_at')
         .eq('id', userId)
         .single()
 
-      if (error) throw error
-      return profile
+      if (error) {
+        console.error('[AuthService] Error fetching profile:', error)
+        throw error
+      }
+
+      console.log('[AuthService] Raw profile data:', profile)
+      
+      if (!profile) {
+        console.error('[AuthService] No profile found')
+        return null
+      }
+
+      if (!profile.user_type) {
+        console.error('[AuthService] Profile found but no user_type:', profile)
+        return profile as Profile
+      }
+
+      console.log('[AuthService] Profile found with user_type:', profile.user_type)
+      return profile as Profile
     } catch (error) {
       console.error('[AuthService] Error getting profile:', error)
       return null
@@ -87,14 +105,16 @@ class AuthService {
         id: profile.id,
         email: profile.email,
         user_type: profile.user_type,
-        full_profile: profile
+        created_at: profile.created_at,
+        updated_at: profile.updated_at
       })
       
-      const role = profile.user_type
-      console.log('[AuthService] Setting role from user_type:', role)
+      // Validate user_type
+      const validRoles: UserRole[] = ['member', 'driver', 'admin', 'super_admin']
+      const userType = profile.user_type
       
-      if (!role) {
-        console.error('[AuthService] No user_type found in profile')
+      if (!userType || !validRoles.includes(userType)) {
+        console.error('[AuthService] Invalid user_type found:', userType)
         return {
           user: session.user,
           session,
@@ -104,12 +124,13 @@ class AuthService {
         }
       }
       
+      console.log('[AuthService] Valid role found:', userType)
       return {
         user: session.user,
         session,
         profile,
         isLoggedIn: true,
-        role: role as UserRole
+        role: userType
       }
     } catch (error) {
       console.error('[AuthService] Error getting current user:', error)
