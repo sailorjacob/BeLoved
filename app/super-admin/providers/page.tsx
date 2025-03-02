@@ -13,7 +13,11 @@ export default function ProvidersPage() {
       <div className="flex items-center space-x-4 mb-8">
         <Button
           variant="outline"
-          onClick={() => router.push('/super-admin')}
+          onClick={() => {
+            console.log('Navigating back to dashboard')
+            // Use direct navigation for maximum reliability
+            window.location.href = '/super-admin-dashboard'
+          }}
           className="flex items-center space-x-2"
         >
           <ArrowLeft className="h-4 w-4" />

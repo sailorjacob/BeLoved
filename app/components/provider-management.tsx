@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Card,
@@ -149,6 +149,8 @@ export function ProviderManagement() {
   const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
   const [isStatusUpdateDialogOpen, setIsStatusUpdateDialogOpen] = useState(false)
   const [providerToUpdate, setProviderToUpdate] = useState<Provider | null>(null)
+  const [isUsingDemoData, setIsUsingDemoData] = useState(false)
+  const fetchAttemptedRef = useRef(false)
 
   useEffect(() => {
     fetchData()
@@ -156,6 +158,10 @@ export function ProviderManagement() {
 
   const fetchData = async () => {
     try {
+      if (fetchAttemptedRef.current) return;
+      fetchAttemptedRef.current = true;
+      setIsLoading(true)
+
       // Fetch providers
       const { data: providerData, error: providerError } = await supabase
         .from('transportation_providers')
@@ -174,14 +180,65 @@ export function ProviderManagement() {
 
       if (adminError) throw adminError
 
-      setProviders(providerData)
-      setAdmins(adminData)
+      setProviders(providerData || [])
+      setAdmins(adminData || [])
     } catch (error) {
       console.error('Error fetching data:', error)
-      toast.error('Failed to fetch data')
+      toast.error('Failed to fetch data - using demo data instead')
+      // Load demo data as fallback
+      setIsUsingDemoData(true)
+      setDemoData()
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const setDemoData = () => {
+    // Set some sample demo data
+    setProviders([
+      {
+        id: 'demo-1',
+        name: 'Demo Provider 1',
+        organization_code: 'DEMO1',
+        address: '123 Main St',
+        city: 'Anytown',
+        state: 'IN',
+        zip: '47401',
+        status: 'active'
+      },
+      {
+        id: 'demo-2',
+        name: 'Demo Provider 2',
+        organization_code: 'DEMO2',
+        address: '456 Oak Ave',
+        city: 'Somewhere',
+        state: 'IN',
+        zip: '47403',
+        status: 'inactive'
+      }
+    ])
+
+    setAdmins([
+      {
+        id: 'admin-1',
+        full_name: 'Demo Admin 1',
+        email: 'admin1@example.com',
+        phone: '555-123-4567',
+        username: 'admin1',
+        provider_id: 'demo-1',
+        provider: {
+          id: 'demo-1',
+          name: 'Demo Provider 1',
+          organization_code: 'DEMO1',
+          address: '123 Main St',
+          city: 'Anytown',
+          state: 'IN',
+          zip: '47401',
+          status: 'active'
+        },
+        status: 'active'
+      }
+    ])
   }
 
   const providerForm = useFormHandling<ProviderFormData>({
@@ -328,6 +385,16 @@ export function ProviderManagement() {
 
   return (
     <div className="space-y-8">
+      {/* Demo data notice */}
+      {isUsingDemoData && (
+        <div className="bg-blue-50 border border-blue-200 rounded-md p-4 mb-6">
+          <h3 className="text-md font-medium text-blue-800">Demo Mode</h3>
+          <p className="text-sm text-blue-700 mt-1">
+            Showing demo data. In production, this page will display and allow management of actual transportation providers.
+          </p>
+        </div>
+      )}
+
       {/* Providers Section */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
@@ -354,51 +421,68 @@ export function ProviderManagement() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {providers.map((provider) => {
-                const providerAdmins = admins.filter(admin => admin.provider_id === provider.id)
-                return (
-                  <TableRow key={provider.id}>
-                    <TableCell>{provider.name}</TableCell>
-                    <TableCell>{provider.organization_code}</TableCell>
-                    <TableCell>
-                      {`${provider.address}, ${provider.city}, ${provider.state} ${provider.zip}`}
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center space-x-2">
-                        <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
-                          {provider.status}
-                        </Badge>
-                        <Switch
-                          checked={provider.status === 'active'}
-                          onCheckedChange={() => handleStatusToggle(provider)}
-                        />
-                      </div>
-                    </TableCell>
-                    <TableCell>{providerAdmins.length}</TableCell>
-                    <TableCell>
-                      <div className="flex space-x-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedProvider(provider)
-                            setIsAdminDialogOpen(true)
-                          }}
-                        >
-                          Add Admin
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => router.push(`/providers/${provider.id}/details`)}
-                        >
-                          View Details
-                        </Button>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
+              {providers.length > 0 ? (
+                providers.map((provider) => {
+                  const providerAdmins = admins.filter(admin => admin.provider_id === provider.id)
+                  return (
+                    <TableRow key={provider.id}>
+                      <TableCell>{provider.name}</TableCell>
+                      <TableCell>{provider.organization_code}</TableCell>
+                      <TableCell>
+                        {`${provider.address}, ${provider.city}, ${provider.state} ${provider.zip}`}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center space-x-2">
+                          <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
+                            {provider.status}
+                          </Badge>
+                          <Switch
+                            checked={provider.status === 'active'}
+                            onCheckedChange={() => handleStatusToggle(provider)}
+                          />
+                        </div>
+                      </TableCell>
+                      <TableCell>{providerAdmins.length}</TableCell>
+                      <TableCell>
+                        <div className="flex space-x-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProvider(provider)
+                              setIsAdminDialogOpen(true)
+                            }}
+                          >
+                            Add Admin
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => router.push(`/providers/${provider.id}/details`)}
+                          >
+                            View Details
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center py-8">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <p className="text-muted-foreground">No providers found</p>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setIsProviderDialogOpen(true)}
+                      >
+                        Add Your First Provider
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
             </TableBody>
           </Table>
         </CardContent>
