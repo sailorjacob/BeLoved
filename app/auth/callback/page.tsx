@@ -10,10 +10,12 @@ export default function AuthCallbackPage() {
   useEffect(() => {
     const handleAuthCallback = async () => {
       try {
+        console.log('[AuthCallback] Processing auth callback')
         const { data: { session }, error } = await supabase.auth.getSession()
         if (error) throw error
 
         if (session?.user) {
+          console.log('[AuthCallback] Session found, fetching profile')
           // Get user profile to determine redirect
           const { data: profile } = await supabase
             .from('profiles')
@@ -21,9 +23,12 @@ export default function AuthCallbackPage() {
             .eq('id', session.user.id)
             .single()
 
+          console.log('[AuthCallback] Profile found:', profile)
+
           // Redirect based on user type
           switch (profile?.user_type) {
             case 'super_admin':
+              console.log('[AuthCallback] Redirecting super admin to dashboard')
               router.replace('/super-admin-dashboard')
               break
             case 'admin':
@@ -36,14 +41,15 @@ export default function AuthCallbackPage() {
               router.replace('/dashboard')
               break
             default:
-              // If no profile or unknown user type, redirect to login
+              console.log('[AuthCallback] No profile or unknown user type')
               router.replace('/')
           }
         } else {
+          console.log('[AuthCallback] No session found')
           router.replace('/')
         }
       } catch (error) {
-        console.error('Error in auth callback:', error)
+        console.error('[AuthCallback] Error:', error)
         router.replace('/')
       }
     }
