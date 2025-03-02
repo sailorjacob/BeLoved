@@ -23,18 +23,16 @@ const protectedPaths = {
 
 // CSP Headers for production
 const getSecurityHeaders = () => ({
-  'Content-Security-Policy': process.env.NODE_ENV === 'development' 
-    ? '' // No CSP in development
-    : `
-      default-src 'self';
-      script-src 'self' 'unsafe-inline' 'unsafe-eval';
-      style-src 'self' 'unsafe-inline';
-      img-src 'self' data: blob: https:;
-      font-src 'self' data:;
-      connect-src 'self' https: wss:;
-      frame-ancestors 'none';
-      form-action 'self';
-    `.replace(/\s+/g, ' ').trim(),
+  'Content-Security-Policy': `
+    default-src 'self';
+    script-src 'self' 'unsafe-inline' 'unsafe-eval';
+    style-src 'self' 'unsafe-inline';
+    img-src 'self' data: blob: https:;
+    font-src 'self' data:;
+    connect-src 'self' https: wss:;
+    frame-ancestors 'none';
+    form-action 'self';
+  `.replace(/\s+/g, ' ').trim(),
   'X-Frame-Options': 'DENY',
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
