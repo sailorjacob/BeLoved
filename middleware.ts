@@ -5,6 +5,9 @@ import type { NextRequest } from 'next/server'
 // Only these paths don't require authentication
 const publicPaths = ['/', '/auth/callback', '/signup', '/forgot-password']
 
+// Common paths that any authenticated user can access
+const commonPaths = ['/profile', '/my-rides']
+
 // Protected paths by role
 const protectedPaths = {
   super_admin: ['/super-admin-dashboard'],
@@ -78,6 +81,12 @@ export async function middleware(request: NextRequest) {
     if (!profile?.user_type) {
       console.log('[Middleware] No profile or user type, redirecting to home')
       return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    // Allow access to common paths for all authenticated users
+    if (commonPaths.some(path => pathname.startsWith(path))) {
+      console.log('[Middleware] Allowing access to common path:', pathname)
+      return res
     }
 
     // Get the user's allowed paths
