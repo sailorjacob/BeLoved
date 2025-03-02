@@ -7,7 +7,7 @@ import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { authService } from '@/lib/auth-service'
 
 interface LoginFormData {
@@ -70,7 +70,16 @@ export function LoginForm() {
   const [hasAttemptedSignup, setHasAttemptedSignup] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
+  const [pendingRedirect, setPendingRedirect] = useState<string | null>(null)
   const router = useRouter()
+  
+  // Handle redirection after successful login
+  useEffect(() => {
+    if (pendingRedirect && auth.isLoggedIn && auth.role) {
+      console.log('[LoginForm] Executing pending redirect to:', pendingRedirect)
+      router.push(pendingRedirect)
+    }
+  }, [pendingRedirect, auth.isLoggedIn, auth.role, router])
   
   // If we're already logged in or still loading, don't show the form
   if (auth.isLoading) {
@@ -89,7 +98,8 @@ export function LoginForm() {
     isLoggedIn: auth.isLoggedIn,
     hasUser: !!auth.user,
     isLoading: auth.isLoading,
-    profile: auth.profile
+    profile: auth.profile,
+    role: auth.role
   })
 
   const { 
@@ -105,6 +115,7 @@ export function LoginForm() {
       setHasAttemptedLogin(true)
       setSubmitError(null)
       setSubmitSuccess(null)
+      setPendingRedirect(null)
       
       try {
         console.log('Attempting login with email:', values.email)
@@ -145,8 +156,8 @@ export function LoginForm() {
           user_type: profile.user_type
         })
 
-        // Handle redirection based on role
-        console.log('[LoginForm] Redirecting to dashboard for role:', profile.user_type)
+        // Set redirection based on role
+        console.log('[LoginForm] Setting redirect for role:', profile.user_type)
         let dashboardUrl = '/'
         
         switch (profile.user_type) {
@@ -166,13 +177,10 @@ export function LoginForm() {
             throw new Error(`Invalid user type: ${profile.user_type}`)
         }
 
-        console.log('[LoginForm] Redirecting to:', dashboardUrl)
+        console.log('[LoginForm] Setting pending redirect to:', dashboardUrl)
         setSubmitSuccess('Login successful! Redirecting...')
-        
-        // Force navigation after a short delay to ensure state is updated
-        setTimeout(() => {
-          router.push(dashboardUrl)
-        }, 100)
+        setPendingRedirect(dashboardUrl)
+
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
