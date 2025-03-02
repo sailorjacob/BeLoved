@@ -117,16 +117,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!profile.user_type) {
         throw new Error('Login failed: No user type found in profile')
       }
+
+      const role = profile.user_type as UserRole
+      console.log('[Auth] Profile fetched successfully:', {
+        id: profile.id,
+        email: user.email,
+        user_type: profile.user_type,
+        role
+      })
       
-      console.log('[Auth] Profile fetched, setting auth state...')
-      setAuthState({
+      // Set auth state with complete profile data
+      const newState = {
         isLoading: false,
         user,
         session,
         profile,
         isLoggedIn: true,
-        role: profile.user_type as UserRole
-      })
+        role
+      }
+      
+      console.log('[Auth] Setting complete auth state')
+      setAuthState(newState)
       
       return { error: null, data: { user, session } }
     } catch (error) {

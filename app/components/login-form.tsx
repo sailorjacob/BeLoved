@@ -110,21 +110,33 @@ export function LoginForm() {
         const { error } = await auth.login(values.email, values.password)
         if (error) throw error
 
-        // Get profile type directly from auth context
+        // Wait for auth state to be updated
+        await new Promise(resolve => setTimeout(resolve, 1000))
+
+        // Get updated auth state
         const userType = auth.profile?.user_type
-        console.log('User type from profile:', userType)
+        console.log('User type after state update:', userType)
+        
+        if (!userType) {
+          throw new Error('No user type found in profile. Please contact support.')
+        }
         
         // Handle redirection based on role
-        if (userType === 'super_admin') {
-          router.replace('/super-admin-dashboard')
-        } else if (userType === 'admin') {
-          router.replace('/admin-dashboard')
-        } else if (userType === 'driver') {
-          router.replace('/driver-dashboard')
-        } else if (userType === 'member') {
-          router.replace('/dashboard')
-        } else {
-          throw new Error('Unable to determine user role. Please contact support.')
+        switch (userType) {
+          case 'super_admin':
+            router.replace('/super-admin-dashboard')
+            break
+          case 'admin':
+            router.replace('/admin-dashboard')
+            break
+          case 'driver':
+            router.replace('/driver-dashboard')
+            break
+          case 'member':
+            router.replace('/dashboard')
+            break
+          default:
+            throw new Error(`Invalid user type: ${userType}. Please contact support.`)
         }
 
         setSubmitSuccess('Login successful!')
