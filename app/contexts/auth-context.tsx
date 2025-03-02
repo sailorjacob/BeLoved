@@ -5,6 +5,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useRef } f
 import type { User, Session } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { authService, type UserRole } from '@/lib/auth-service'
+import { useRouter } from 'next/navigation'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -47,6 +48,7 @@ const initialState: AuthState = {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [user, setUser] = useState<User | null>(null)
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<UserRole | null>(null)
   const mountedRef = useRef(true)
   const checkingRef = useRef(false)
+  const redirectedRef = useRef(false)
 
   const checkAuth = useCallback(async () => {
     // Prevent concurrent auth checks
@@ -100,8 +103,69 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [])
 
+  // Helper function to redirect based on role
+  const redirectToRoleDashboard = useCallback((userRole: UserRole) => {
+    // Skip if already redirected or not mounted
+    if (redirectedRef.current || !mountedRef.current) return
+
+    let dashboardUrl = '/'
+    switch (userRole) {
+      case 'super_admin':
+        dashboardUrl = '/super-admin-dashboard'
+        break
+      case 'admin':
+        dashboardUrl = '/admin-dashboard'
+        break
+      case 'driver':
+        dashboardUrl = '/driver-dashboard'
+        break
+      case 'member':
+        dashboardUrl = '/dashboard'
+        break
+    }
+
+    // Only redirect from login page and avoid infinite redirects
+    const currentPath = window.location.pathname
+    const isLoginPage = currentPath === '/login' || currentPath === '/'
+    
+    if (isLoginPage) {
+      console.log('[AuthContext] Redirecting to role dashboard:', dashboardUrl)
+      redirectedRef.current = true
+      
+      // Use both approaches for reliability
+      try {
+        router.push(dashboardUrl)
+      } catch (error) {
+        console.error('[AuthContext] Router push failed:', error)
+      }
+      
+      // Fallback to direct navigation
+      setTimeout(() => {
+        if (mountedRef.current) {
+          console.log('[AuthContext] Fallback redirect via window.location')
+          window.location.href = dashboardUrl
+        }
+      }, 500)
+    }
+  }, [router])
+
+  // Watch for role changes to trigger redirection
   useEffect(() => {
-    console.log('[AuthContext] Initial auth check')
+    if (role && isLoggedIn && !isLoading) {
+      redirectToRoleDashboard(role)
+    }
+  }, [role, isLoggedIn, isLoading, redirectToRoleDashboard])
+
+  // Reset redirect flag when user logs out
+  useEffect(() => {
+    if (!isLoggedIn) {
+      redirectedRef.current = false
+    }
+  }, [isLoggedIn])
+
+  // When a user signs in, we'll directly handle redirection 
+  useEffect(() => {
+    console.log('[AuthContext] Auth provider mounted')
     
     // Set up cleanup
     mountedRef.current = true
@@ -117,6 +181,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (event === 'SIGNED_IN') {
         console.log('[AuthContext] User signed in, updating state')
         await checkAuth()
+        
+        // After checkAuth completes, the role will be set, triggering our redirection
       } else if (event === 'SIGNED_OUT') {
         console.log('[AuthContext] User signed out, resetting state')
         setUser(null)
