@@ -1,6 +1,7 @@
 import { createMiddlewareClient } from '@supabase/auth-helpers-nextjs'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import type { UserRole } from '@/lib/auth-service'
 
 // Only these paths don't require authentication
 const publicPaths = ['/', '/auth/callback', '/signup', '/forgot-password']
@@ -40,88 +41,80 @@ const getSecurityHeaders = () => ({
 })
 
 export async function middleware(request: NextRequest) {
-  const res = NextResponse.next()
-  const supabase = createMiddlewareClient({ req: request, res })
-  const pathname = request.nextUrl.pathname
-
-  console.log('[Middleware] Processing request:', pathname)
-
+  console.log('[Middleware] Processing request for path:', request.nextUrl.pathname)
+  
   try {
-    // Apply security headers in production only
-    if (process.env.NODE_ENV === 'production') {
-      const securityHeaders = getSecurityHeaders()
-      Object.entries(securityHeaders).forEach(([key, value]) => {
-        if (value) { // Only set headers with non-empty values
-          res.headers.set(key, value)
-        }
-      })
-    }
-
-    // Skip auth check for public routes
-    if (publicPaths.includes(pathname)) {
-      console.log('[Middleware] Public path, skipping auth check:', pathname)
-      return res
-    }
-
-    // Check session and profile
-    const { data: { session } } = await supabase.auth.getSession()
+    const supabase = createMiddlewareClient({ req: request, res: NextResponse.next() })
     
-    if (!session) {
-      console.log('[Middleware] No session, redirecting to home')
+    // Try to get the session
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+    
+    if (sessionError) {
+      console.error('[Middleware] Session error:', sessionError)
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Get user profile to check role
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('user_type')
-      .eq('id', session.user.id)
-      .single()
-
-    console.log('[Middleware] Profile:', profile)
-
-    // If no profile or user type, redirect to home
-    if (!profile?.user_type) {
-      console.log('[Middleware] No profile or user type, redirecting to home')
+    // If no session and trying to access protected path, redirect to login
+    if (!session && !publicPaths.includes(request.nextUrl.pathname)) {
+      console.log('[Middleware] No session found, redirecting to login')
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    const userRole = profile.user_type as keyof typeof protectedPaths
-    const userDashboard = getDashboardPath(profile.user_type)
+    // If we have a session, try to get the profile
+    if (session?.user?.id) {
+      console.log('[Middleware] Session found, fetching profile')
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('user_type')
+        .eq('id', session.user.id)
+        .single()
 
-    // Check if the path is allowed for the user's role
-    const roleCommon = roleCommonPaths[userRole] || []
-    const rolePaths = protectedPaths[userRole] || []
+      if (profileError) {
+        console.error('[Middleware] Profile error:', profileError)
+        return NextResponse.redirect(new URL('/', request.url))
+      }
 
-    console.log('[Middleware] Checking access:', {
-      pathname,
-      userRole,
-      roleCommon,
-      rolePaths,
-      userDashboard
-    })
+      if (!profile) {
+        console.error('[Middleware] No profile found for user:', session.user.id)
+        return NextResponse.redirect(new URL('/', request.url))
+      }
 
-    // Allow access if:
-    // 1. The path is in the role's common paths
-    // 2. The path is the user's dashboard or starts with it
-    // 3. The path is in the role's protected paths
-    const hasAccess = 
-      roleCommon.some(path => pathname.startsWith(path)) ||
-      pathname === userDashboard ||
-      pathname.startsWith(userDashboard) ||
-      rolePaths.some(path => pathname.startsWith(path))
+      const userRole = profile.user_type as UserRole
+      if (!userRole || !roleCommonPaths[userRole]) {
+        console.error('[Middleware] Invalid user role:', userRole)
+        return NextResponse.redirect(new URL('/', request.url))
+      }
 
-    if (hasAccess) {
-      console.log('[Middleware] Allowing access to path:', pathname)
-      return res
+      console.log('[Middleware] User role:', userRole)
+
+      // Check if user is trying to access their allowed paths
+      const allowedPaths = [
+        ...publicPaths,
+        ...roleCommonPaths[userRole],
+        `/${userRole}-dashboard`,
+        `/${userRole}-dashboard/*`
+      ]
+
+      console.log('[Middleware] Allowed paths:', allowedPaths)
+      console.log('[Middleware] Requested path:', request.nextUrl.pathname)
+
+      const isAllowed = allowedPaths.some(path => {
+        if (path.endsWith('/*')) {
+          const basePath = path.slice(0, -2)
+          return request.nextUrl.pathname.startsWith(basePath)
+        }
+        return path === request.nextUrl.pathname
+      })
+
+      if (!isAllowed) {
+        console.log('[Middleware] Access denied, redirecting to dashboard')
+        return NextResponse.redirect(new URL(`/${userRole}-dashboard`, request.url))
+      }
     }
 
-    // If trying to access another path, redirect to their dashboard
-    console.log('[Middleware] Access denied, redirecting to dashboard:', userDashboard)
-    return NextResponse.redirect(new URL(userDashboard, request.url))
-
+    return NextResponse.next()
   } catch (error) {
-    console.error('[Middleware] Error:', error)
+    console.error('[Middleware] Unexpected error:', error)
     return NextResponse.redirect(new URL('/', request.url))
   }
 }
