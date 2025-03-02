@@ -23,6 +23,10 @@ function getMenuItems(role: UserRole | null) {
         {
           label: "Super Admin Dashboard",
           href: "/super-admin-dashboard",
+        },
+        {
+          label: "My Profile",
+          href: "/profile",
         }
       ]
     case 'admin':
