@@ -5,8 +5,13 @@ import type { NextRequest } from 'next/server'
 // Only these paths don't require authentication
 const publicPaths = ['/', '/auth/callback', '/signup', '/forgot-password']
 
-// Common paths that any authenticated user can access
-const commonPaths = ['/profile', '/my-rides']
+// Role-specific common paths
+const roleCommonPaths = {
+  super_admin: [],
+  admin: ['/profile'],
+  driver: ['/profile', '/trips'],
+  member: ['/profile', '/my-rides']
+}
 
 // Protected paths by role
 const protectedPaths = {
@@ -83,19 +88,23 @@ export async function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL('/', request.url))
     }
 
-    // Allow access to common paths for all authenticated users
-    if (commonPaths.some(path => pathname.startsWith(path))) {
-      console.log('[Middleware] Allowing access to common path:', pathname)
-      return res
-    }
-
-    // Get the user's allowed paths
     const userRole = profile.user_type as keyof typeof protectedPaths
-    const allowedPaths = protectedPaths[userRole] || []
     const userDashboard = getDashboardPath(profile.user_type)
 
-    // Allow access to the user's dashboard and its subpaths
-    if (pathname === userDashboard || pathname.startsWith(userDashboard) || allowedPaths.some(path => pathname.startsWith(path))) {
+    // Check if the path is allowed for the user's role
+    const roleCommon = roleCommonPaths[userRole] || []
+    const rolePaths = protectedPaths[userRole] || []
+
+    // Allow access if:
+    // 1. The path is in the role's common paths
+    // 2. The path is the user's dashboard or starts with it
+    // 3. The path is in the role's protected paths
+    if (
+      roleCommon.some(path => pathname.startsWith(path)) ||
+      pathname === userDashboard ||
+      pathname.startsWith(userDashboard) ||
+      rolePaths.some(path => pathname.startsWith(path))
+    ) {
       console.log('[Middleware] Allowing access to path:', pathname)
       return res
     }

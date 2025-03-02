@@ -17,25 +17,13 @@ import Link from "next/link"
 import type { UserRole } from '@/lib/auth-service'
 
 function getMenuItems(role: UserRole | null) {
-  const baseItems = [
-    {
-      label: "My Profile",
-      href: "/profile",
-    },
-    {
-      label: "My Rides",
-      href: "/my-rides",
-    },
-  ]
-
   switch (role) {
     case 'super_admin':
       return [
         {
           label: "Super Admin Dashboard",
           href: "/super-admin-dashboard",
-        },
-        ...baseItems
+        }
       ]
     case 'admin':
       return [
@@ -43,7 +31,10 @@ function getMenuItems(role: UserRole | null) {
           label: "Admin Dashboard",
           href: "/admin-dashboard",
         },
-        ...baseItems
+        {
+          label: "Profile",
+          href: "/profile",
+        }
       ]
     case 'driver':
       return [
@@ -51,18 +42,32 @@ function getMenuItems(role: UserRole | null) {
           label: "Driver Dashboard",
           href: "/driver-dashboard",
         },
-        ...baseItems
+        {
+          label: "My Trips",
+          href: "/trips",
+        },
+        {
+          label: "Profile",
+          href: "/profile",
+        }
       ]
     case 'member':
       return [
         {
-          label: "Member Dashboard",
+          label: "Schedule Ride",
           href: "/dashboard",
         },
-        ...baseItems
+        {
+          label: "My Rides",
+          href: "/my-rides",
+        },
+        {
+          label: "Profile",
+          href: "/profile",
+        }
       ]
     default:
-      return baseItems
+      return []
   }
 }
 
