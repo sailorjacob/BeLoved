@@ -77,9 +77,9 @@ export function LoginForm() {
   useEffect(() => {
     if (pendingRedirect && auth.isLoggedIn && auth.role) {
       console.log('[LoginForm] Executing pending redirect to:', pendingRedirect)
-      router.push(pendingRedirect)
+      window.location.href = pendingRedirect
     }
-  }, [pendingRedirect, auth.isLoggedIn, auth.role, router])
+  }, [pendingRedirect, auth.isLoggedIn, auth.role])
   
   // If we're already logged in or still loading, don't show the form
   if (auth.isLoading) {

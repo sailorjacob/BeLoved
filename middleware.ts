@@ -70,25 +70,23 @@ export async function middleware(request: NextRequest) {
 
     console.log('[Middleware] Profile:', profile)
 
-    // Check if user has access to the requested path
-    const userRole = profile?.user_type
-    const allowedPaths = protectedPaths[userRole as keyof typeof protectedPaths] || []
-    
-    // Allow access to the user's dashboard and common paths
-    if (pathname === getDashboardPath(userRole)) {
+    // If no profile or user type, redirect to home
+    if (!profile?.user_type) {
+      console.log('[Middleware] No profile or user type, redirecting to home')
+      return NextResponse.redirect(new URL('/', request.url))
+    }
+
+    // Allow access to the user's dashboard
+    const userDashboard = getDashboardPath(profile.user_type)
+    if (pathname === userDashboard) {
       console.log('[Middleware] Allowing access to dashboard:', pathname)
       return res
     }
 
-    // If trying to access another role's path, redirect to their dashboard
-    if (pathname !== '/' && !allowedPaths.includes(pathname)) {
-      console.log('[Middleware] User does not have access to this path:', pathname)
-      const dashboardPath = getDashboardPath(userRole)
-      console.log('[Middleware] Redirecting to dashboard:', dashboardPath)
-      return NextResponse.redirect(new URL(dashboardPath, request.url))
-    }
+    // If trying to access another path, redirect to their dashboard
+    console.log('[Middleware] Redirecting to user dashboard:', userDashboard)
+    return NextResponse.redirect(new URL(userDashboard, request.url))
 
-    return res
   } catch (error) {
     console.error('[Middleware] Error:', error)
     return NextResponse.redirect(new URL('/', request.url))
