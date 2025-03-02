@@ -7,7 +7,7 @@ const publicPaths = ['/', '/auth/callback', '/signup', '/forgot-password']
 
 // Role-specific common paths
 const roleCommonPaths = {
-  super_admin: [],
+  super_admin: ['/profile'],
   admin: ['/profile'],
   driver: ['/profile', '/trips'],
   member: ['/profile', '/my-rides']
@@ -93,22 +93,31 @@ export async function middleware(request: NextRequest) {
     const roleCommon = roleCommonPaths[userRole] || []
     const rolePaths = protectedPaths[userRole] || []
 
+    console.log('[Middleware] Checking access:', {
+      pathname,
+      userRole,
+      roleCommon,
+      rolePaths,
+      userDashboard
+    })
+
     // Allow access if:
     // 1. The path is in the role's common paths
     // 2. The path is the user's dashboard or starts with it
     // 3. The path is in the role's protected paths
-    if (
+    const hasAccess = 
       roleCommon.some(path => pathname.startsWith(path)) ||
       pathname === userDashboard ||
       pathname.startsWith(userDashboard) ||
       rolePaths.some(path => pathname.startsWith(path))
-    ) {
+
+    if (hasAccess) {
       console.log('[Middleware] Allowing access to path:', pathname)
       return res
     }
 
     // If trying to access another path, redirect to their dashboard
-    console.log('[Middleware] Redirecting to user dashboard:', userDashboard)
+    console.log('[Middleware] Access denied, redirecting to dashboard:', userDashboard)
     return NextResponse.redirect(new URL(userDashboard, request.url))
 
   } catch (error) {
