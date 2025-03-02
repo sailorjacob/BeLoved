@@ -36,27 +36,27 @@ const signUpInitialValues: SignUpFormData = {
   phone: ''
 }
 
-const validateEmail = (email: string): string | null => {
+const validateEmail = (email: string): string | undefined => {
   if (!email) return 'Email is required'
-  if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
-    return 'Invalid email address'
-  }
-  return null
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(email)) return 'Invalid email format'
+  return undefined
 }
 
-const validatePassword = (password: string): string | null => {
+const validatePassword = (password: string): string | undefined => {
   if (!password) return 'Password is required'
-  return null
+  if (password.length < 6) return 'Password must be at least 6 characters'
+  return undefined
 }
 
-const validateName = (name: string): string | null => {
-  if (!name) return 'Full name is required'
-  return null
+const validateName = (name: string): string | undefined => {
+  if (!name) return 'Name is required'
+  return undefined
 }
 
-const validatePhone = (phone: string): string | null => {
+const validatePhone = (phone: string): string | undefined => {
   if (!phone) return 'Phone number is required'
-  return null
+  return undefined
 }
 
 console.log('Login form component loaded')
@@ -69,9 +69,9 @@ export function LoginForm() {
   // Login form state
   const [loginEmail, setLoginEmail] = useState('')
   const [loginPassword, setLoginPassword] = useState('')
-  const [loginEmailError, setLoginEmailError] = useState<string | null>(null)
-  const [loginPasswordError, setLoginPasswordError] = useState<string | null>(null)
-  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  const [loginEmailError, setLoginEmailError] = useState<string | undefined>(undefined)
+  const [loginPasswordError, setLoginPasswordError] = useState<string | undefined>(undefined)
+  const [isLoading, setIsLoading] = useState(false)
   
   // Signup form state
   const [signupEmail, setSignupEmail] = useState('')
@@ -79,11 +79,11 @@ export function LoginForm() {
   const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
   const [signupFullName, setSignupFullName] = useState('')
   const [signupPhone, setSignupPhone] = useState('')
-  const [signupEmailError, setSignupEmailError] = useState<string | null>(null)
-  const [signupPasswordError, setSignupPasswordError] = useState<string | null>(null)
-  const [signupConfirmPasswordError, setSignupConfirmPasswordError] = useState<string | null>(null)
-  const [signupFullNameError, setSignupFullNameError] = useState<string | null>(null)
-  const [signupPhoneError, setSignupPhoneError] = useState<string | null>(null)
+  const [signupEmailError, setSignupEmailError] = useState<string | undefined>(undefined)
+  const [signupPasswordError, setSignupPasswordError] = useState<string | undefined>(undefined)
+  const [signupConfirmPasswordError, setSignupConfirmPasswordError] = useState<string | undefined>(undefined)
+  const [signupFullNameError, setSignupFullNameError] = useState<string | undefined>(undefined)
+  const [signupPhoneError, setSignupPhoneError] = useState<string | undefined>(undefined)
   const [isSigningUp, setIsSigningUp] = useState(false)
   
   // Common state
@@ -99,27 +99,51 @@ export function LoginForm() {
     }
   }, [])
   
-  // Handle redirection after successful login
+  // Enhanced redirection logic
   useEffect(() => {
-    // Don't try to redirect if not mounted
     if (!mountedRef.current) return
-
-    // Function to handle redirection
+    
     const handleRedirect = () => {
+      // Only attempt redirection if we have a pending redirect and the user is logged in
       if (pendingRedirect && auth.isLoggedIn && auth.role) {
-        console.log('[LoginForm] Redirecting to:', pendingRedirect)
+        console.log('[LoginForm] Redirect triggered with:', { 
+          pendingRedirect, 
+          isLoggedIn: auth.isLoggedIn, 
+          role: auth.role 
+        })
+        
         try {
-          // Use window.location for more reliable navigation
-          window.location.href = pendingRedirect
+          console.log('[LoginForm] Attempting router.push redirection')
+          router.push(pendingRedirect)
+          
+          // Also use direct navigation as a backup
+          setTimeout(() => {
+            if (mountedRef.current) {
+              console.log('[LoginForm] Router push may have failed, using window.location.href')
+              window.location.href = pendingRedirect!
+            }
+          }, 500)
+          
+          // Final fallback - force navigation after a short delay
+          setTimeout(() => {
+            if (mountedRef.current) {
+              console.log('[LoginForm] Forcing redirect via window.location.replace')
+              window.location.replace(pendingRedirect!)
+            }
+          }, 1000)
         } catch (error) {
-          console.error('[LoginForm] Redirect error:', error)
+          console.error('[LoginForm] Redirection error:', error)
+          
+          // Last resort 
+          if (mountedRef.current) {
+            window.location.replace(pendingRedirect)
+          }
         }
       }
     }
-
-    // Call the redirect function
+    
     handleRedirect()
-  }, [pendingRedirect, auth.isLoggedIn, auth.role])
+  }, [pendingRedirect, auth.isLoggedIn, auth.role, router])
   
   // If we're already logged in or still loading, don't show the form
   if (auth.isLoading) {
@@ -149,15 +173,11 @@ export function LoginForm() {
   const validateSignupForm = (): boolean => {
     const emailError = validateEmail(signupEmail)
     const passwordError = validatePassword(signupPassword)
+    const confirmPasswordError = signupPassword !== signupConfirmPassword 
+      ? 'Passwords do not match' 
+      : undefined
     const nameError = validateName(signupFullName)
     const phoneError = validatePhone(signupPhone)
-    let confirmPasswordError: string | null = null
-    
-    if (!signupConfirmPassword) {
-      confirmPasswordError = 'Please confirm your password'
-    } else if (signupPassword !== signupConfirmPassword) {
-      confirmPasswordError = 'Passwords do not match'
-    }
     
     setSignupEmailError(emailError)
     setSignupPasswordError(passwordError)
@@ -183,7 +203,7 @@ export function LoginForm() {
     
     try {
       // Set loading state
-      setIsLoggingIn(true)
+      setIsLoading(true)
       
       console.log('Attempting login with email:', loginEmail)
       const { error, data } = await auth.login(loginEmail, loginPassword)
@@ -231,8 +251,18 @@ export function LoginForm() {
       if (!mountedRef.current) return
       
       // Set success message and pending redirect
+      console.log('[LoginForm] Login successful, setting redirection to:', dashboardUrl)
       setSubmitSuccess('Login successful! Redirecting...')
+      
+      // Force the redirection
       setPendingRedirect(dashboardUrl)
+      
+      // Immediate direct attempt as a fallback
+      try {
+        window.location.href = dashboardUrl
+      } catch (redirectError) {
+        console.error('[LoginForm] Immediate redirect failed:', redirectError)
+      }
       
     } catch (error) {
       // Stop if component unmounted
@@ -251,12 +281,11 @@ export function LoginForm() {
       // Stop if component unmounted
       if (!mountedRef.current) return
       
-      // Reset loading state
-      setIsLoggingIn(false)
+      setIsLoading(false)
     }
   }
   
-  // Handle signup form submission
+  // Signup submit handler
   const handleSignupSubmit = async (e: FormEvent) => {
     e.preventDefault()
     
@@ -271,24 +300,27 @@ export function LoginForm() {
     
     try {
       // Set loading state
-      setIsSigningUp(true)
+      setIsLoading(true)
       
-      const { error } = await auth.signUp(
-        signupEmail,
-        signupPassword,
-        {
-          full_name: signupFullName,
-          phone: signupPhone
-        }
-      )
+      const { error, data } = await auth.signUp(signupEmail, signupPassword, {
+        full_name: signupFullName,
+        phone: signupPhone
+      })
       
       // Stop if component unmounted
       if (!mountedRef.current) return
       
       if (error) throw error
       
-      // Set success message
-      setSubmitSuccess('Account created! Please check your email to confirm your account before signing in.')
+      // Success! Show message and redirect
+      setSubmitSuccess('Account created successfully! Please login.')
+      
+      // Reset form
+      setSignupEmail('')
+      setSignupPassword('')
+      setSignupConfirmPassword('')
+      setSignupFullName('')
+      setSignupPhone('')
       
     } catch (error) {
       // Stop if component unmounted
@@ -300,45 +332,27 @@ export function LoginForm() {
       // Stop if component unmounted
       if (!mountedRef.current) return
       
-      // Reset loading state
-      setIsSigningUp(false)
+      setIsLoading(false)
     }
   }
 
   return (
-    <div className="max-w-md mx-auto p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-sm">
-      <h2 className="text-3xl font-bold text-center mb-6 text-gray-900">
-        BeLoved
-      </h2>
-
-      {submitError && (
-        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-red-700">{submitError}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {submitSuccess && (
-        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
-          <div className="flex">
-            <div className="ml-3">
-              <p className="text-sm text-green-700">{submitSuccess}</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <Tabs defaultValue="login">
-        <TabsList className="w-full mb-6">
-          <TabsTrigger className="w-1/2" value="login">Login</TabsTrigger>
-          <TabsTrigger className="w-1/2" value="signup">Sign Up</TabsTrigger>
+    <div className="max-w-md mx-auto p-4">
+      <Tabs defaultValue="login" className="w-full">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="login">Login</TabsTrigger>
+          <TabsTrigger value="signup">Sign Up</TabsTrigger>
         </TabsList>
         
         <TabsContent value="login">
-          <FormContainer onSubmit={handleLoginSubmit}>
+          <FormContainer 
+            title="Login to your account"
+            onSubmit={handleLoginSubmit}
+            isSubmitting={isLoading}
+            submitError={submitError}
+            submitSuccess={submitSuccess}
+            submitButtonText={isLoading ? "Logging in..." : "Log in"}
+          >
             <FormInput
               id="login-email"
               label="Email"
@@ -357,20 +371,18 @@ export function LoginForm() {
               error={loginPasswordError}
               required
             />
-            <div className="mt-6">
-              <button
-                type="submit"
-                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isLoggingIn}
-              >
-                {isLoggingIn ? 'Logging in...' : 'Log in'}
-              </button>
-            </div>
           </FormContainer>
         </TabsContent>
         
         <TabsContent value="signup">
-          <FormContainer onSubmit={handleSignupSubmit}>
+          <FormContainer 
+            title="Create an account"
+            onSubmit={handleSignupSubmit}
+            isSubmitting={isLoading}
+            submitError={submitError}
+            submitSuccess={submitSuccess}
+            submitButtonText={isLoading ? "Creating Account..." : "Sign Up"}
+          >
             <FormInput
               id="signup-email"
               label="Email"
@@ -378,24 +390,6 @@ export function LoginForm() {
               value={signupEmail}
               onChange={(e) => setSignupEmail(e.target.value)}
               error={signupEmailError}
-              required
-            />
-            <FormInput
-              id="signup-full-name"
-              label="Full Name"
-              type="text"
-              value={signupFullName}
-              onChange={(e) => setSignupFullName(e.target.value)}
-              error={signupFullNameError}
-              required
-            />
-            <FormInput
-              id="signup-phone"
-              label="Phone"
-              type="tel"
-              value={signupPhone}
-              onChange={(e) => setSignupPhone(e.target.value)}
-              error={signupPhoneError}
               required
             />
             <FormInput
@@ -416,15 +410,24 @@ export function LoginForm() {
               error={signupConfirmPasswordError}
               required
             />
-            <div className="mt-6">
-              <button
-                type="submit"
-                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                disabled={isSigningUp}
-              >
-                {isSigningUp ? 'Creating Account...' : 'Create Account'}
-              </button>
-            </div>
+            <FormInput
+              id="signup-full-name"
+              label="Full Name"
+              type="text"
+              value={signupFullName}
+              onChange={(e) => setSignupFullName(e.target.value)}
+              error={signupFullNameError}
+              required
+            />
+            <FormInput
+              id="signup-phone"
+              label="Phone Number"
+              type="tel"
+              value={signupPhone}
+              onChange={(e) => setSignupPhone(e.target.value)}
+              error={signupPhoneError}
+              required
+            />
           </FormContainer>
         </TabsContent>
       </Tabs>
