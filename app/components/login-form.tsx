@@ -8,6 +8,7 @@ import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { useState } from 'react'
+import { authService } from '@/lib/auth-service'
 
 interface LoginFormData {
   email: string
@@ -107,22 +108,45 @@ export function LoginForm() {
       
       try {
         console.log('Attempting login with email:', values.email)
-        const { error } = await auth.login(values.email, values.password)
+        const { error, data } = await auth.login(values.email, values.password)
         if (error) throw error
 
-        // Wait for auth state to be updated
-        await new Promise(resolve => setTimeout(resolve, 1000))
-
-        // Get updated auth state
-        const userType = auth.profile?.user_type
-        console.log('User type after state update:', userType)
-        
-        if (!userType) {
-          throw new Error('No user type found in profile. Please contact support.')
+        if (!data?.user) {
+          throw new Error('Login failed: No user data returned')
         }
-        
+
+        // Wait for auth state to update and fetch profile
+        const maxAttempts = 5
+        let attempts = 0
+        let profile = null
+
+        while (attempts < maxAttempts) {
+          attempts++
+          console.log(`[LoginForm] Attempt ${attempts} to fetch profile...`)
+          
+          // Get fresh profile data
+          const response = await authService.getProfile(data.user.id)
+          if (response?.user_type) {
+            profile = response
+            break
+          }
+          
+          // Wait before next attempt
+          await new Promise(resolve => setTimeout(resolve, 1000))
+        }
+
+        if (!profile?.user_type) {
+          throw new Error('Unable to fetch user profile after multiple attempts')
+        }
+
+        console.log('[LoginForm] Profile fetched successfully:', {
+          id: profile.id,
+          email: data.user.email,
+          user_type: profile.user_type
+        })
+
         // Handle redirection based on role
-        switch (userType) {
+        switch (profile.user_type) {
           case 'super_admin':
             router.replace('/super-admin-dashboard')
             break
@@ -136,7 +160,7 @@ export function LoginForm() {
             router.replace('/dashboard')
             break
           default:
-            throw new Error(`Invalid user type: ${userType}. Please contact support.`)
+            throw new Error(`Invalid user type: ${profile.user_type}`)
         }
 
         setSubmitSuccess('Login successful!')
