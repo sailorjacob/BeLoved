@@ -69,6 +69,7 @@ export function LoginForm() {
   const [hasAttemptedSignup, setHasAttemptedSignup] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
+  const router = useRouter()
   
   // If we're already logged in or still loading, don't show the form
   if (auth.isLoading) {
@@ -108,8 +109,29 @@ export function LoginForm() {
         console.log('Attempting login with email:', values.email)
         const { error } = await auth.login(values.email, values.password)
         if (error) throw error
-        console.log('Login successful, waiting for auth state change')
-        setSubmitSuccess('Login successful! Redirecting...')
+
+        console.log('Login successful, checking role')
+        // Wait a moment for auth state to update
+        await new Promise(resolve => setTimeout(resolve, 500))
+        
+        // Get current auth state
+        await auth.refreshAuth()
+        
+        // Redirect based on role
+        if (auth.role === 'super_admin') {
+          console.log('Redirecting to super admin dashboard')
+          router.replace('/super-admin-dashboard')
+        } else if (auth.role === 'admin') {
+          router.replace('/admin-dashboard')
+        } else if (auth.role === 'driver') {
+          router.replace('/driver-dashboard')
+        } else if (auth.role === 'member') {
+          router.replace('/dashboard')
+        } else {
+          console.log('No role found, staying on home page')
+        }
+
+        setSubmitSuccess('Login successful!')
       } catch (error) {
         console.error('Login flow error:', error)
         setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
