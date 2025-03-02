@@ -4,11 +4,11 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FormContainer } from '@/components/ui/form-container'
 import { FormInput } from '@/components/ui/form-input'
-import { useFormHandling } from '@/hooks/useFormHandling'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, FormEvent } from 'react'
 import { authService } from '@/lib/auth-service'
+import type { UserRole } from '@/lib/auth-service'
 
 interface LoginFormData {
   email: string
@@ -36,71 +36,90 @@ const signUpInitialValues: SignUpFormData = {
   phone: ''
 }
 
-const loginValidationRules = {
-  email: (value: string) => {
-    if (!value) return 'Email is required'
-    if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(value)) {
-      return 'Invalid email address'
-    }
-  },
-  password: (value: string) => {
-    if (!value) return 'Password is required'
+const validateEmail = (email: string): string | null => {
+  if (!email) return 'Email is required'
+  if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(email)) {
+    return 'Invalid email address'
   }
+  return null
 }
 
-const signUpValidationRules = {
-  ...loginValidationRules,
-  full_name: (value: string) => {
-    if (!value) return 'Full name is required'
-  },
-  phone: (value: string) => {
-    if (!value) return 'Phone number is required'
-  },
-  confirm_password: (value: string, values: SignUpFormData) => {
-    if (!value) return 'Please confirm your password'
-    if (value !== values.password) return 'Passwords do not match'
-  }
+const validatePassword = (password: string): string | null => {
+  if (!password) return 'Password is required'
+  return null
+}
+
+const validateName = (name: string): string | null => {
+  if (!name) return 'Full name is required'
+  return null
+}
+
+const validatePhone = (phone: string): string | null => {
+  if (!phone) return 'Phone number is required'
+  return null
 }
 
 console.log('Login form component loaded')
 
 export function LoginForm() {
   const auth = useAuth()
-  const [hasAttemptedLogin, setHasAttemptedLogin] = useState(false)
-  const [hasAttemptedSignup, setHasAttemptedSignup] = useState(false)
+  const router = useRouter()
+  const mountedRef = useRef(true)
+  
+  // Login form state
+  const [loginEmail, setLoginEmail] = useState('')
+  const [loginPassword, setLoginPassword] = useState('')
+  const [loginEmailError, setLoginEmailError] = useState<string | null>(null)
+  const [loginPasswordError, setLoginPasswordError] = useState<string | null>(null)
+  const [isLoggingIn, setIsLoggingIn] = useState(false)
+  
+  // Signup form state
+  const [signupEmail, setSignupEmail] = useState('')
+  const [signupPassword, setSignupPassword] = useState('')
+  const [signupConfirmPassword, setSignupConfirmPassword] = useState('')
+  const [signupFullName, setSignupFullName] = useState('')
+  const [signupPhone, setSignupPhone] = useState('')
+  const [signupEmailError, setSignupEmailError] = useState<string | null>(null)
+  const [signupPasswordError, setSignupPasswordError] = useState<string | null>(null)
+  const [signupConfirmPasswordError, setSignupConfirmPasswordError] = useState<string | null>(null)
+  const [signupFullNameError, setSignupFullNameError] = useState<string | null>(null)
+  const [signupPhoneError, setSignupPhoneError] = useState<string | null>(null)
+  const [isSigningUp, setIsSigningUp] = useState(false)
+  
+  // Common state
   const [submitError, setSubmitError] = useState<string | null>(null)
   const [submitSuccess, setSubmitSuccess] = useState<string | null>(null)
   const [pendingRedirect, setPendingRedirect] = useState<string | null>(null)
-  const router = useRouter()
-  const mountedRef = useRef(true)
   
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      console.log('[LoginForm] Cleaning up component')
       mountedRef.current = false
     }
   }, [])
   
   // Handle redirection after successful login
   useEffect(() => {
+    // Don't try to redirect if not mounted
     if (!mountedRef.current) return
 
-    const handleRedirect = async () => {
+    // Function to handle redirection
+    const handleRedirect = () => {
       if (pendingRedirect && auth.isLoggedIn && auth.role) {
-        console.log('[LoginForm] Executing pending redirect to:', pendingRedirect)
+        console.log('[LoginForm] Redirecting to:', pendingRedirect)
         try {
-          await router.push(pendingRedirect)
+          // Use window.location for more reliable navigation
+          window.location.href = pendingRedirect
         } catch (error) {
-          if (mountedRef.current) {
-            console.error('[LoginForm] Router push failed, falling back to window.location:', error)
-            window.location.href = pendingRedirect
-          }
+          console.error('[LoginForm] Redirect error:', error)
         }
       }
     }
 
+    // Call the redirect function
     handleRedirect()
-  }, [pendingRedirect, auth.isLoggedIn, auth.role, router])
+  }, [pendingRedirect, auth.isLoggedIn, auth.role])
   
   // If we're already logged in or still loading, don't show the form
   if (auth.isLoading) {
@@ -115,246 +134,300 @@ export function LoginForm() {
     return null
   }
 
-  console.log('Auth state:', {
-    isLoggedIn: auth.isLoggedIn,
-    hasUser: !!auth.user,
-    isLoading: auth.isLoading,
-    profile: auth.profile,
-    role: auth.role
-  })
-
-  const { 
-    values: loginValues,
-    errors: loginErrors,
-    isSubmitting: isLoggingIn,
-    handleChange: handleLoginChange,
-    handleSubmit: handleLogin
-  } = useFormHandling<LoginFormData>({
-    initialValues: loginInitialValues,
-    validationRules: loginValidationRules,
-    onSubmit: async (values) => {
-      try {
-        if (!mountedRef.current) return
-        
-        setHasAttemptedLogin(true)
-        setSubmitError(null)
-        setSubmitSuccess(null)
-        setPendingRedirect(null)
-        
-        console.log('Attempting login with email:', values.email)
-        const { error, data } = await auth.login(values.email, values.password)
-        if (error) throw error
-
-        if (!data?.user) {
-          throw new Error('Login failed: No user data returned')
-        }
-
-        // Wait for auth state to update and fetch profile
-        const maxAttempts = 5
-        let attempts = 0
-        let profile = null
-
-        while (attempts < maxAttempts && mountedRef.current) {
-          attempts++
-          console.log(`[LoginForm] Attempt ${attempts} to fetch profile...`)
-          
-          // Get fresh profile data
-          const response = await authService.getProfile(data.user.id)
-          if (response?.user_type) {
-            profile = response
-            break
-          }
-          
-          // Wait before next attempt
-          await new Promise(resolve => setTimeout(resolve, 1000))
-        }
-
-        if (!mountedRef.current) return
-
-        if (!profile?.user_type) {
-          throw new Error('Unable to fetch user profile after multiple attempts')
-        }
-
-        console.log('[LoginForm] Profile fetched successfully:', {
-          id: profile.id,
-          email: data.user.email,
-          user_type: profile.user_type
-        })
-
-        // Set redirection based on role
-        if (!mountedRef.current) return
-
-        console.log('[LoginForm] Setting redirect for role:', profile.user_type)
-        let dashboardUrl = '/'
-        
-        switch (profile.user_type) {
-          case 'super_admin':
-            dashboardUrl = '/super-admin-dashboard'
-            break
-          case 'admin':
-            dashboardUrl = '/admin-dashboard'
-            break
-          case 'driver':
-            dashboardUrl = '/driver-dashboard'
-            break
-          case 'member':
-            dashboardUrl = '/dashboard'
-            break
-          default:
-            throw new Error(`Invalid user type: ${profile.user_type}`)
-        }
-
-        if (!mountedRef.current) return
-
-        console.log('[LoginForm] Setting pending redirect to:', dashboardUrl)
-        setSubmitSuccess('Login successful! Redirecting...')
-        setPendingRedirect(dashboardUrl)
-
-      } catch (error) {
-        if (!mountedRef.current) return
-        console.error('Login flow error:', error)
-        setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
-        await auth.logout()
-        throw error
-      }
+  // Validate login form
+  const validateLoginForm = (): boolean => {
+    const emailError = validateEmail(loginEmail)
+    const passwordError = validatePassword(loginPassword)
+    
+    setLoginEmailError(emailError)
+    setLoginPasswordError(passwordError)
+    
+    return !emailError && !passwordError
+  }
+  
+  // Validate signup form
+  const validateSignupForm = (): boolean => {
+    const emailError = validateEmail(signupEmail)
+    const passwordError = validatePassword(signupPassword)
+    const nameError = validateName(signupFullName)
+    const phoneError = validatePhone(signupPhone)
+    let confirmPasswordError: string | null = null
+    
+    if (!signupConfirmPassword) {
+      confirmPasswordError = 'Please confirm your password'
+    } else if (signupPassword !== signupConfirmPassword) {
+      confirmPasswordError = 'Passwords do not match'
     }
-  })
-
-  const { 
-    values: signUpValues,
-    errors: signUpErrors,
-    isSubmitting: isSigningUp,
-    handleChange: handleSignUpChange,
-    handleSubmit: handleSignUp
-  } = useFormHandling<SignUpFormData>({
-    initialValues: signUpInitialValues,
-    validationRules: signUpValidationRules,
-    onSubmit: async (values) => {
+    
+    setSignupEmailError(emailError)
+    setSignupPasswordError(passwordError)
+    setSignupConfirmPasswordError(confirmPasswordError)
+    setSignupFullNameError(nameError)
+    setSignupPhoneError(phoneError)
+    
+    return !emailError && !passwordError && !confirmPasswordError && !nameError && !phoneError
+  }
+  
+  // Handle login form submission
+  const handleLoginSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    
+    // Reset errors
+    setSubmitError(null)
+    setSubmitSuccess(null)
+    
+    // Validate form
+    if (!validateLoginForm()) {
+      return
+    }
+    
+    try {
+      // Set loading state
+      setIsLoggingIn(true)
+      
+      console.log('Attempting login with email:', loginEmail)
+      const { error, data } = await auth.login(loginEmail, loginPassword)
+      
+      // Stop if component unmounted
       if (!mountedRef.current) return
       
-      setHasAttemptedSignup(true)
-      setSubmitError(null)
-      setSubmitSuccess(null)
-
-      if (values.password !== values.confirm_password) {
-        throw new Error('Passwords do not match')
+      if (error) throw error
+      if (!data?.user) {
+        throw new Error('Login failed: No user data returned')
       }
-
+      
+      // Get user profile to determine role
+      const profile = await authService.getProfile(data.user.id)
+      
+      // Stop if component unmounted
+      if (!mountedRef.current) return
+      
+      if (!profile?.user_type) {
+        throw new Error('Login failed: Invalid user profile')
+      }
+      
+      // Determine redirect URL based on role
+      const userRole = profile.user_type as UserRole
+      let dashboardUrl = '/'
+      
+      switch (userRole) {
+        case 'super_admin':
+          dashboardUrl = '/super-admin-dashboard'
+          break
+        case 'admin':
+          dashboardUrl = '/admin-dashboard'
+          break
+        case 'driver':
+          dashboardUrl = '/driver-dashboard'
+          break
+        case 'member':
+          dashboardUrl = '/dashboard'
+          break
+        default:
+          throw new Error(`Invalid user type: ${userRole}`)
+      }
+      
+      // Stop if component unmounted
+      if (!mountedRef.current) return
+      
+      // Set success message and pending redirect
+      setSubmitSuccess('Login successful! Redirecting...')
+      setPendingRedirect(dashboardUrl)
+      
+    } catch (error) {
+      // Stop if component unmounted
+      if (!mountedRef.current) return
+      
+      console.error('[LoginForm] Login error:', error)
+      setSubmitError(error instanceof Error ? error.message : 'An error occurred during login')
+      
+      // Try to logout (cleanup)
+      try {
+        await auth.logout()
+      } catch (logoutError) {
+        console.error('[LoginForm] Logout error:', logoutError)
+      }
+    } finally {
+      // Stop if component unmounted
+      if (!mountedRef.current) return
+      
+      // Reset loading state
+      setIsLoggingIn(false)
+    }
+  }
+  
+  // Handle signup form submission
+  const handleSignupSubmit = async (e: FormEvent) => {
+    e.preventDefault()
+    
+    // Reset errors
+    setSubmitError(null)
+    setSubmitSuccess(null)
+    
+    // Validate form
+    if (!validateSignupForm()) {
+      return
+    }
+    
+    try {
+      // Set loading state
+      setIsSigningUp(true)
+      
       const { error } = await auth.signUp(
-        values.email, 
-        values.password,
+        signupEmail,
+        signupPassword,
         {
-          full_name: values.full_name,
-          phone: values.phone
+          full_name: signupFullName,
+          phone: signupPhone
         }
       )
-
-      if (error) {
-        throw error
-      }
-
+      
+      // Stop if component unmounted
       if (!mountedRef.current) return
+      
+      if (error) throw error
+      
+      // Set success message
       setSubmitSuccess('Account created! Please check your email to confirm your account before signing in.')
+      
+    } catch (error) {
+      // Stop if component unmounted
+      if (!mountedRef.current) return
+      
+      console.error('[LoginForm] Signup error:', error)
+      setSubmitError(error instanceof Error ? error.message : 'An error occurred during signup')
+    } finally {
+      // Stop if component unmounted
+      if (!mountedRef.current) return
+      
+      // Reset loading state
+      setIsSigningUp(false)
     }
-  })
+  }
 
   return (
-    <div className="w-full max-w-md mx-auto">
-      <Tabs defaultValue="login" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="signup">Sign Up</TabsTrigger>
+    <div className="max-w-md mx-auto p-4 sm:p-6 lg:p-8 bg-white rounded-xl shadow-sm">
+      <h2 className="text-3xl font-bold text-center mb-6 text-gray-900">
+        BeLoved
+      </h2>
+
+      {submitError && (
+        <div className="bg-red-50 border-l-4 border-red-400 p-4 mb-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-red-700">{submitError}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {submitSuccess && (
+        <div className="bg-green-50 border-l-4 border-green-400 p-4 mb-4">
+          <div className="flex">
+            <div className="ml-3">
+              <p className="text-sm text-green-700">{submitSuccess}</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <Tabs defaultValue="login">
+        <TabsList className="w-full mb-6">
+          <TabsTrigger className="w-1/2" value="login">Login</TabsTrigger>
+          <TabsTrigger className="w-1/2" value="signup">Sign Up</TabsTrigger>
         </TabsList>
-
+        
         <TabsContent value="login">
-          <div className="mx-auto max-w-sm space-y-4">
-            <FormContainer
-              title="Welcome Back"
-              onSubmit={handleLogin}
-              isSubmitting={isLoggingIn}
-              submitError={submitError}
-              submitSuccess={submitSuccess}
-              submitButtonText="Login"
-            >
-              <FormInput
-                id="login-email"
-                label="Email"
-                type="email"
-                value={loginValues.email}
-                onChange={(e) => handleLoginChange('email', e.target.value)}
-                error={hasAttemptedLogin ? loginErrors.email : undefined}
-              />
-              <FormInput
-                id="login-password"
-                label="Password"
-                type="password"
-                value={loginValues.password}
-                onChange={(e) => handleLoginChange('password', e.target.value)}
-                error={hasAttemptedLogin ? loginErrors.password : undefined}
-              />
-            </FormContainer>
-          </div>
+          <FormContainer onSubmit={handleLoginSubmit}>
+            <FormInput
+              id="login-email"
+              label="Email"
+              type="email"
+              value={loginEmail}
+              onChange={(e) => setLoginEmail(e.target.value)}
+              error={loginEmailError}
+              required
+            />
+            <FormInput
+              id="login-password"
+              label="Password"
+              type="password"
+              value={loginPassword}
+              onChange={(e) => setLoginPassword(e.target.value)}
+              error={loginPasswordError}
+              required
+            />
+            <div className="mt-6">
+              <button
+                type="submit"
+                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isLoggingIn}
+              >
+                {isLoggingIn ? 'Logging in...' : 'Log in'}
+              </button>
+            </div>
+          </FormContainer>
         </TabsContent>
-
+        
         <TabsContent value="signup">
-          <div className="mx-auto max-w-sm space-y-4">
-            <FormContainer
-              title="Create Account"
-              onSubmit={handleSignUp}
-              isSubmitting={isSigningUp}
-              submitError={submitError}
-              submitSuccess={submitSuccess}
-              submitButtonText="Sign Up"
-            >
-              <FormInput
-                id="signup-name"
-                label="Full Name"
-                value={signUpValues.full_name}
-                onChange={(e) => handleSignUpChange('full_name', e.target.value)}
-                error={hasAttemptedSignup ? signUpErrors.full_name : undefined}
-              />
-              <FormInput
-                id="signup-email"
-                label="Email"
-                type="email"
-                value={signUpValues.email}
-                onChange={(e) => handleSignUpChange('email', e.target.value)}
-                error={hasAttemptedSignup ? signUpErrors.email : undefined}
-              />
-              <FormInput
-                id="signup-phone"
-                label="Phone"
-                type="tel"
-                value={signUpValues.phone}
-                onChange={(e) => handleSignUpChange('phone', e.target.value)}
-                error={hasAttemptedSignup ? signUpErrors.phone : undefined}
-              />
-              <FormInput
-                id="signup-password"
-                label="Password"
-                type="password"
-                value={signUpValues.password}
-                onChange={(e) => handleSignUpChange('password', e.target.value)}
-                error={hasAttemptedSignup ? signUpErrors.password : undefined}
-              />
-              <FormInput
-                id="signup-confirm-password"
-                label="Confirm Password"
-                type="password"
-                value={signUpValues.confirm_password}
-                onChange={(e) => handleSignUpChange('confirm_password', e.target.value)}
-                error={hasAttemptedSignup ? signUpErrors.confirm_password : undefined}
-              />
-            </FormContainer>
-          </div>
+          <FormContainer onSubmit={handleSignupSubmit}>
+            <FormInput
+              id="signup-email"
+              label="Email"
+              type="email"
+              value={signupEmail}
+              onChange={(e) => setSignupEmail(e.target.value)}
+              error={signupEmailError}
+              required
+            />
+            <FormInput
+              id="signup-full-name"
+              label="Full Name"
+              type="text"
+              value={signupFullName}
+              onChange={(e) => setSignupFullName(e.target.value)}
+              error={signupFullNameError}
+              required
+            />
+            <FormInput
+              id="signup-phone"
+              label="Phone"
+              type="tel"
+              value={signupPhone}
+              onChange={(e) => setSignupPhone(e.target.value)}
+              error={signupPhoneError}
+              required
+            />
+            <FormInput
+              id="signup-password"
+              label="Password"
+              type="password"
+              value={signupPassword}
+              onChange={(e) => setSignupPassword(e.target.value)}
+              error={signupPasswordError}
+              required
+            />
+            <FormInput
+              id="signup-confirm-password"
+              label="Confirm Password"
+              type="password"
+              value={signupConfirmPassword}
+              onChange={(e) => setSignupConfirmPassword(e.target.value)}
+              error={signupConfirmPasswordError}
+              required
+            />
+            <div className="mt-6">
+              <button
+                type="submit"
+                className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={isSigningUp}
+              >
+                {isSigningUp ? 'Creating Account...' : 'Create Account'}
+              </button>
+            </div>
+          </FormContainer>
         </TabsContent>
       </Tabs>
-
-      <div className="mt-4 text-center">
-        <Link href="/driver-login" className="text-sm text-blue-600 hover:underline">
-          Driver Login
-        </Link>
-      </div>
     </div>
   )
 }
