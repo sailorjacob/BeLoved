@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/auth-context'
+import Link from 'next/link'
 import {
   Card,
   CardContent,
@@ -624,12 +625,31 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           <p className="text-muted-foreground">System-wide analytics and management</p>
         </div>
         <div className="flex space-x-4">
-          <Button variant="destructive" onClick={() => router.push('/super-admin/providers')}>
-            Manage Providers
-          </Button>
-          <Button variant="destructive" onClick={() => router.push('/super-admin/support')}>
-            Customer Support
-          </Button>
+          <Link href="/super-admin/providers">
+            <Button variant="destructive" onClick={() => {
+              console.log('[SuperAdminDashboard] Navigating to providers page')
+              try {
+                router.push('/super-admin/providers')
+              } catch (e) {
+                console.error('[SuperAdminDashboard] Router navigation failed:', e)
+                // Link component will handle navigation fallback
+              }
+            }}>
+              Manage Providers
+            </Button>
+          </Link>
+          <Link href="/super-admin/support">
+            <Button variant="destructive" onClick={() => {
+              try {
+                router.push('/super-admin/support')
+              } catch (e) {
+                console.error('[SuperAdminDashboard] Router navigation failed:', e)
+                // Link component will handle navigation fallback
+              }
+            }}>
+              Customer Support
+            </Button>
+          </Link>
         </div>
       </div>
 
