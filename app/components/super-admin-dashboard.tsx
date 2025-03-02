@@ -266,7 +266,7 @@ function GeographicNodes() {
 }
 
 export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boolean }) {
-  const { isLoggedIn, role } = useAuth()
+  const { isLoggedIn, role, isLoading: authLoading } = useAuth()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
   const [revenueData, setRevenueData] = useState<RevenueData[]>([])
@@ -274,9 +274,14 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const mountedRef = useRef(true)
+  const fetchAttemptedRef = useRef(false)
 
-  // Log render
-  console.log('[SuperAdminDashboard] Component rendering, props:', { isLoggedIn, role })
+  // Add detailed component state logging
+  console.log('[SuperAdminDashboard] Component rendering, props:', { 
+    isDebugMode, 
+    authState: { isLoggedIn, role, authLoading }, 
+    componentState: { isLoading, hasError: !!error } 
+  })
 
   useEffect(() => {
     console.log('[SuperAdminDashboard] Component mounted, debug mode:', isDebugMode)
@@ -298,8 +303,19 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       console.log('[SuperAdminDashboard] Debug mode enabled, loading demo data')
       setDemoData()
       setIsLoading(false)
-    } else if (isLoggedIn && role === 'super_admin') {
+    } else if (isLoggedIn && role === 'super_admin' && !fetchAttemptedRef.current) {
+      console.log('[SuperAdminDashboard] Auth conditions met, fetchDashboardData will be called')
+      fetchAttemptedRef.current = true
       fetchDashboardData()
+    } else {
+      console.log('[SuperAdminDashboard] Auth conditions NOT met or fetch already attempted:', { isLoggedIn, role, fetchAttempted: fetchAttemptedRef.current })
+      // Still show dashboard with demo data if auth failed but component is being rendered anyway
+      if (!fetchAttemptedRef.current) {
+        console.log('[SuperAdminDashboard] Loading demo data as fallback since component is being rendered')
+        fetchAttemptedRef.current = true
+        setDemoData()
+        setIsLoading(false)
+      }
     }
     
     return () => {
@@ -307,7 +323,7 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       mountedRef.current = false;
       console.log('[SuperAdminDashboard] Component unmounted')
     }
-  }, [isLoggedIn, role, isDebugMode, isLoading])
+  }, [isLoggedIn, role, isDebugMode])
 
   const fetchDashboardData = async () => {
     try {
@@ -335,7 +351,6 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       console.error('[SuperAdminDashboard] Error fetching data:', error)
       if (!mountedRef.current) return;
       setError('Failed to fetch dashboard data. Using demo data instead.')
-      toast.error('Failed to fetch dashboard data. Using demo data instead.')
       
       // Set demo data if fetch fails
       setDemoData();
