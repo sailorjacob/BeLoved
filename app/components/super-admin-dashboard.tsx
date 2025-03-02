@@ -265,7 +265,7 @@ function GeographicNodes() {
   )
 }
 
-export function SuperAdminDashboard() {
+export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boolean }) {
   const { isLoggedIn, role } = useAuth()
   const router = useRouter()
   const [stats, setStats] = useState<DashboardStats | null>(null)
@@ -279,20 +279,26 @@ export function SuperAdminDashboard() {
   console.log('[SuperAdminDashboard] Component rendering, props:', { isLoggedIn, role })
 
   useEffect(() => {
-    console.log('[SuperAdminDashboard] Component mounted')
-    mountedRef.current = true;
-    console.log('[SuperAdminDashboard] Component mounted, auth state:', { isLoggedIn, role })
+    console.log('[SuperAdminDashboard] Component mounted, debug mode:', isDebugMode)
+    mountedRef.current = true
     
-    // Safety timeout - if data doesn't load within 5 seconds, use demo data
+    // Set a safety timeout to show something if data fetching takes too long
     const timeoutId = setTimeout(() => {
-      if (isLoading && mountedRef.current) {
-        console.log('[SuperAdminDashboard] Timeout reached, using demo data')
+      if (!mountedRef.current) return;
+      
+      if (isLoading) {
+        console.log('[SuperAdminDashboard] Timeout reached, showing demo data as fallback')
         setDemoData()
         setIsLoading(false)
       }
     }, 5000)
     
-    if (isLoggedIn && role === 'super_admin') {
+    // If in debug mode, immediately set demo data and skip auth check
+    if (isDebugMode) {
+      console.log('[SuperAdminDashboard] Debug mode enabled, loading demo data')
+      setDemoData()
+      setIsLoading(false)
+    } else if (isLoggedIn && role === 'super_admin') {
       fetchDashboardData()
     }
     
@@ -301,7 +307,7 @@ export function SuperAdminDashboard() {
       mountedRef.current = false;
       console.log('[SuperAdminDashboard] Component unmounted')
     }
-  }, [isLoggedIn, role])
+  }, [isLoggedIn, role, isDebugMode, isLoading])
 
   const fetchDashboardData = async () => {
     try {

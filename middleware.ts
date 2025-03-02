@@ -3,8 +3,18 @@ import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import type { UserRole } from '@/lib/auth-service'
 
-// Only these paths don't require authentication
-const publicPaths = ['/', '/auth/callback', '/signup', '/forgot-password']
+// Define public paths that don't require authentication
+const publicPaths = [
+  '/',
+  '/login',
+  '/register',
+  '/about',
+  '/services',
+  '/contact',
+  '/terms',
+  '/privacy',
+  '/debug-dashboard', // Debug route for development
+]
 
 // Role-specific common paths
 const roleCommonPaths = {
