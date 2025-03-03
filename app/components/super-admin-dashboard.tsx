@@ -762,10 +762,10 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
         </div>
         <div className="flex space-x-4">
           <a 
-            href="/providers-simple" 
+            href="/providers" 
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
             onClick={() => {
-              console.log('[SuperAdminDashboard] Navigating to simplified providers page')
+              console.log('[SuperAdminDashboard] Navigating to providers management page')
             }}
           >
             Manage Providers

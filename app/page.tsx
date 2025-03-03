@@ -66,7 +66,8 @@ export default function Home() {
           </div>
           <h1 className="text-4xl font-bold">BeLoved Transportation</h1>
         </div>
-        <UserNav />
+        {/* Only show UserNav when user is logged in */}
+        {isLoggedIn && <UserNav />}
       </div>
       <div className="flex-grow flex flex-col items-center justify-center">
         {isLoading ? (
