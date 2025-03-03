@@ -87,28 +87,12 @@ export function UserNav() {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
       
-      // Clear ALL navigation flags to ensure navigation works
-      localStorage.removeItem('last_navigation');
-      localStorage.removeItem('last_navigation_path');
-      localStorage.removeItem('navigation_in_progress');
-      localStorage.removeItem('home_page_rendered');
-      
-      console.log('[UserNav] Forcefully navigating to home');
-      
-      // Force a complete page reload to the home page
+      // Just use the browser's default navigation
       window.location.href = window.location.origin + '/';
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       
-      // Clear ALL navigation flags to ensure navigation works
-      localStorage.removeItem('last_navigation');
-      localStorage.removeItem('last_navigation_path');
-      localStorage.removeItem('navigation_in_progress');
-      localStorage.removeItem('home_page_rendered');
-      
-      console.log('[UserNav] Forcefully navigating to home after error');
-      
-      // Force a complete page reload to the home page
+      // Just use the browser's default navigation
       window.location.href = window.location.origin + '/';
     }
   }
@@ -139,15 +123,9 @@ export function UserNav() {
               key={item.href}
               className="cursor-pointer"
               onClick={() => {
-                // Clear ALL navigation flags to ensure navigation works
-                localStorage.removeItem('last_navigation');
-                localStorage.removeItem('last_navigation_path');
-                localStorage.removeItem('navigation_in_progress');
-                localStorage.removeItem('home_page_rendered');
+                console.log(`[UserNav] Navigating to: ${item.href}`);
                 
-                console.log(`[UserNav] Forcefully navigating to ${item.href}`);
-                
-                // Force a complete page reload to the target URL
+                // Just use the browser's default navigation
                 window.location.href = window.location.origin + item.href;
               }}
             >

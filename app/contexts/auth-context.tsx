@@ -78,93 +78,26 @@ export class NavigationManager {
   
   // Clear navigation flags on session expiration or logout
   static reset(): void {
-    localStorage.removeItem('last_navigation');
-    localStorage.removeItem('last_navigation_path');
-    localStorage.removeItem('navigation_in_progress');
-    localStorage.removeItem('home_page_rendered');
-    if (this.DEBUG) logWithTime('Navigation', 'Navigation state reset');
+    // DISABLED: We're no longer using navigation flags
+    if (this.DEBUG) logWithTime('Navigation', 'Navigation state reset (no-op)');
   }
 
   // Direct navigation method that bypasses all checks
   static directNavigate(path: string): void {
-    // Check if we're already on this path
-    const currentPath = window.location.pathname;
-    if (currentPath === path) {
-      logWithTime('Navigation', `Already on ${path}, no navigation needed`);
-      return;
-    }
+    // DISABLED: All navigation checks and interception
+    logWithTime('Navigation', `Navigating to: ${path} (all checks disabled)`);
     
-    // Basic protection against navigation loops
-    const lastNavPath = localStorage.getItem('last_navigation_path');
-    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
-    const now = Date.now();
-    
-    // Only prevent very rapid navigation to the same path (within 1 second)
-    if (lastNavPath === path && (now - lastNavTime) < 1000) {
-      logWithTime('Navigation', `Preventing too rapid navigation to ${path} (potential loop)`);
-      return;
-    }
-    
-    // Store navigation info
-    localStorage.setItem('last_navigation', now.toString());
-    localStorage.setItem('last_navigation_path', path);
-    
-    logWithTime('Navigation', `Forcefully navigating to: ${path}`);
-    
-    // Always use window.location for direct navigation to ensure it works
-    window.location.href = window.location.origin + path;
+    // Just use the browser's default navigation
+    window.location.href = path.startsWith('http') ? path : window.location.origin + path;
   }
 
   // Perform navigation with safeguards
   static navigate(path: string, reason: string, forceNavigation: boolean = false): void {
-    // Get current path and check if we're already there
-    const currentPath = window.location.pathname;
-    if (currentPath === path && !forceNavigation) {
-      logWithTime('Navigation', `Already on ${path}, no navigation needed`);
-      return;
-    }
+    // DISABLED: All navigation checks and interception
+    logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason}) (all checks disabled)`);
     
-    // Check for navigation cooldown to prevent loops
-    const lastNavPath = localStorage.getItem('last_navigation_path');
-    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
-    const now = Date.now();
-    
-    if (lastNavPath === path && (now - lastNavTime) < this.NAVIGATION_COOLDOWN_MS && !forceNavigation) {
-      logWithTime('Navigation', `Navigation cooldown active for ${path}, preventing potential loop`);
-      return;
-    }
-    
-    // Check if navigation is already in progress
-    if (localStorage.getItem('navigation_in_progress') === 'true' && !forceNavigation) {
-      logWithTime('Navigation', `Navigation already in progress, won't navigate to ${path}`);
-      return;
-    }
-    
-    // Set navigation in progress flag
-    localStorage.setItem('navigation_in_progress', 'true');
-    
-    // Store navigation info
-    localStorage.setItem('last_navigation', now.toString());
-    localStorage.setItem('last_navigation_path', path);
-    
-    logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason})`);
-    
-    // Use Next.js router if available, otherwise fall back to window.location
-    if (this.router) {
-      logWithTime('Navigation', `Using Next.js router to navigate to: ${path}`);
-      this.router.push(path);
-    } else {
-      // Force a full page navigation by setting window.location.href
-      const fullUrl = window.location.origin + path;
-      logWithTime('Navigation', `Router not available, using window.location for: ${fullUrl}`);
-      window.location.href = fullUrl;
-    }
-    
-    // Clear navigation in progress flag after a delay
-    // This is a safety measure in case navigation fails
-    setTimeout(() => {
-      localStorage.removeItem('navigation_in_progress');
-    }, 5000);
+    // Just use the browser's default navigation
+    window.location.href = path.startsWith('http') ? path : window.location.origin + path;
   }
 }
 
@@ -260,22 +193,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    // NEW APPROACH: Check for redirect loop using a counter
-    const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
-    if (redirectCount > 2) {
-      logWithTime('AuthProvider', `Too many redirects (${redirectCount}), stopping redirect loop`);
-      localStorage.removeItem('redirect_count');
-      return;
-    }
-    
-    // Increment the redirect counter
-    localStorage.setItem('redirect_count', (redirectCount + 1).toString());
-    
-    // Reset the counter after 10 seconds
-    setTimeout(() => {
-      localStorage.removeItem('redirect_count');
-    }, 10000);
-    
     // Get dashboard path based on role
     let dashboardPath = '/';
     switch (userRole) {
@@ -285,8 +202,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       case 'member': dashboardPath = '/dashboard'; break;
     }
     
-    // Use direct navigation to bypass all checks
-    NavigationManager.directNavigate(dashboardPath);
+    logWithTime('AuthProvider', `Redirecting to: ${dashboardPath}`);
+    
+    // Just use the browser's default navigation
+    window.location.href = window.location.origin + dashboardPath;
   }, []);
   
   // Initialize auth on mount
