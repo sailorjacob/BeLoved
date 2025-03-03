@@ -236,6 +236,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       case 'member': dashboardPath = '/dashboard'; break;
     }
     
+    // Check if we're already on the dashboard path or being redirected to it
+    const isAlreadyRedirecting = localStorage.getItem('last_navigation_path') === dashboardPath;
+    const timeSinceLastNav = Date.now() - parseInt(localStorage.getItem('last_navigation') || '0', 10);
+    
+    if (isAlreadyRedirecting && timeSinceLastNav < 5000) {
+      logWithTime('AuthProvider', `Already redirecting to ${dashboardPath}, preventing loop`);
+      return;
+    }
+    
     // Use navigation manager to safely redirect
     NavigationManager.navigate(dashboardPath, `User role: ${userRole}`);
   }, []);

@@ -26,6 +26,18 @@ export default function Home() {
         
         // Instead of redirect, we'll show dashboards inline for now
         // This prevents navigation loop issues
+        
+        // Check if we're on the home page and not already being redirected
+        const currentPath = window.location.pathname;
+        if (currentPath === '/' && !localStorage.getItem('home_page_rendered')) {
+          // Set a flag to prevent multiple renders
+          localStorage.setItem('home_page_rendered', 'true');
+          
+          // Clear the flag after 10 seconds to allow future redirects
+          setTimeout(() => {
+            localStorage.removeItem('home_page_rendered');
+          }, 10000);
+        }
       }
     }
   }, [isInitialized, isLoggedIn, role, router])
