@@ -16,6 +16,7 @@ import { useAuth } from '@/app/contexts/auth-context'
 import type { Database } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
 import { NavigationManager } from "@/app/contexts/auth-context"
+import Link from "next/link"
 
 interface Address {
   address: string

@@ -80,26 +80,26 @@ export class NavigationManager {
 
   // Direct navigation method that bypasses all checks
   static directNavigate(path: string): void {
-    logWithTime('Navigation', `EXTREME DIRECT NAVIGATION to: ${path}`);
+    logWithTime('Navigation', `EMERGENCY DIRECT NAVIGATION to: ${path}`);
     
-    // EXTREME DIRECT NAVIGATION: Use document.location.replace for most aggressive navigation
+    // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
     const fullPath = path.startsWith('http') ? path : window.location.origin + path;
     logWithTime('Navigation', `Full URL: ${fullPath}`);
     
-    // Force a complete page reload to the target URL using the most aggressive method
-    document.location.replace(fullPath);
+    // Force a complete page reload to the target URL
+    window.location.href = fullPath;
   }
 
   // Perform navigation with safeguards
   static navigate(path: string, reason: string, forceNavigation: boolean = false): void {
-    logWithTime('Navigation', `EXTREME DIRECT NAVIGATION to ${path} (Reason: ${reason})`);
+    logWithTime('Navigation', `EMERGENCY DIRECT NAVIGATION to ${path} (Reason: ${reason})`);
     
-    // EXTREME DIRECT NAVIGATION: Use document.location.replace for most aggressive navigation
+    // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
     const fullPath = path.startsWith('http') ? path : window.location.origin + path;
     logWithTime('Navigation', `Full URL: ${fullPath}`);
     
-    // Force a complete page reload to the target URL using the most aggressive method
-    document.location.replace(fullPath);
+    // Force a complete page reload to the target URL
+    window.location.href = fullPath;
   }
 }
 

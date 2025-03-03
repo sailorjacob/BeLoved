@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAuth } from "@/app/contexts/auth-context"
+import { useAuth, NavigationManager } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
 import type { UserRole } from '@/lib/auth-service'
 
@@ -89,18 +89,18 @@ export function UserNav() {
       // Clear any session storage flags
       sessionStorage.clear();
       
-      // EXTREME DIRECT NAVIGATION: Use document.location.replace for most aggressive navigation
-      console.log('[UserNav] EXTREME DIRECT NAVIGATION to home');
-      document.location.replace(window.location.origin + '/');
+      // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+      console.log('[UserNav] EMERGENCY DIRECT NAVIGATION to home');
+      window.location.href = window.location.origin + '/';
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       
       // Clear any session storage flags
       sessionStorage.clear();
       
-      // EXTREME DIRECT NAVIGATION: Use document.location.replace for most aggressive navigation
-      console.log('[UserNav] EXTREME DIRECT NAVIGATION to home');
-      document.location.replace(window.location.origin + '/');
+      // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+      console.log('[UserNav] EMERGENCY DIRECT NAVIGATION to home');
+      window.location.href = window.location.origin + '/';
     }
   }
 
@@ -126,19 +126,17 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <div key={item.href} className="px-2 py-1.5 text-sm">
-              <a 
-                href={window.location.origin + item.href}
-                className="block cursor-pointer hover:underline"
-                onClick={(e) => {
-                  e.preventDefault();
-                  console.log(`[UserNav] EXTREME DIRECT NAVIGATION to ${item.href}`);
-                  document.location.replace(window.location.origin + item.href);
-                }}
-              >
-                {item.label}
-              </a>
-            </div>
+            <DropdownMenuItem 
+              key={item.href}
+              className="cursor-pointer"
+              onClick={() => {
+                // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+                console.log(`[UserNav] EMERGENCY DIRECT NAVIGATION to ${item.href}`);
+                window.location.href = window.location.origin + item.href;
+              }}
+            >
+              {item.label}
+            </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />

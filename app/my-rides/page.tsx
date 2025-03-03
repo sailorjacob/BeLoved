@@ -17,9 +17,9 @@ export default function MyRidesPage() {
     if (!isLoading && !isLoggedIn) {
       console.log('[MyRides] Unauthorized access, redirecting to home')
       
-      // EXTREME DIRECT NAVIGATION: Use document.location.replace for most aggressive navigation
-      console.log('[MyRides] EXTREME DIRECT NAVIGATION to home');
-      document.location.replace(window.location.origin + '/');
+      // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+      console.log('[MyRides] EMERGENCY DIRECT NAVIGATION to home');
+      window.location.href = window.location.origin + '/';
     }
   }, [isLoading, isLoggedIn, router])
 
