@@ -85,16 +85,22 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
+      // Clear the home_page_rendered flag to prevent the AuthProvider from skipping the redirect
+      localStorage.removeItem('home_page_rendered')
       window.location.href = '/'
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
+      // Clear the home_page_rendered flag to prevent the AuthProvider from skipping the redirect
+      localStorage.removeItem('home_page_rendered')
       window.location.href = '/'
     }
   }
 
   const handleNavigation = (href: string) => {
     console.log(`[UserNav] Navigating to: ${href} via direct navigation`)
+    // Clear the home_page_rendered flag to prevent the AuthProvider from skipping the redirect
+    localStorage.removeItem('home_page_rendered')
     // Use direct navigation to bypass any potential issues with Next.js router
     window.location.href = href
   }
