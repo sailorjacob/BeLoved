@@ -40,6 +40,7 @@ import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
 import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
+import Link from "next/link"
 
 interface Provider {
   id: string
@@ -487,9 +488,11 @@ export function ProviderManagement() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => router.push(`/providers/${provider.id}/details`)}
+                            asChild
                           >
-                            View Details
+                            <Link href={`/providers/${provider.id}/details`}>
+                              View Details
+                            </Link>
                           </Button>
                         </div>
                       </TableCell>
@@ -604,9 +607,11 @@ export function ProviderManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.push(`/admin/${admin.id}/activity`)}
+                        asChild
                       >
-                        View Activity
+                        <Link href={`/admin/${admin.id}/activity`}>
+                          View Activity
+                        </Link>
                       </Button>
                     </div>
                   </TableCell>

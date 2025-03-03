@@ -770,11 +770,10 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           >
             Manage Providers
           </a>
-          <Button variant="destructive" onClick={() => {
-            console.log('[SuperAdminDashboard] Navigating to support page via Next.js router')
-            router.push('/super-admin/support')
-          }}>
-            Customer Support
+          <Button variant="destructive" asChild>
+            <Link href="/super-admin/support">
+              Customer Support
+            </Link>
           </Button>
         </div>
       </div>

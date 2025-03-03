@@ -86,22 +86,13 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
-      router.push('/')
+      // Use window.location for logout to ensure a full page refresh
+      window.location.href = '/'
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
-      router.push('/')
+      window.location.href = '/'
     }
-  }
-
-  const handleNavigation = (href: string) => {
-    console.log(`[UserNav] Navigating to: ${href}`)
-    
-    // Close the dropdown menu before navigation
-    setTimeout(() => {
-      console.log(`[UserNav] Executing navigation to: ${href}`)
-      router.push(href, { scroll: false })
-    }, 100)
   }
 
   return (
@@ -126,13 +117,16 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <DropdownMenuItem 
-              key={item.href}
-              className="cursor-pointer"
-              onClick={() => handleNavigation(item.href)}
+            <Link 
+              key={item.href} 
+              href={item.href}
+              className="w-full"
+              prefetch={true}
             >
-              {item.label}
-            </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer">
+                {item.label}
+              </DropdownMenuItem>
+            </Link>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
