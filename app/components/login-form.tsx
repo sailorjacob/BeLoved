@@ -133,9 +133,19 @@ export function LoginForm() {
       </div>
 
       <Tabs defaultValue="login" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="login">Login</TabsTrigger>
-          <TabsTrigger value="register">Register</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-2 bg-gray-100">
+          <TabsTrigger 
+            value="login" 
+            className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
+          >
+            Login
+          </TabsTrigger>
+          <TabsTrigger 
+            value="register" 
+            className="data-[state=active]:bg-red-500 data-[state=active]:text-white"
+          >
+            Register
+          </TabsTrigger>
         </TabsList>
         
         <TabsContent value="login">
@@ -163,7 +173,11 @@ export function LoginForm() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoggingIn || isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-red-500 hover:bg-red-600 text-white" 
+              disabled={isLoggingIn || isLoading}
+            >
               {isLoggingIn || isLoading ? (
                 <>
                   <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />
@@ -223,7 +237,11 @@ export function LoginForm() {
                 required
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoggingIn || isLoading}>
+            <Button 
+              type="submit" 
+              className="w-full bg-red-500 hover:bg-red-600 text-white" 
+              disabled={isLoggingIn || isLoading}
+            >
               {isLoggingIn || isLoading ? (
                 <>
                   <Icons.spinner className="mr-2 h-4 w-4 animate-spin" />

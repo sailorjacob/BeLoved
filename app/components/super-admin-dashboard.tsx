@@ -954,7 +954,7 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     yAxisId="left"
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#8884d8"
+                    stroke="hsl(var(--chart-1))"
                     name="Total Revenue ($)"
                   />
                   <Line
