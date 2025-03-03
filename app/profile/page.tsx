@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { ProfileForm } from '../components/profile-form'
 import { UserNav } from '../components/user-nav'
-import { useAuth, NavigationManager } from '@/app/contexts/auth-context'
+import { useAuth } from '@/app/contexts/auth-context'
 
 export default function ProfilePage() {
   const { isLoggedIn, isLoading } = useAuth()
@@ -17,12 +17,12 @@ export default function ProfilePage() {
     if (!isLoading) {
       if (!isLoggedIn) {
         console.log('[Profile] Not logged in, redirecting to home')
-        NavigationManager.directNavigate('/')
+        router.push('/')
         return
       }
       console.log('[Profile] Auth check passed, user is logged in')
     }
-  }, [isLoading, isLoggedIn])
+  }, [isLoading, isLoggedIn, router])
 
   if (isLoading) {
     console.log('[Profile] Loading auth state...')

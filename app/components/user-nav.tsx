@@ -15,7 +15,6 @@ import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import type { UserRole } from '@/lib/auth-service'
-import { NavigationManager } from "@/app/contexts/auth-context"
 
 function getMenuItems(role: UserRole | null) {
   switch (role) {
@@ -95,6 +94,11 @@ export function UserNav() {
     }
   }
 
+  const handleNavigation = (href: string) => {
+    console.log(`[UserNav] Navigating to: ${href}`)
+    router.push(href)
+  }
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -117,11 +121,13 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <Link href={item.href} key={item.href} passHref>
-              <DropdownMenuItem className="cursor-pointer">
-                {item.label}
-              </DropdownMenuItem>
-            </Link>
+            <DropdownMenuItem 
+              key={item.href}
+              className="cursor-pointer"
+              onClick={() => handleNavigation(item.href)}
+            >
+              {item.label}
+            </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
