@@ -97,7 +97,19 @@ export function UserNav() {
 
   const handleNavigation = (href: string) => {
     console.log(`[UserNav] Navigating to: ${href}`)
-    NavigationManager.navigate(href, 'User navigation', true)
+    
+    // Prevent default dropdown behavior
+    // Close the dropdown menu first
+    const dropdownTrigger = document.querySelector('[data-state="open"]');
+    if (dropdownTrigger) {
+      (dropdownTrigger as HTMLElement).click();
+    }
+    
+    // Add a small delay before navigation to ensure dropdown is closed
+    setTimeout(() => {
+      // Use direct navigation with forceNavigation=true
+      NavigationManager.navigate(href, 'User navigation', true);
+    }, 50);
   }
 
   return (

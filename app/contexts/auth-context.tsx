@@ -69,19 +69,21 @@ export class NavigationManager {
   private static lastNavigationTime: number = 0;
   private static isNavigating: boolean = false;
   private static MIN_INTERVAL_MS: number = 500; // Reduced from 3000ms to 500ms for more responsive navigation
+  private static DEBUG: boolean = true; // Enable debug mode
 
   // Clear navigation flags on session expiration or logout
   static reset(): void {
     localStorage.removeItem('last_navigation');
     localStorage.removeItem('last_navigation_path');
     this.isNavigating = false;
+    if (this.DEBUG) logWithTime('Navigation', 'Navigation state reset');
   }
 
   // Check if we can navigate now
   static canNavigate(path: string, forceNavigation: boolean = false): boolean {
     // If force navigation is true, bypass all checks
     if (forceNavigation) {
-      logWithTime('Navigation', `Force navigating to ${path}`);
+      if (this.DEBUG) logWithTime('Navigation', `Force navigating to ${path}`);
       return true;
     }
     
@@ -109,6 +111,13 @@ export class NavigationManager {
   static navigate(path: string, reason: string, forceNavigation: boolean = false): void {
     if (!this.canNavigate(path, forceNavigation)) return;
 
+    // Check if we're already on this path
+    const currentPath = window.location.pathname;
+    if (currentPath === path) {
+      logWithTime('Navigation', `Already on ${path}, no navigation needed`);
+      return;
+    }
+
     this.isNavigating = true;
     const now = Date.now();
     
@@ -123,10 +132,8 @@ export class NavigationManager {
     const fullUrl = window.location.origin + path;
     logWithTime('Navigation', `Full URL: ${fullUrl}`);
     
-    // Use setTimeout to ensure the navigation happens after the current execution context
-    setTimeout(() => {
-      window.location.href = fullUrl;
-    }, 0);
+    // Use direct navigation for more reliable behavior
+    window.location.href = fullUrl;
     
     // Reset flag after a delay
     setTimeout(() => {
