@@ -64,81 +64,62 @@ const defaultState: AuthState = {
 // Create the context
 const AuthContext = createContext<AuthContextType | null>(null)
 
-// Navigation management to prevent loops
+// Export NavigationManager for use in other components
 export class NavigationManager {
-  private static lastNavigationTime: number = 0;
-  private static isNavigating: boolean = false;
-  private static MIN_INTERVAL_MS: number = 500; // Reduced from 3000ms to 500ms for more responsive navigation
-  private static DEBUG: boolean = true; // Enable debug mode
-
+  private static DEBUG: boolean = true;
+  
   // Clear navigation flags on session expiration or logout
   static reset(): void {
     localStorage.removeItem('last_navigation');
     localStorage.removeItem('last_navigation_path');
-    this.isNavigating = false;
+    localStorage.removeItem('navigation_in_progress');
     if (this.DEBUG) logWithTime('Navigation', 'Navigation state reset');
   }
 
-  // Check if we can navigate now
-  static canNavigate(path: string, forceNavigation: boolean = false): boolean {
-    // If force navigation is true, bypass all checks
-    if (forceNavigation) {
-      if (this.DEBUG) logWithTime('Navigation', `Force navigating to ${path}`);
-      return true;
-    }
-    
-    // Don't navigate if already navigating
-    if (this.isNavigating) {
-      logWithTime('Navigation', `Already navigating, won't navigate to ${path}`);
-      return false;
-    }
-
-    // Get current time and last navigation time
-    const now = Date.now();
-    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
-    const lastNavPath = localStorage.getItem('last_navigation_path') || '';
-    
-    // If navigating to the same path and it's too soon, prevent it
-    if (lastNavPath === path && now - lastNavTime < this.MIN_INTERVAL_MS) {
-      logWithTime('Navigation', `Prevented navigation loop to ${path} (last navigated ${now - lastNavTime}ms ago)`);
-      return false;
-    }
-
-    return true;
+  // Direct navigation method that bypasses all checks
+  static directNavigate(path: string): void {
+    const fullUrl = window.location.origin + path;
+    logWithTime('Navigation', `Direct navigating to: ${fullUrl}`);
+    window.location.href = fullUrl;
   }
 
   // Perform navigation with safeguards
   static navigate(path: string, reason: string, forceNavigation: boolean = false): void {
-    if (!this.canNavigate(path, forceNavigation)) return;
-
-    // Check if we're already on this path
+    // Get current path and check if we're already there
     const currentPath = window.location.pathname;
-    if (currentPath === path) {
+    if (currentPath === path && !forceNavigation) {
       logWithTime('Navigation', `Already on ${path}, no navigation needed`);
       return;
     }
-
-    this.isNavigating = true;
-    const now = Date.now();
+    
+    // Check if navigation is already in progress
+    if (localStorage.getItem('navigation_in_progress') === 'true' && !forceNavigation) {
+      logWithTime('Navigation', `Navigation already in progress, won't navigate to ${path}`);
+      return;
+    }
+    
+    // Set navigation in progress flag
+    localStorage.setItem('navigation_in_progress', 'true');
     
     // Store navigation info
+    const now = Date.now();
     localStorage.setItem('last_navigation', now.toString());
     localStorage.setItem('last_navigation_path', path);
     
     logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason})`);
     
     // Force a full page navigation by setting window.location.href
-    // This ensures the URL actually changes in the browser
     const fullUrl = window.location.origin + path;
     logWithTime('Navigation', `Full URL: ${fullUrl}`);
     
-    // Use direct navigation for more reliable behavior
+    // Use direct navigation
     window.location.href = fullUrl;
     
-    // Reset flag after a delay
+    // Clear navigation in progress flag after a delay
+    // This is a safety measure in case navigation fails
     setTimeout(() => {
-      this.isNavigating = false;
-    }, 1000); // Reduced from 5000ms to 1000ms
+      localStorage.removeItem('navigation_in_progress');
+    }, 5000);
   }
 }
 
@@ -252,8 +233,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    // Use navigation manager to safely redirect
-    NavigationManager.navigate(dashboardPath, `User role: ${userRole}`);
+    // Use direct navigation to bypass all checks
+    NavigationManager.directNavigate(dashboardPath);
   }, []);
   
   // Initialize auth on mount

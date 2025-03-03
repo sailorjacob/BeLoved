@@ -57,23 +57,23 @@ export function DriverDashboard() {
   // Direct navigation functions for better reliability
   const navigateToDriverInfo = () => {
     console.log('[DriverDashboard] Navigating to driver profile')
-    NavigationManager.navigate('/driver-profile', 'Driver dashboard navigation', true)
+    NavigationManager.directNavigate('/driver-profile')
   }
   const navigateToVehicles = () => {
     console.log('[DriverDashboard] Navigating to vehicles')
-    NavigationManager.navigate('/vehicles', 'Driver dashboard navigation', true)
+    NavigationManager.directNavigate('/vehicles')
   }
   const navigateToCompliance = () => {
     console.log('[DriverDashboard] Navigating to compliance')
-    NavigationManager.navigate('/compliance', 'Driver dashboard navigation', true)
+    NavigationManager.directNavigate('/compliance')
   }
   const navigateToUploadTrips = () => {
     console.log('[DriverDashboard] Navigating to upload trips')
-    NavigationManager.navigate('/upload-trips', 'Driver dashboard navigation', true)
+    NavigationManager.directNavigate('/upload-trips')
   }
   const navigateToAccount = () => {
     console.log('[DriverDashboard] Navigating to account')
-    NavigationManager.navigate('/account', 'Driver dashboard navigation', true)
+    NavigationManager.directNavigate('/account')
   }
 
   useEffect(() => {

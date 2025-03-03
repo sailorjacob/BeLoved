@@ -17,7 +17,7 @@ export default function ProfilePage() {
     if (!isLoading) {
       if (!isLoggedIn) {
         console.log('[Profile] Not logged in, redirecting to home')
-        NavigationManager.navigate('/', 'Profile auth check', true)
+        NavigationManager.directNavigate('/')
         return
       }
       console.log('[Profile] Auth check passed, user is logged in')

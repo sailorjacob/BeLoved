@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
+import { NavigationManager } from "@/app/contexts/auth-context"
 import {
   Card,
   CardContent,
@@ -175,7 +176,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
         <h2 className="text-2xl font-bold">Provider not found</h2>
         <Button
           className="mt-4"
-          onClick={() => router.push('/super-admin/providers')}
+          onClick={() => NavigationManager.directNavigate('/super-admin/providers')}
         >
           Back to Providers
         </Button>
@@ -191,7 +192,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
           <p className="text-muted-foreground">Organization Code: {provider.organization_code}</p>
         </div>
         <Button
-          onClick={() => router.push('/super-admin/providers')}
+          onClick={() => NavigationManager.directNavigate('/super-admin/providers')}
         >
           Back to Providers
         </Button>

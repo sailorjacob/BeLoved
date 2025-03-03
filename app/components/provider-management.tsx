@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
+import { NavigationManager } from "@/app/contexts/auth-context"
 import {
   Card,
   CardContent,
@@ -486,7 +487,7 @@ export function ProviderManagement() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => router.push(`/providers/${provider.id}/details`)}
+                            onClick={() => NavigationManager.directNavigate(`/providers/${provider.id}/details`)}
                           >
                             View Details
                           </Button>
@@ -603,7 +604,7 @@ export function ProviderManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => router.push(`/admin/${admin.id}/activity`)}
+                        onClick={() => NavigationManager.directNavigate(`/admin/${admin.id}/activity`)}
                       >
                         View Activity
                       </Button>

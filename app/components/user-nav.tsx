@@ -87,11 +87,11 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
-      NavigationManager.navigate('/', 'Logout successful', true)
+      NavigationManager.directNavigate('/')
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
-      NavigationManager.navigate('/', 'Logout error fallback', true)
+      NavigationManager.directNavigate('/')
     }
   }
 
@@ -107,8 +107,8 @@ export function UserNav() {
     
     // Add a small delay before navigation to ensure dropdown is closed
     setTimeout(() => {
-      // Use direct navigation with forceNavigation=true
-      NavigationManager.navigate(href, 'User navigation', true);
+      // Use direct navigation to bypass all checks
+      NavigationManager.directNavigate(href);
     }, 50);
   }
 
