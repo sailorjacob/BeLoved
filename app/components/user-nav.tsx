@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/app/contexts/auth-context"
+import { NavigationManager } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
 import type { UserRole } from '@/lib/auth-service'
 
@@ -85,24 +86,19 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
-      // Clear the home_page_rendered flag to prevent the AuthProvider from skipping the redirect
-      localStorage.removeItem('home_page_rendered')
-      window.location.href = '/'
+      // Use NavigationManager to handle navigation properly
+      NavigationManager.directNavigate('/')
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
-      // Clear the home_page_rendered flag to prevent the AuthProvider from skipping the redirect
-      localStorage.removeItem('home_page_rendered')
-      window.location.href = '/'
+      NavigationManager.directNavigate('/')
     }
   }
 
   const handleNavigation = (href: string) => {
-    console.log(`[UserNav] Navigating to: ${href} via direct navigation`)
-    // Clear the home_page_rendered flag to prevent the AuthProvider from skipping the redirect
-    localStorage.removeItem('home_page_rendered')
-    // Use direct navigation to bypass any potential issues with Next.js router
-    window.location.href = href
+    console.log(`[UserNav] Navigating to: ${href} via NavigationManager`)
+    // Use NavigationManager to handle navigation properly
+    NavigationManager.directNavigate(href)
   }
 
   return (

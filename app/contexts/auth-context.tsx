@@ -94,13 +94,21 @@ export class NavigationManager {
       return;
     }
     
-    // Force clear ALL navigation flags to ensure navigation works
-    localStorage.removeItem('last_navigation');
-    localStorage.removeItem('last_navigation_path');
-    localStorage.removeItem('navigation_in_progress');
-    localStorage.removeItem('home_page_rendered');
+    // Check for navigation cooldown to prevent loops
+    const lastNavPath = localStorage.getItem('last_navigation_path');
+    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
+    const now = Date.now();
     
-    logWithTime('Navigation', `Forcefully navigating to: ${path}`);
+    if (lastNavPath === path && (now - lastNavTime) < this.NAVIGATION_COOLDOWN_MS) {
+      logWithTime('Navigation', `Navigation cooldown active for ${path}, preventing potential loop`);
+      return;
+    }
+    
+    // Store navigation info
+    localStorage.setItem('last_navigation', now.toString());
+    localStorage.setItem('last_navigation_path', path);
+    
+    logWithTime('Navigation', `Navigating to: ${path}`);
     
     // Always use window.location for direct navigation to ensure it works
     window.location.href = window.location.origin + path;
@@ -250,6 +258,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logWithTime('AuthProvider', `Not on login/home (${currentPath}), skipping redirect`);
       return;
     }
+    
+    // Check if we've already rendered the home page to prevent loops
+    if (localStorage.getItem('home_page_rendered') === 'true') {
+      logWithTime('AuthProvider', 'Home page already rendered, skipping redirect');
+      return;
+    }
+    
+    // Set a flag to prevent multiple redirects
+    localStorage.setItem('home_page_rendered', 'true');
+    
+    // Clear the flag after 10 seconds to allow future redirects
+    setTimeout(() => {
+      localStorage.removeItem('home_page_rendered');
+    }, 10000);
     
     // Get dashboard path based on role
     let dashboardPath = '/';
