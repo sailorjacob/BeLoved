@@ -193,6 +193,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
+    // Simple flag to prevent infinite redirects
+    const redirectFlag = sessionStorage.getItem('redirect_attempted');
+    if (redirectFlag === 'true') {
+      logWithTime('AuthProvider', 'Redirect already attempted, skipping to prevent loops');
+      return;
+    }
+    
+    // Set the flag to prevent future redirects in this session
+    sessionStorage.setItem('redirect_attempted', 'true');
+    
     // Get dashboard path based on role
     let dashboardPath = '/';
     switch (userRole) {

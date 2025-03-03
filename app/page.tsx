@@ -13,22 +13,41 @@ import { useRouter } from 'next/navigation'
 export default function Home() {
   const { user, profile, isLoading, isLoggedIn, isInitialized, role } = useAuth()
   const [showLogin, setShowLogin] = useState(false)
+  const [navigationAttempted, setNavigationAttempted] = useState(false)
   const router = useRouter()
 
   // Only show login form after we've checked auth status
   useEffect(() => {
+    // Prevent infinite navigation loops
+    if (navigationAttempted) {
+      console.log("[HomePage] Navigation already attempted, skipping");
+      return;
+    }
+
     if (isInitialized) {
       if (!isLoggedIn) {
         setShowLogin(true)
       } else if (role) {
-        // Just log that the user is logged in, no redirects here
         console.log("[HomePage] User is logged in with role:", role)
         
-        // No redirects or navigation from the home page
-        // This prevents navigation loop issues
+        // Navigate to the appropriate dashboard based on role
+        let dashboardPath = '/';
+        switch (role) {
+          case 'super_admin': dashboardPath = '/super-admin-dashboard'; break;
+          case 'admin': dashboardPath = '/admin-dashboard'; break;
+          case 'driver': dashboardPath = '/driver-dashboard'; break;
+          case 'member': dashboardPath = '/dashboard'; break;
+        }
+        
+        // Only navigate if we're on the home page
+        if (window.location.pathname === '/') {
+          console.log(`[HomePage] Navigating to ${dashboardPath}`)
+          setNavigationAttempted(true);
+          router.push(dashboardPath)
+        }
       }
     }
-  }, [isInitialized, isLoggedIn, role])
+  }, [isInitialized, isLoggedIn, role, router, navigationAttempted])
 
   // Helper to render the appropriate content based on user role
   const renderDashboardContent = () => {
