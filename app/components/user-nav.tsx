@@ -12,8 +12,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/app/contexts/auth-context"
-import { NavigationManager } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import type { UserRole } from '@/lib/auth-service'
 
 function getMenuItems(role: UserRole | null) {
@@ -86,19 +86,13 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
-      // Use NavigationManager to handle navigation properly
-      NavigationManager.directNavigate('/')
+      // Force a hard navigation to the home page
+      window.location.href = '/'
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
-      NavigationManager.directNavigate('/')
+      window.location.href = '/'
     }
-  }
-
-  const handleNavigation = (href: string) => {
-    console.log(`[UserNav] Navigating to: ${href} via NavigationManager`)
-    // Use NavigationManager to handle navigation properly
-    NavigationManager.directNavigate(href)
   }
 
   return (
@@ -123,13 +117,20 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <DropdownMenuItem 
-              key={item.href}
-              className="cursor-pointer"
-              onClick={() => handleNavigation(item.href)}
-            >
-              {item.label}
-            </DropdownMenuItem>
+            <Link key={item.href} href={item.href} passHref>
+              <DropdownMenuItem 
+                className="cursor-pointer"
+                onSelect={(e) => {
+                  // Prevent the dropdown from closing
+                  e.preventDefault()
+                  // Clear the home_page_rendered flag to allow navigation
+                  localStorage.removeItem('home_page_rendered')
+                  console.log(`[UserNav] Cleared home_page_rendered flag for navigation to ${item.href}`)
+                }}
+              >
+                {item.label}
+              </DropdownMenuItem>
+            </Link>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
