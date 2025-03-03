@@ -26,9 +26,9 @@ export default function ProfilePage() {
       if (!isLoggedIn) {
         console.log('[ProfilePage] Not logged in, redirecting to home')
         
-        // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
-        console.log('[ProfilePage] EMERGENCY DIRECT NAVIGATION to home');
-        window.location.href = window.location.origin + '/';
+        // EXTREME DIRECT NAVIGATION: Use document.location.replace for most aggressive navigation
+        console.log('[ProfilePage] EXTREME DIRECT NAVIGATION to home');
+        document.location.replace(window.location.origin + '/');
         return;
       }
       console.log('[ProfilePage] Auth check passed, user is logged in')

@@ -13,7 +13,6 @@ import { useRouter } from 'next/navigation'
 export default function Home() {
   const { user, profile, isLoading, isLoggedIn, isInitialized, role } = useAuth()
   const [showLogin, setShowLogin] = useState(false)
-  const [navigationAttempted, setNavigationAttempted] = useState(false)
   const router = useRouter()
 
   // Only show login form after we've checked auth status
@@ -45,7 +44,38 @@ export default function Home() {
       case 'driver':
         return <div className="text-2xl font-semibold">Driver Dashboard</div>
       case 'member':
-        return <Scheduler />
+        return (
+          <>
+            <Scheduler />
+            <div className="mt-8 p-4 border rounded-lg">
+              <h2 className="text-xl font-bold mb-4">Direct Navigation Links</h2>
+              <div className="flex flex-col space-y-2">
+                <a 
+                  href="#" 
+                  className="text-blue-500 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log("[HomePage] EXTREME DIRECT NAVIGATION to profile");
+                    document.location.replace(window.location.origin + '/profile');
+                  }}
+                >
+                  Go to Profile Page
+                </a>
+                <a 
+                  href="#" 
+                  className="text-blue-500 hover:underline"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    console.log("[HomePage] EXTREME DIRECT NAVIGATION to my-rides");
+                    document.location.replace(window.location.origin + '/my-rides');
+                  }}
+                >
+                  Go to My Rides Page
+                </a>
+              </div>
+            </div>
+          </>
+        )
       default:
         return <div className="text-xl">Welcome! Your dashboard is loading...</div>
     }
