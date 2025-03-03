@@ -22,14 +22,77 @@ create table if not exists rides (
     updated_at timestamp with time zone default timezone('utc'::text, now())
 );
 
+-- Add provider_fee column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'provider_fee'
+    ) THEN
+        ALTER TABLE rides ADD COLUMN provider_fee numeric default 0;
+    END IF;
+END $$;
+
+-- Add driver_earnings column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'driver_earnings'
+    ) THEN
+        ALTER TABLE rides ADD COLUMN driver_earnings numeric default 0;
+    END IF;
+END $$;
+
+-- Add insurance_claim_amount column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'insurance_claim_amount'
+    ) THEN
+        ALTER TABLE rides ADD COLUMN insurance_claim_amount numeric default 0;
+    END IF;
+END $$;
+
 -- Add indexes for better query performance
 create index if not exists rides_member_id_idx on rides(member_id);
 create index if not exists rides_driver_id_idx on rides(driver_id);
 create index if not exists rides_status_idx on rides(status);
 create index if not exists rides_scheduled_pickup_time_idx on rides(scheduled_pickup_time);
-create index if not exists rides_provider_fee_idx on rides(provider_fee);
-create index if not exists rides_driver_earnings_idx on rides(driver_earnings);
-create index if not exists rides_insurance_claim_amount_idx on rides(insurance_claim_amount);
+
+-- Create provider_fee index only if the column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'provider_fee'
+    ) THEN
+        EXECUTE 'create index if not exists rides_provider_fee_idx on rides(provider_fee)';
+    END IF;
+END $$;
+
+-- Create driver_earnings index only if the column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'driver_earnings'
+    ) THEN
+        EXECUTE 'create index if not exists rides_driver_earnings_idx on rides(driver_earnings)';
+    END IF;
+END $$;
+
+-- Create insurance_claim_amount index only if the column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'insurance_claim_amount'
+    ) THEN
+        EXECUTE 'create index if not exists rides_insurance_claim_amount_idx on rides(insurance_claim_amount)';
+    END IF;
+END $$;
 
 -- Insert some sample data for testing
 INSERT INTO rides (
@@ -65,4 +128,4 @@ SELECT
     (30 + i)::numeric,
     (i)::numeric
 FROM generate_series(0, 9) i
-ON CONFLICT DO NOTHING; 
+ON CONFLICT DO NOTHING;
