@@ -487,7 +487,7 @@ export function ProviderManagement() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => NavigationManager.directNavigate(`/providers/${provider.id}/details`)}
+                            onClick={() => router.push(`/providers/${provider.id}/details`)}
                           >
                             View Details
                           </Button>
@@ -604,7 +604,7 @@ export function ProviderManagement() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => NavigationManager.directNavigate(`/admin/${admin.id}/activity`)}
+                        onClick={() => router.push(`/admin/${admin.id}/activity`)}
                       >
                         View Activity
                       </Button>

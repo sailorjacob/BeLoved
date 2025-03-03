@@ -771,9 +771,8 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             Manage Providers
           </a>
           <Button variant="destructive" onClick={() => {
-            console.log('[SuperAdminDashboard] Navigating to support page via direct navigation')
-            // Use direct navigation for maximum reliability
-            window.location.href = '/super-admin/support'
+            console.log('[SuperAdminDashboard] Navigating to support page via Next.js router')
+            router.push('/super-admin/support')
           }}>
             Customer Support
           </Button>
