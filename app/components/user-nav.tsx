@@ -128,11 +128,13 @@ export function UserNav() {
             <DropdownMenuItem 
               key={item.href}
               className="cursor-pointer"
-              asChild
+              onClick={() => {
+                console.log(`[UserNav] Directly navigating to: ${item.href}`);
+                // Force a complete page reload to the target URL
+                window.location.href = window.location.origin + item.href;
+              }}
             >
-              <Link href={item.href}>
-                {item.label}
-              </Link>
+              {item.label}
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
