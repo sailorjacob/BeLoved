@@ -17,12 +17,12 @@ export default function ProfilePage() {
     if (!isLoading) {
       if (!isLoggedIn) {
         console.log('[Profile] Not logged in, redirecting to home')
-        router.push('/')
+        window.location.href = '/'
         return
       }
       console.log('[Profile] Auth check passed, user is logged in')
     }
-  }, [isLoading, isLoggedIn, router])
+  }, [isLoading, isLoggedIn])
 
   if (isLoading) {
     console.log('[Profile] Loading auth state...')

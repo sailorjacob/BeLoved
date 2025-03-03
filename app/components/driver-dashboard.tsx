@@ -53,12 +53,27 @@ export function DriverDashboard() {
   const { user } = useAuth()
   const router = useRouter()
 
-  // Quick access navigation functions
-  const navigateToDriverInfo = () => router.push('/driver-profile')
-  const navigateToVehicles = () => router.push('/vehicles')
-  const navigateToCompliance = () => router.push('/compliance')
-  const navigateToUploadTrips = () => router.push('/upload-trips')
-  const navigateToAccount = () => router.push('/account')
+  // Direct navigation functions for better reliability
+  const navigateToDriverInfo = () => {
+    console.log('[DriverDashboard] Navigating to driver profile')
+    window.location.href = '/driver-profile'
+  }
+  const navigateToVehicles = () => {
+    console.log('[DriverDashboard] Navigating to vehicles')
+    window.location.href = '/vehicles'
+  }
+  const navigateToCompliance = () => {
+    console.log('[DriverDashboard] Navigating to compliance')
+    window.location.href = '/compliance'
+  }
+  const navigateToUploadTrips = () => {
+    console.log('[DriverDashboard] Navigating to upload trips')
+    window.location.href = '/upload-trips'
+  }
+  const navigateToAccount = () => {
+    console.log('[DriverDashboard] Navigating to account')
+    window.location.href = '/account'
+  }
 
   useEffect(() => {
     if (!user) return

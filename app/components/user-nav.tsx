@@ -86,12 +86,17 @@ export function UserNav() {
       console.log('[UserNav] Initiating logout')
       await logout()
       console.log('[UserNav] Redirecting to home')
-      router.replace('/')
+      window.location.href = '/'
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
-      router.replace('/')
+      window.location.href = '/'
     }
+  }
+
+  const handleNavigation = (href: string) => {
+    console.log(`[UserNav] Navigating to: ${href}`)
+    window.location.href = href
   }
 
   return (
@@ -116,8 +121,10 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <DropdownMenuItem key={item.href} asChild>
-              <Link href={item.href}>{item.label}</Link>
+            <DropdownMenuItem key={item.href} 
+              onClick={() => handleNavigation(item.href)}
+              className="cursor-pointer">
+              {item.label}
             </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
