@@ -94,22 +94,20 @@ export class NavigationManager {
       return;
     }
     
-    // DISABLED: Check for navigation cooldown to prevent loops
-    // This check was preventing normal navigation
-    // const lastNavPath = localStorage.getItem('last_navigation_path');
-    // const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
-    // const now = Date.now();
+    // Basic protection against navigation loops
+    const lastNavPath = localStorage.getItem('last_navigation_path');
+    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
+    const now = Date.now();
     
-    // if (lastNavPath === path && (now - lastNavTime) < this.NAVIGATION_COOLDOWN_MS) {
-    //   logWithTime('Navigation', `Navigation cooldown active for ${path}, preventing potential loop`);
-    //   return;
-    // }
+    // Only prevent very rapid navigation to the same path (within 1 second)
+    if (lastNavPath === path && (now - lastNavTime) < 1000) {
+      logWithTime('Navigation', `Preventing too rapid navigation to ${path} (potential loop)`);
+      return;
+    }
     
-    // Clear ALL navigation flags to ensure navigation works
-    localStorage.removeItem('last_navigation');
-    localStorage.removeItem('last_navigation_path');
-    localStorage.removeItem('navigation_in_progress');
-    localStorage.removeItem('home_page_rendered');
+    // Store navigation info
+    localStorage.setItem('last_navigation', now.toString());
+    localStorage.setItem('last_navigation_path', path);
     
     logWithTime('Navigation', `Forcefully navigating to: ${path}`);
     
@@ -262,21 +260,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    // DISABLED: Check if we've already rendered the home page to prevent loops
-    // This check was preventing normal navigation
-    // if (localStorage.getItem('home_page_rendered') === 'true') {
-    //   logWithTime('AuthProvider', 'Home page already rendered, skipping redirect');
-    //   return;
-    // }
+    // NEW APPROACH: Check for redirect loop using a counter
+    const redirectCount = parseInt(localStorage.getItem('redirect_count') || '0', 10);
+    if (redirectCount > 2) {
+      logWithTime('AuthProvider', `Too many redirects (${redirectCount}), stopping redirect loop`);
+      localStorage.removeItem('redirect_count');
+      return;
+    }
     
-    // DISABLED: Set a flag to prevent multiple redirects
-    // This flag was preventing normal navigation
-    // localStorage.setItem('home_page_rendered', 'true');
+    // Increment the redirect counter
+    localStorage.setItem('redirect_count', (redirectCount + 1).toString());
     
-    // DISABLED: Clear the flag after 10 seconds to allow future redirects
-    // setTimeout(() => {
-    //   localStorage.removeItem('home_page_rendered');
-    // }, 10000);
+    // Reset the counter after 10 seconds
+    setTimeout(() => {
+      localStorage.removeItem('redirect_count');
+    }, 10000);
     
     // Get dashboard path based on role
     let dashboardPath = '/';
