@@ -63,6 +63,7 @@ create table if not exists rides (
     dropoff_address jsonb not null,
     scheduled_pickup_time timestamp with time zone not null,
     status ride_status default 'pending',
+    cost numeric default 0,
     start_miles numeric,
     end_miles numeric,
     start_time timestamp with time zone,
@@ -77,6 +78,18 @@ create table if not exists rides (
     created_at timestamp with time zone default timezone('utc'::text, now()),
     updated_at timestamp with time zone default timezone('utc'::text, now())
 );
+
+-- Add cost column if it doesn't exist
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'cost'
+    ) THEN
+        ALTER TABLE rides ADD COLUMN cost numeric default 0;
+    END IF;
+END;
+$$;
 
 -- Add provider_fee column if it doesn't exist
 DO $$
@@ -119,6 +132,18 @@ create index if not exists rides_member_id_idx on rides(member_id);
 create index if not exists rides_driver_id_idx on rides(driver_id);
 create index if not exists rides_status_idx on rides(status);
 create index if not exists rides_scheduled_pickup_time_idx on rides(scheduled_pickup_time);
+
+-- Create cost index only if the column exists
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' AND column_name = 'cost'
+    ) THEN
+        EXECUTE 'create index if not exists rides_cost_idx on rides(cost)';
+    END IF;
+END;
+$$;
 
 -- Create provider_fee index only if the column exists
 DO $$

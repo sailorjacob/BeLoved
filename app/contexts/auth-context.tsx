@@ -68,6 +68,13 @@ const AuthContext = createContext<AuthContextType | null>(null)
 export class NavigationManager {
   private static DEBUG: boolean = true;
   private static NAVIGATION_COOLDOWN_MS: number = 3000; // 3 second cooldown between navigations to the same URL
+  private static router: any = null;
+  
+  // Set the router instance
+  static setRouter(router: any): void {
+    this.router = router;
+    if (this.DEBUG) logWithTime('Navigation', 'Router instance set');
+  }
   
   // Clear navigation flags on session expiration or logout
   static reset(): void {
@@ -87,24 +94,16 @@ export class NavigationManager {
       return;
     }
     
-    // Check for navigation cooldown to prevent loops
-    const lastNavPath = localStorage.getItem('last_navigation_path');
-    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
-    const now = Date.now();
+    // Force clear ALL navigation flags to ensure navigation works
+    localStorage.removeItem('last_navigation');
+    localStorage.removeItem('last_navigation_path');
+    localStorage.removeItem('navigation_in_progress');
+    localStorage.removeItem('home_page_rendered');
     
-    if (lastNavPath === path && (now - lastNavTime) < this.NAVIGATION_COOLDOWN_MS) {
-      logWithTime('Navigation', `Navigation cooldown active for ${path}, preventing potential loop`);
-      return;
-    }
+    logWithTime('Navigation', `Forcefully navigating to: ${path}`);
     
-    const fullUrl = window.location.origin + path;
-    logWithTime('Navigation', `Direct navigating to: ${fullUrl}`);
-    
-    // Store navigation info
-    localStorage.setItem('last_navigation', now.toString());
-    localStorage.setItem('last_navigation_path', path);
-    
-    window.location.href = fullUrl;
+    // Always use window.location for direct navigation to ensure it works
+    window.location.href = window.location.origin + path;
   }
 
   // Perform navigation with safeguards
@@ -141,12 +140,16 @@ export class NavigationManager {
     
     logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason})`);
     
-    // Force a full page navigation by setting window.location.href
-    const fullUrl = window.location.origin + path;
-    logWithTime('Navigation', `Full URL: ${fullUrl}`);
-    
-    // Use direct navigation
-    window.location.href = fullUrl;
+    // Use Next.js router if available, otherwise fall back to window.location
+    if (this.router) {
+      logWithTime('Navigation', `Using Next.js router to navigate to: ${path}`);
+      this.router.push(path);
+    } else {
+      // Force a full page navigation by setting window.location.href
+      const fullUrl = window.location.origin + path;
+      logWithTime('Navigation', `Router not available, using window.location for: ${fullUrl}`);
+      window.location.href = fullUrl;
+    }
     
     // Clear navigation in progress flag after a delay
     // This is a safety measure in case navigation fails
@@ -248,20 +251,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
     
-    // Check if we've already rendered the home page to prevent loops
-    if (localStorage.getItem('home_page_rendered') === 'true') {
-      logWithTime('AuthProvider', 'Home page already rendered, skipping redirect');
-      return;
-    }
-    
-    // Set a flag to prevent multiple redirects
-    localStorage.setItem('home_page_rendered', 'true');
-    
-    // Clear the flag after 10 seconds to allow future redirects
-    setTimeout(() => {
-      localStorage.removeItem('home_page_rendered');
-    }, 10000);
-    
     // Get dashboard path based on role
     let dashboardPath = '/';
     switch (userRole) {
@@ -269,15 +258,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       case 'admin': dashboardPath = '/admin-dashboard'; break;
       case 'driver': dashboardPath = '/driver-dashboard'; break;
       case 'member': dashboardPath = '/dashboard'; break;
-    }
-    
-    // Check if we're already on the dashboard path or being redirected to it
-    const isAlreadyRedirecting = localStorage.getItem('last_navigation_path') === dashboardPath;
-    const timeSinceLastNav = Date.now() - parseInt(localStorage.getItem('last_navigation') || '0', 10);
-    
-    if (isAlreadyRedirecting && timeSinceLastNav < 5000) {
-      logWithTime('AuthProvider', `Already redirecting to ${dashboardPath}, preventing loop`);
-      return;
     }
     
     // Use direct navigation to bypass all checks
