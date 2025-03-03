@@ -86,12 +86,30 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
-      // Force a hard navigation to the home page
-      window.location.href = '/'
+      
+      // Clear ALL navigation flags to ensure navigation works
+      localStorage.removeItem('last_navigation');
+      localStorage.removeItem('last_navigation_path');
+      localStorage.removeItem('navigation_in_progress');
+      localStorage.removeItem('home_page_rendered');
+      
+      console.log('[UserNav] Forcefully navigating to home');
+      
+      // Force a complete page reload to the home page
+      window.location.href = window.location.origin + '/';
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
-      // Still redirect to home on error
-      window.location.href = '/'
+      
+      // Clear ALL navigation flags to ensure navigation works
+      localStorage.removeItem('last_navigation');
+      localStorage.removeItem('last_navigation_path');
+      localStorage.removeItem('navigation_in_progress');
+      localStorage.removeItem('home_page_rendered');
+      
+      console.log('[UserNav] Forcefully navigating to home after error');
+      
+      // Force a complete page reload to the home page
+      window.location.href = window.location.origin + '/';
     }
   }
 
@@ -121,11 +139,16 @@ export function UserNav() {
               key={item.href}
               className="cursor-pointer"
               onClick={() => {
-                // Clear the home_page_rendered flag to allow navigation
-                localStorage.removeItem('home_page_rendered')
-                console.log(`[UserNav] Navigating to ${item.href}`)
-                // Use window.location for direct navigation
-                window.location.href = item.href
+                // Clear ALL navigation flags to ensure navigation works
+                localStorage.removeItem('last_navigation');
+                localStorage.removeItem('last_navigation_path');
+                localStorage.removeItem('navigation_in_progress');
+                localStorage.removeItem('home_page_rendered');
+                
+                console.log(`[UserNav] Forcefully navigating to ${item.href}`);
+                
+                // Force a complete page reload to the target URL
+                window.location.href = window.location.origin + item.href;
               }}
             >
               {item.label}
