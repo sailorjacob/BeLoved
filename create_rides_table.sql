@@ -1,3 +1,11 @@
+-- Check if ride_status enum type exists, if not create it
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ride_status') THEN
+        CREATE TYPE ride_status AS ENUM ('pending', 'assigned', 'completed', 'cancelled');
+    END IF;
+END$$;
+
 -- Create rides table
 create table if not exists rides (
     id uuid primary key default uuid_generate_v4(),
@@ -6,7 +14,7 @@ create table if not exists rides (
     pickup_address jsonb not null,
     dropoff_address jsonb not null,
     scheduled_pickup_time timestamp with time zone not null,
-    status text default 'pending',
+    status ride_status default 'pending',
     start_miles numeric,
     end_miles numeric,
     start_time timestamp with time zone,
@@ -114,10 +122,10 @@ SELECT
     '{"address": "456 Elm St", "city": "Indianapolis", "state": "IN", "zip": "46205"}'::jsonb,
     timezone('utc'::text, now() + (i || ' days')::interval),
     CASE 
-        WHEN i % 4 = 0 THEN 'pending'
-        WHEN i % 4 = 1 THEN 'assigned'
-        WHEN i % 4 = 2 THEN 'completed'
-        ELSE 'cancelled'
+        WHEN i % 4 = 0 THEN 'pending'::ride_status
+        WHEN i % 4 = 1 THEN 'assigned'::ride_status
+        WHEN i % 4 = 2 THEN 'completed'::ride_status
+        ELSE 'cancelled'::ride_status
     END,
     CASE 
         WHEN i % 3 = 0 THEN 'cash'
