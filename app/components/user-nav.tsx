@@ -87,29 +87,12 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
-      NavigationManager.directNavigate('/')
+      router.push('/')
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
-      NavigationManager.directNavigate('/')
+      router.push('/')
     }
-  }
-
-  const handleNavigation = (href: string) => {
-    console.log(`[UserNav] Navigating to: ${href}`)
-    
-    // Prevent default dropdown behavior
-    // Close the dropdown menu first
-    const dropdownTrigger = document.querySelector('[data-state="open"]');
-    if (dropdownTrigger) {
-      (dropdownTrigger as HTMLElement).click();
-    }
-    
-    // Add a small delay before navigation to ensure dropdown is closed
-    setTimeout(() => {
-      // Use direct navigation to bypass all checks
-      NavigationManager.directNavigate(href);
-    }, 50);
   }
 
   return (
@@ -134,11 +117,11 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <DropdownMenuItem key={item.href} 
-              onClick={() => handleNavigation(item.href)}
-              className="cursor-pointer">
-              {item.label}
-            </DropdownMenuItem>
+            <Link href={item.href} key={item.href} passHref>
+              <DropdownMenuItem className="cursor-pointer">
+                {item.label}
+              </DropdownMenuItem>
+            </Link>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
