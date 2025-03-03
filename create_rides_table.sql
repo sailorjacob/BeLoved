@@ -1,8 +1,47 @@
 -- Check if ride_status enum type exists, if not create it
 DO $$
+DECLARE
+    enum_exists boolean;
+    enum_values text[];
+    missing_values text[];
 BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ride_status') THEN
-        CREATE TYPE ride_status AS ENUM ('pending', 'assigned', 'completed', 'cancelled');
+    -- Check if the enum type exists
+    SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ride_status') INTO enum_exists;
+    
+    IF NOT enum_exists THEN
+        -- Create the enum type if it doesn't exist
+        CREATE TYPE ride_status AS ENUM ('pending', 'assigned', 'completed', 'in_progress');
+    ELSE
+        -- Get existing enum values
+        SELECT array_agg(enumlabel::text) INTO enum_values
+        FROM pg_enum
+        WHERE enumtypid = 'ride_status'::regtype;
+        
+        -- Check for missing values and add them
+        missing_values := ARRAY[]::text[];
+        
+        IF NOT ('pending' = ANY(enum_values)) THEN
+            missing_values := missing_values || 'pending';
+        END IF;
+        
+        IF NOT ('assigned' = ANY(enum_values)) THEN
+            missing_values := missing_values || 'assigned';
+        END IF;
+        
+        IF NOT ('completed' = ANY(enum_values)) THEN
+            missing_values := missing_values || 'completed';
+        END IF;
+        
+        IF NOT ('in_progress' = ANY(enum_values)) THEN
+            missing_values := missing_values || 'in_progress';
+        END IF;
+        
+        -- Add missing values if any
+        IF array_length(missing_values, 1) > 0 THEN
+            FOREACH v IN ARRAY missing_values LOOP
+                EXECUTE format('ALTER TYPE ride_status ADD VALUE IF NOT EXISTS %L', v);
+            END LOOP;
+        END IF;
     END IF;
 END$$;
 
@@ -102,6 +141,29 @@ BEGIN
     END IF;
 END $$;
 
+-- Get valid enum values for ride_status
+DO $$
+DECLARE
+    enum_values text[];
+BEGIN
+    -- Get existing enum values
+    SELECT array_agg(enumlabel::text) INTO enum_values
+    FROM pg_enum
+    WHERE enumtypid = 'ride_status'::regtype;
+    
+    -- Store enum values in a temporary table for use in the INSERT statement
+    CREATE TEMPORARY TABLE IF NOT EXISTS temp_ride_status_values (
+        value text
+    );
+    
+    -- Clear the table in case it already exists
+    TRUNCATE temp_ride_status_values;
+    
+    -- Insert the enum values
+    INSERT INTO temp_ride_status_values
+    SELECT unnest(enum_values);
+END$$;
+
 -- Insert some sample data for testing
 INSERT INTO rides (
     member_id,
@@ -122,10 +184,12 @@ SELECT
     '{"address": "456 Elm St", "city": "Indianapolis", "state": "IN", "zip": "46205"}'::jsonb,
     timezone('utc'::text, now() + (i || ' days')::interval),
     CASE 
-        WHEN i % 4 = 0 THEN 'pending'::ride_status
-        WHEN i % 4 = 1 THEN 'assigned'::ride_status
-        WHEN i % 4 = 2 THEN 'completed'::ride_status
-        ELSE 'cancelled'::ride_status
+        WHEN i % 3 = 0 THEN 
+            (SELECT value FROM temp_ride_status_values ORDER BY value LIMIT 1 OFFSET 0)::ride_status
+        WHEN i % 3 = 1 THEN 
+            (SELECT value FROM temp_ride_status_values ORDER BY value LIMIT 1 OFFSET 1)::ride_status
+        ELSE 
+            (SELECT value FROM temp_ride_status_values ORDER BY value LIMIT 1 OFFSET 2)::ride_status
     END,
     CASE 
         WHEN i % 3 = 0 THEN 'cash'
@@ -137,3 +201,6 @@ SELECT
     (i)::numeric
 FROM generate_series(0, 9) i
 ON CONFLICT DO NOTHING;
+
+-- Clean up temporary table
+DROP TABLE IF EXISTS temp_ride_status_values;
