@@ -30,20 +30,24 @@ export default function Home() {
       } else if (role) {
         console.log("[HomePage] User is logged in with role:", role)
         
-        // Navigate to the appropriate dashboard based on role
-        let dashboardPath = '/';
-        switch (role) {
-          case 'super_admin': dashboardPath = '/super-admin-dashboard'; break;
-          case 'admin': dashboardPath = '/admin-dashboard'; break;
-          case 'driver': dashboardPath = '/driver-dashboard'; break;
-          case 'member': dashboardPath = '/dashboard'; break;
-        }
-        
-        // Only navigate if we're on the home page
+        // Only navigate if we're EXACTLY on the home page (not a subpage)
         if (window.location.pathname === '/') {
+          // Navigate to the appropriate dashboard based on role
+          let dashboardPath = '/';
+          switch (role) {
+            case 'super_admin': dashboardPath = '/super-admin-dashboard'; break;
+            case 'admin': dashboardPath = '/admin-dashboard'; break;
+            case 'driver': dashboardPath = '/driver-dashboard'; break;
+            case 'member': dashboardPath = '/dashboard'; break;
+          }
+          
           console.log(`[HomePage] Navigating to ${dashboardPath}`)
           setNavigationAttempted(true);
-          router.push(dashboardPath)
+          
+          // Use router.replace instead of push to avoid adding to history
+          router.replace(dashboardPath)
+        } else {
+          console.log(`[HomePage] Not on exact home path (${window.location.pathname}), skipping navigation`);
         }
       }
     }

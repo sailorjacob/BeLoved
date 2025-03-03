@@ -87,20 +87,19 @@ export function UserNav() {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
       
-      // Clear any session storage flags that might be preventing navigation
-      sessionStorage.removeItem('redirect_attempted');
+      // Clear any session storage flags
+      sessionStorage.clear();
       
-      // Use the browser's default navigation for logout
-      // This is more reliable for a complete session reset
-      window.location.href = window.location.origin + '/';
+      // Force a complete page reload to the home page
+      window.location.replace(window.location.origin + '/');
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       
-      // Clear any session storage flags that might be preventing navigation
-      sessionStorage.removeItem('redirect_attempted');
+      // Clear any session storage flags
+      sessionStorage.clear();
       
-      // Use the browser's default navigation for logout
-      window.location.href = window.location.origin + '/';
+      // Force a complete page reload to the home page
+      window.location.replace(window.location.origin + '/');
     }
   }
 
@@ -126,28 +125,16 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <DropdownMenuItem 
+            <Link 
               key={item.href}
-              className="cursor-pointer"
-              onClick={() => {
-                console.log(`[UserNav] Navigating to: ${item.href}`);
-                
-                // Clear any session storage flags that might be preventing navigation
-                sessionStorage.removeItem('redirect_attempted');
-                
-                // Try using Next.js router first
-                try {
-                  router.push(item.href);
-                } catch (error) {
-                  console.error(`[UserNav] Router navigation failed, using direct navigation: ${error}`);
-                  
-                  // Fallback to direct navigation if router fails
-                  window.location.href = window.location.origin + item.href;
-                }
-              }}
+              href={item.href}
+              passHref
+              legacyBehavior
             >
-              {item.label}
-            </DropdownMenuItem>
+              <DropdownMenuItem className="cursor-pointer">
+                {item.label}
+              </DropdownMenuItem>
+            </Link>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
