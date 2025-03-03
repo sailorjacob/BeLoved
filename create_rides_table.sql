@@ -4,6 +4,7 @@ DECLARE
     enum_exists boolean;
     enum_values text[];
     missing_values text[];
+    v text;
 BEGIN
     -- Check if the enum type exists
     SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'ride_status') INTO enum_exists;
@@ -21,19 +22,19 @@ BEGIN
         missing_values := ARRAY[]::text[];
         
         IF NOT ('pending' = ANY(enum_values)) THEN
-            missing_values := missing_values || 'pending';
+            missing_values := array_append(missing_values, 'pending');
         END IF;
         
         IF NOT ('assigned' = ANY(enum_values)) THEN
-            missing_values := missing_values || 'assigned';
+            missing_values := array_append(missing_values, 'assigned');
         END IF;
         
         IF NOT ('completed' = ANY(enum_values)) THEN
-            missing_values := missing_values || 'completed';
+            missing_values := array_append(missing_values, 'completed');
         END IF;
         
         IF NOT ('in_progress' = ANY(enum_values)) THEN
-            missing_values := missing_values || 'in_progress';
+            missing_values := array_append(missing_values, 'in_progress');
         END IF;
         
         -- Add missing values if any
