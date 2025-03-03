@@ -23,32 +23,11 @@ const roleCommonPaths = {
     '/super-admin-dashboard', 
     '/super-admin/providers', 
     '/super-admin/support', 
-    '/super-admin/locations',
-    '/my-rides',  // Allow super admins to access all paths
-    '/dashboard',
-    '/admin-dashboard',
-    '/driver-dashboard',
-    '/trips'
+    '/super-admin/locations'
   ],
-  admin: [
-    '/profile', 
-    '/admin-dashboard',
-    '/my-rides',
-    '/dashboard',
-    '/driver-dashboard',
-    '/trips'
-  ],
-  driver: [
-    '/profile', 
-    '/trips', 
-    '/driver-dashboard',
-    '/my-rides'
-  ],
-  member: [
-    '/profile', 
-    '/my-rides', 
-    '/dashboard'
-  ]
+  admin: ['/profile', '/admin-dashboard'],
+  driver: ['/profile', '/trips', '/driver-dashboard'],
+  member: ['/profile', '/my-rides', '/dashboard']
 }
 
 // Protected paths by role - these are paths exclusive to each role 
@@ -79,89 +58,11 @@ const getSecurityHeaders = () => ({
 })
 
 export async function middleware(request: NextRequest) {
-  console.log('[Middleware] Processing request for path:', request.nextUrl.pathname)
+  console.log('[Middleware] DISABLED - Allowing all navigation')
+  console.log('[Middleware] Request path:', request.nextUrl.pathname)
   
-  try {
-    const supabase = createMiddlewareClient({ req: request, res: NextResponse.next() })
-    
-    // Try to get the session
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-    
-    if (sessionError) {
-      console.error('[Middleware] Session error:', sessionError)
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-
-    // If no session and trying to access protected path, redirect to login
-    if (!session && !publicPaths.includes(request.nextUrl.pathname)) {
-      console.log('[Middleware] No session found, redirecting to login')
-      return NextResponse.redirect(new URL('/', request.url))
-    }
-
-    // If we have a session, try to get the profile
-    if (session?.user?.id) {
-      console.log('[Middleware] Session found, fetching profile')
-      const { data: profile, error: profileError } = await supabase
-        .from('profiles')
-        .select('user_type')
-        .eq('id', session.user.id)
-        .single()
-
-      if (profileError) {
-        console.error('[Middleware] Profile error:', profileError)
-        return NextResponse.redirect(new URL('/', request.url))
-      }
-
-      if (!profile) {
-        console.error('[Middleware] No profile found for user:', session.user.id)
-        return NextResponse.redirect(new URL('/', request.url))
-      }
-
-      const userRole = profile.user_type as UserRole
-      if (!userRole || !roleCommonPaths[userRole]) {
-        console.error('[Middleware] Invalid user role:', userRole)
-        return NextResponse.redirect(new URL('/', request.url))
-      }
-
-      console.log('[Middleware] User role:', userRole)
-
-      // Check if user is trying to access their allowed paths
-      const allowedPaths = [
-        ...publicPaths,
-        ...roleCommonPaths[userRole]
-      ]
-
-      // Add wildcard paths for each allowed path
-      const allowedPathsWithWildcards = [
-        ...allowedPaths,
-        ...allowedPaths.map(path => `${path}/*`)
-      ]
-
-      console.log('[Middleware] Allowed paths:', allowedPathsWithWildcards)
-      console.log('[Middleware] Requested path:', request.nextUrl.pathname)
-
-      const isAllowed = allowedPathsWithWildcards.some(path => {
-        if (path.endsWith('/*')) {
-          const basePath = path.slice(0, -2)
-          return request.nextUrl.pathname.startsWith(basePath)
-        }
-        return path === request.nextUrl.pathname
-      })
-
-      // DISABLED: Forced redirection to dashboard
-      // Instead, just log the access attempt but allow it to proceed
-      if (!isAllowed) {
-        console.log('[Middleware] Path not explicitly allowed, but proceeding anyway:', request.nextUrl.pathname)
-        // Allow the request to proceed instead of redirecting
-        // return NextResponse.redirect(new URL(`/${userRole}-dashboard`, request.url))
-      }
-    }
-
-    return NextResponse.next()
-  } catch (error) {
-    console.error('[Middleware] Unexpected error:', error)
-    return NextResponse.redirect(new URL('/', request.url))
-  }
+  // MIDDLEWARE COMPLETELY DISABLED - Allow all navigation
+  return NextResponse.next()
 }
 
 function getDashboardPath(role: string | null): string {
