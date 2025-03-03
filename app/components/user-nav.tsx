@@ -13,7 +13,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
-import Link from "next/link"
 import type { UserRole } from '@/lib/auth-service'
 
 function getMenuItems(role: UserRole | null) {
@@ -86,13 +85,18 @@ export function UserNav() {
     try {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
-      // Use window.location for logout to ensure a full page refresh
       window.location.href = '/'
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
       window.location.href = '/'
     }
+  }
+
+  const handleNavigation = (href: string) => {
+    console.log(`[UserNav] Navigating to: ${href} via direct navigation`)
+    // Use direct navigation to bypass any potential issues with Next.js router
+    window.location.href = href
   }
 
   return (
@@ -117,16 +121,13 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <Link 
-              key={item.href} 
-              href={item.href}
-              className="w-full"
-              prefetch={true}
+            <DropdownMenuItem 
+              key={item.href}
+              className="cursor-pointer"
+              onClick={() => handleNavigation(item.href)}
             >
-              <DropdownMenuItem className="cursor-pointer">
-                {item.label}
-              </DropdownMenuItem>
-            </Link>
+              {item.label}
+            </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
