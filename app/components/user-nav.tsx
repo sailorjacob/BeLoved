@@ -89,16 +89,18 @@ export function UserNav() {
       // Clear any session storage flags
       sessionStorage.clear();
       
-      // Use NavigationManager for consistent navigation
-      NavigationManager.directNavigate('/');
+      // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+      console.log('[UserNav] EMERGENCY DIRECT NAVIGATION to home');
+      window.location.href = window.location.origin + '/';
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       
       // Clear any session storage flags
       sessionStorage.clear();
       
-      // Use NavigationManager for consistent navigation
-      NavigationManager.directNavigate('/');
+      // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+      console.log('[UserNav] EMERGENCY DIRECT NAVIGATION to home');
+      window.location.href = window.location.origin + '/';
     }
   }
 
@@ -128,9 +130,9 @@ export function UserNav() {
               key={item.href}
               className="cursor-pointer"
               onClick={() => {
-                console.log(`[UserNav] Navigating to: ${item.href}`);
-                // Use NavigationManager for consistent navigation
-                NavigationManager.directNavigate(item.href);
+                // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+                console.log(`[UserNav] EMERGENCY DIRECT NAVIGATION to ${item.href}`);
+                window.location.href = window.location.origin + item.href;
               }}
             >
               {item.label}

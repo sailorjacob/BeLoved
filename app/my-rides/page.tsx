@@ -12,9 +12,14 @@ export default function MyRidesPage() {
   const router = useRouter()
 
   useEffect(() => {
+    console.log('[MyRides] Auth state:', { isLoggedIn, isLoading, path: window.location.pathname })
+    
     if (!isLoading && !isLoggedIn) {
       console.log('[MyRides] Unauthorized access, redirecting to home')
-      router.replace('/')
+      
+      // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+      console.log('[MyRides] EMERGENCY DIRECT NAVIGATION to home');
+      window.location.href = window.location.origin + '/';
     }
   }, [isLoading, isLoggedIn, router])
 

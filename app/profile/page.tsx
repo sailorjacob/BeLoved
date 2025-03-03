@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { ProfileForm } from '../components/profile-form'
 import { UserNav } from '../components/user-nav'
-import { useAuth, NavigationManager } from '@/app/contexts/auth-context'
+import { useAuth } from '@/app/contexts/auth-context'
 
 export default function ProfilePage() {
   const { isLoggedIn, isLoading, user, profile } = useAuth()
@@ -26,8 +26,9 @@ export default function ProfilePage() {
       if (!isLoggedIn) {
         console.log('[ProfilePage] Not logged in, redirecting to home')
         
-        // Use NavigationManager for consistent navigation
-        NavigationManager.directNavigate('/');
+        // EMERGENCY DIRECT NAVIGATION: Completely bypass Next.js routing
+        console.log('[ProfilePage] EMERGENCY DIRECT NAVIGATION to home');
+        window.location.href = window.location.origin + '/';
         return;
       }
       console.log('[ProfilePage] Auth check passed, user is logged in')
