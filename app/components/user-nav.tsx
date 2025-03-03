@@ -96,7 +96,12 @@ export function UserNav() {
 
   const handleNavigation = (href: string) => {
     console.log(`[UserNav] Navigating to: ${href}`)
-    router.push(href)
+    
+    // Close the dropdown menu before navigation
+    setTimeout(() => {
+      console.log(`[UserNav] Executing navigation to: ${href}`)
+      router.push(href, { scroll: false })
+    }, 100)
   }
 
   return (
