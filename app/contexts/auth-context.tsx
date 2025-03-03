@@ -67,19 +67,43 @@ const AuthContext = createContext<AuthContextType | null>(null)
 // Export NavigationManager for use in other components
 export class NavigationManager {
   private static DEBUG: boolean = true;
+  private static NAVIGATION_COOLDOWN_MS: number = 3000; // 3 second cooldown between navigations to the same URL
   
   // Clear navigation flags on session expiration or logout
   static reset(): void {
     localStorage.removeItem('last_navigation');
     localStorage.removeItem('last_navigation_path');
     localStorage.removeItem('navigation_in_progress');
+    localStorage.removeItem('home_page_rendered');
     if (this.DEBUG) logWithTime('Navigation', 'Navigation state reset');
   }
 
   // Direct navigation method that bypasses all checks
   static directNavigate(path: string): void {
+    // Check if we're already on this path
+    const currentPath = window.location.pathname;
+    if (currentPath === path) {
+      logWithTime('Navigation', `Already on ${path}, no navigation needed`);
+      return;
+    }
+    
+    // Check for navigation cooldown to prevent loops
+    const lastNavPath = localStorage.getItem('last_navigation_path');
+    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
+    const now = Date.now();
+    
+    if (lastNavPath === path && (now - lastNavTime) < this.NAVIGATION_COOLDOWN_MS) {
+      logWithTime('Navigation', `Navigation cooldown active for ${path}, preventing potential loop`);
+      return;
+    }
+    
     const fullUrl = window.location.origin + path;
     logWithTime('Navigation', `Direct navigating to: ${fullUrl}`);
+    
+    // Store navigation info
+    localStorage.setItem('last_navigation', now.toString());
+    localStorage.setItem('last_navigation_path', path);
+    
     window.location.href = fullUrl;
   }
 
@@ -89,6 +113,16 @@ export class NavigationManager {
     const currentPath = window.location.pathname;
     if (currentPath === path && !forceNavigation) {
       logWithTime('Navigation', `Already on ${path}, no navigation needed`);
+      return;
+    }
+    
+    // Check for navigation cooldown to prevent loops
+    const lastNavPath = localStorage.getItem('last_navigation_path');
+    const lastNavTime = parseInt(localStorage.getItem('last_navigation') || '0', 10);
+    const now = Date.now();
+    
+    if (lastNavPath === path && (now - lastNavTime) < this.NAVIGATION_COOLDOWN_MS && !forceNavigation) {
+      logWithTime('Navigation', `Navigation cooldown active for ${path}, preventing potential loop`);
       return;
     }
     
@@ -102,7 +136,6 @@ export class NavigationManager {
     localStorage.setItem('navigation_in_progress', 'true');
     
     // Store navigation info
-    const now = Date.now();
     localStorage.setItem('last_navigation', now.toString());
     localStorage.setItem('last_navigation_path', path);
     
@@ -214,6 +247,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logWithTime('AuthProvider', `Not on login/home (${currentPath}), skipping redirect`);
       return;
     }
+    
+    // Check if we've already rendered the home page to prevent loops
+    if (localStorage.getItem('home_page_rendered') === 'true') {
+      logWithTime('AuthProvider', 'Home page already rendered, skipping redirect');
+      return;
+    }
+    
+    // Set a flag to prevent multiple redirects
+    localStorage.setItem('home_page_rendered', 'true');
+    
+    // Clear the flag after 10 seconds to allow future redirects
+    setTimeout(() => {
+      localStorage.removeItem('home_page_rendered');
+    }, 10000);
     
     // Get dashboard path based on role
     let dashboardPath = '/';

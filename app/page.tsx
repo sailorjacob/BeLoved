@@ -21,26 +21,14 @@ export default function Home() {
       if (!isLoggedIn) {
         setShowLogin(true)
       } else if (role) {
-        // Redirect to appropriate dashboard based on role
+        // Just log that the user is logged in, no redirects here
         console.log("[HomePage] User is logged in with role:", role)
         
-        // Instead of redirect, we'll show dashboards inline for now
+        // No redirects or navigation from the home page
         // This prevents navigation loop issues
-        
-        // Check if we're on the home page and not already being redirected
-        const currentPath = window.location.pathname;
-        if (currentPath === '/' && !localStorage.getItem('home_page_rendered')) {
-          // Set a flag to prevent multiple renders
-          localStorage.setItem('home_page_rendered', 'true');
-          
-          // Clear the flag after 10 seconds to allow future redirects
-          setTimeout(() => {
-            localStorage.removeItem('home_page_rendered');
-          }, 10000);
-        }
       }
     }
-  }, [isInitialized, isLoggedIn, role, router])
+  }, [isInitialized, isLoggedIn, role])
 
   // Helper to render the appropriate content based on user role
   const renderDashboardContent = () => {
