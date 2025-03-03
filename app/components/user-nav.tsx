@@ -11,9 +11,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useAuth } from "@/app/contexts/auth-context"
+import { useAuth, NavigationManager } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import type { UserRole } from '@/lib/auth-service'
 
 function getMenuItems(role: UserRole | null) {
@@ -90,16 +89,16 @@ export function UserNav() {
       // Clear any session storage flags
       sessionStorage.clear();
       
-      // Force a complete page reload to the home page
-      window.location.replace(window.location.origin + '/');
+      // Use NavigationManager for consistent navigation
+      NavigationManager.directNavigate('/');
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       
       // Clear any session storage flags
       sessionStorage.clear();
       
-      // Force a complete page reload to the home page
-      window.location.replace(window.location.origin + '/');
+      // Use NavigationManager for consistent navigation
+      NavigationManager.directNavigate('/');
     }
   }
 
@@ -129,9 +128,9 @@ export function UserNav() {
               key={item.href}
               className="cursor-pointer"
               onClick={() => {
-                console.log(`[UserNav] Directly navigating to: ${item.href}`);
-                // Force a complete page reload to the target URL
-                window.location.href = window.location.origin + item.href;
+                console.log(`[UserNav] Navigating to: ${item.href}`);
+                // Use NavigationManager for consistent navigation
+                NavigationManager.directNavigate(item.href);
               }}
             >
               {item.label}

@@ -18,40 +18,20 @@ export default function Home() {
 
   // Only show login form after we've checked auth status
   useEffect(() => {
-    // Prevent infinite navigation loops
-    if (navigationAttempted) {
-      console.log("[HomePage] Navigation already attempted, skipping");
-      return;
-    }
-
+    console.log("[HomePage] Auth state:", { isInitialized, isLoggedIn, role, path: window.location.pathname });
+    
+    // DISABLED: Automatic redirection logic
+    // We're now allowing manual navigation through the app
+    
     if (isInitialized) {
       if (!isLoggedIn) {
         setShowLogin(true)
-      } else if (role) {
+      } else {
         console.log("[HomePage] User is logged in with role:", role)
-        
-        // Only navigate if we're EXACTLY on the home page (not a subpage)
-        if (window.location.pathname === '/') {
-          // Navigate to the appropriate dashboard based on role
-          let dashboardPath = '/';
-          switch (role) {
-            case 'super_admin': dashboardPath = '/super-admin-dashboard'; break;
-            case 'admin': dashboardPath = '/admin-dashboard'; break;
-            case 'driver': dashboardPath = '/driver-dashboard'; break;
-            case 'member': dashboardPath = '/dashboard'; break;
-          }
-          
-          console.log(`[HomePage] Navigating to ${dashboardPath}`)
-          setNavigationAttempted(true);
-          
-          // Use router.replace instead of push to avoid adding to history
-          router.replace(dashboardPath)
-        } else {
-          console.log(`[HomePage] Not on exact home path (${window.location.pathname}), skipping navigation`);
-        }
+        // No automatic navigation - let the user navigate manually
       }
     }
-  }, [isInitialized, isLoggedIn, role, router, navigationAttempted])
+  }, [isInitialized, isLoggedIn, role])
 
   // Helper to render the appropriate content based on user role
   const renderDashboardContent = () => {

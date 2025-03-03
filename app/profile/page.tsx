@@ -5,27 +5,37 @@ import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import { ProfileForm } from '../components/profile-form'
 import { UserNav } from '../components/user-nav'
-import { useAuth } from '@/app/contexts/auth-context'
+import { useAuth, NavigationManager } from '@/app/contexts/auth-context'
 
 export default function ProfilePage() {
-  const { isLoggedIn, isLoading } = useAuth()
+  const { isLoggedIn, isLoading, user, profile } = useAuth()
   const router = useRouter()
 
+  // Add a debug log when the component mounts
   useEffect(() => {
-    console.log('[Profile] Auth state:', { isLoggedIn, isLoading })
+    console.log('[ProfilePage] Component mounted')
+    return () => {
+      console.log('[ProfilePage] Component unmounted')
+    }
+  }, [])
+
+  useEffect(() => {
+    console.log('[ProfilePage] Auth state:', { isLoggedIn, isLoading, userId: user?.id, profileId: profile?.id })
     
     if (!isLoading) {
       if (!isLoggedIn) {
-        console.log('[Profile] Not logged in, redirecting to home')
-        router.push('/')
-        return
+        console.log('[ProfilePage] Not logged in, redirecting to home')
+        
+        // Use NavigationManager for consistent navigation
+        NavigationManager.directNavigate('/');
+        return;
       }
-      console.log('[Profile] Auth check passed, user is logged in')
+      console.log('[ProfilePage] Auth check passed, user is logged in')
     }
-  }, [isLoading, isLoggedIn, router])
+  }, [isLoading, isLoggedIn, router, user, profile])
 
   if (isLoading) {
-    console.log('[Profile] Loading auth state...')
+    console.log('[ProfilePage] Loading auth state...')
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
@@ -34,11 +44,11 @@ export default function ProfilePage() {
   }
 
   if (!isLoggedIn) {
-    console.log('[Profile] Not authenticated, returning null')
+    console.log('[ProfilePage] Not authenticated, returning null')
     return null
   }
 
-  console.log('[Profile] Rendering profile page')
+  console.log('[ProfilePage] Rendering profile page')
 
   return (
     <main className="container mx-auto p-4">

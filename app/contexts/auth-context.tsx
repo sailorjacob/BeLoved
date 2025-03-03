@@ -67,37 +67,35 @@ const AuthContext = createContext<AuthContextType | null>(null)
 // Export NavigationManager for use in other components
 export class NavigationManager {
   private static DEBUG: boolean = true;
-  private static NAVIGATION_COOLDOWN_MS: number = 3000; // 3 second cooldown between navigations to the same URL
-  private static router: any = null;
   
   // Set the router instance
   static setRouter(router: any): void {
-    this.router = router;
-    if (this.DEBUG) logWithTime('Navigation', 'Router instance set');
+    if (this.DEBUG) logWithTime('Navigation', 'Router instance set (no-op)');
   }
   
   // Clear navigation flags on session expiration or logout
   static reset(): void {
-    // DISABLED: We're no longer using navigation flags
     if (this.DEBUG) logWithTime('Navigation', 'Navigation state reset (no-op)');
   }
 
   // Direct navigation method that bypasses all checks
   static directNavigate(path: string): void {
-    // DISABLED: All navigation checks and interception
-    logWithTime('Navigation', `Navigating to: ${path} (all checks disabled)`);
+    logWithTime('Navigation', `Directly navigating to: ${path}`);
     
-    // Just use the browser's default navigation
-    window.location.href = path.startsWith('http') ? path : window.location.origin + path;
+    // Use the browser's default navigation with full URL
+    const fullPath = path.startsWith('http') ? path : window.location.origin + path;
+    logWithTime('Navigation', `Full URL: ${fullPath}`);
+    window.location.href = fullPath;
   }
 
   // Perform navigation with safeguards
   static navigate(path: string, reason: string, forceNavigation: boolean = false): void {
-    // DISABLED: All navigation checks and interception
-    logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason}) (all checks disabled)`);
+    logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason})`);
     
-    // Just use the browser's default navigation
-    window.location.href = path.startsWith('http') ? path : window.location.origin + path;
+    // Use the browser's default navigation with full URL
+    const fullPath = path.startsWith('http') ? path : window.location.origin + path;
+    logWithTime('Navigation', `Full URL: ${fullPath}`);
+    window.location.href = fullPath;
   }
 }
 
@@ -130,6 +128,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // Handle role-based redirection
   const handleRoleBasedRedirect = useCallback(async (userRole: UserRole) => {
+    // DISABLED: All automatic redirects
+    logWithTime('AuthProvider', 'Automatic redirects have been disabled');
+    return;
+    
+    // The code below is disabled
     // Only redirect from home or login page
     const currentPath = window.location.pathname;
     if (currentPath !== '/' && currentPath !== '/login') {
@@ -193,10 +196,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setRole(authUser.role);
       setIsLoggedIn(authUser.isLoggedIn);
       
-      // Only redirect if desired role path is available, user is logged in, and we're on the home page
-      if (!skipRedirect && authUser.isLoggedIn && authUser.role && window.location.pathname === '/') {
-        await handleRoleBasedRedirect(authUser.role);
-      }
+      // DISABLED: Automatic redirects
+      // No automatic redirects will be performed
     } catch (error) {
       logWithTime('AuthProvider', 'Error checking auth:', error);
       
@@ -216,7 +217,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       checkingRef.current = false;
     }
-  }, [handleRoleBasedRedirect]);
+  }, []);
   
   // Initialize auth on mount
   useEffect(() => {
