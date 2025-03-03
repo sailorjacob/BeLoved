@@ -87,12 +87,19 @@ export function UserNav() {
       await logout()
       console.log('[UserNav] Logout successful, redirecting to home')
       
-      // Just use the browser's default navigation
+      // Clear any session storage flags that might be preventing navigation
+      sessionStorage.removeItem('redirect_attempted');
+      
+      // Use the browser's default navigation for logout
+      // This is more reliable for a complete session reset
       window.location.href = window.location.origin + '/';
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       
-      // Just use the browser's default navigation
+      // Clear any session storage flags that might be preventing navigation
+      sessionStorage.removeItem('redirect_attempted');
+      
+      // Use the browser's default navigation for logout
       window.location.href = window.location.origin + '/';
     }
   }
@@ -125,8 +132,18 @@ export function UserNav() {
               onClick={() => {
                 console.log(`[UserNav] Navigating to: ${item.href}`);
                 
-                // Just use the browser's default navigation
-                window.location.href = window.location.origin + item.href;
+                // Clear any session storage flags that might be preventing navigation
+                sessionStorage.removeItem('redirect_attempted');
+                
+                // Try using Next.js router first
+                try {
+                  router.push(item.href);
+                } catch (error) {
+                  console.error(`[UserNav] Router navigation failed, using direct navigation: ${error}`);
+                  
+                  // Fallback to direct navigation if router fails
+                  window.location.href = window.location.origin + item.href;
+                }
               }}
             >
               {item.label}

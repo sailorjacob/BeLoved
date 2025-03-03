@@ -128,62 +128,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
-  // Check if user is authenticated and get profile
-  const checkAuth = useCallback(async (skipRedirect = false) => {
-    // Prevent concurrent checks
-    if (checkingRef.current) {
-      logWithTime('AuthProvider', 'Auth check already in progress, skipping');
-      return;
-    }
-    
-    try {
-      checkingRef.current = true;
-      logWithTime('AuthProvider', 'Starting auth check');
-      setIsLoading(true);
-      
-      const authUser = await authService.getCurrentUser();
-      
-      // Skip if component unmounted
-      if (!mountedRef.current) return;
-      
-      logWithTime('AuthProvider', 'Auth check result:', {
-        isLoggedIn: authUser.isLoggedIn,
-        userId: authUser.user?.id,
-        role: authUser.role
-      });
-      
-      // Update state with auth check results
-      setUser(authUser.user);
-      setSession(authUser.session);
-      setProfile(authUser.profile);
-      setRole(authUser.role);
-      setIsLoggedIn(authUser.isLoggedIn);
-      
-      // Only redirect if desired role path is available and user is logged in
-      if (!skipRedirect && authUser.isLoggedIn && authUser.role) {
-        await handleRoleBasedRedirect(authUser.role);
-      }
-    } catch (error) {
-      logWithTime('AuthProvider', 'Error checking auth:', error);
-      
-      // Skip if component unmounted
-      if (!mountedRef.current) return;
-      
-      // Reset auth state on error
-      setUser(null);
-      setSession(null);
-      setProfile(null);
-      setRole(null);
-      setIsLoggedIn(false);
-    } finally {
-      if (mountedRef.current) {
-        setIsLoading(false);
-        setIsInitialized(true);
-      }
-      checkingRef.current = false;
-    }
-  }, []);
-  
   // Handle role-based redirection
   const handleRoleBasedRedirect = useCallback(async (userRole: UserRole) => {
     // Only redirect from home or login page
@@ -217,6 +161,62 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Just use the browser's default navigation
     window.location.href = window.location.origin + dashboardPath;
   }, []);
+
+  // Check if user is authenticated and get profile
+  const checkAuth = useCallback(async (skipRedirect = false) => {
+    // Prevent concurrent checks
+    if (checkingRef.current) {
+      logWithTime('AuthProvider', 'Auth check already in progress, skipping');
+      return;
+    }
+    
+    try {
+      checkingRef.current = true;
+      logWithTime('AuthProvider', 'Starting auth check');
+      setIsLoading(true);
+      
+      const authUser = await authService.getCurrentUser();
+      
+      // Skip if component unmounted
+      if (!mountedRef.current) return;
+      
+      logWithTime('AuthProvider', 'Auth check result:', {
+        isLoggedIn: authUser.isLoggedIn,
+        userId: authUser.user?.id,
+        role: authUser.role
+      });
+      
+      // Update state with auth check results
+      setUser(authUser.user);
+      setSession(authUser.session);
+      setProfile(authUser.profile);
+      setRole(authUser.role);
+      setIsLoggedIn(authUser.isLoggedIn);
+      
+      // Only redirect if desired role path is available, user is logged in, and we're on the home page
+      if (!skipRedirect && authUser.isLoggedIn && authUser.role && window.location.pathname === '/') {
+        await handleRoleBasedRedirect(authUser.role);
+      }
+    } catch (error) {
+      logWithTime('AuthProvider', 'Error checking auth:', error);
+      
+      // Skip if component unmounted
+      if (!mountedRef.current) return;
+      
+      // Reset auth state on error
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+      setRole(null);
+      setIsLoggedIn(false);
+    } finally {
+      if (mountedRef.current) {
+        setIsLoading(false);
+        setIsInitialized(true);
+      }
+      checkingRef.current = false;
+    }
+  }, [handleRoleBasedRedirect]);
   
   // Initialize auth on mount
   useEffect(() => {
