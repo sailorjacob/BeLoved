@@ -24,33 +24,30 @@ const roleCommonPaths = {
     '/super-admin/providers', 
     '/super-admin/support', 
     '/super-admin/locations',
-    '/my-rides',
-    '/dashboard'
+    '/my-rides',  // Allow super admins to access all paths
+    '/dashboard',
+    '/admin-dashboard',
+    '/driver-dashboard',
+    '/trips'
   ],
   admin: [
     '/profile', 
     '/admin-dashboard',
     '/my-rides',
-    '/dashboard'
+    '/dashboard',
+    '/driver-dashboard',
+    '/trips'
   ],
   driver: [
     '/profile', 
     '/trips', 
     '/driver-dashboard',
-    '/my-rides',
-    '/dashboard'
+    '/my-rides'
   ],
   member: [
     '/profile', 
     '/my-rides', 
-    '/dashboard',
-    '/super-admin-dashboard',
-    '/admin-dashboard',
-    '/driver-dashboard',
-    '/trips',
-    '/super-admin/providers',
-    '/super-admin/support',
-    '/super-admin/locations'
+    '/dashboard'
   ]
 }
 
@@ -128,22 +125,22 @@ export async function middleware(request: NextRequest) {
 
       console.log('[Middleware] User role:', userRole)
 
-      // TEMPORARILY DISABLE PATH CHECKING FOR DEBUGGING
-      console.log('[Middleware] Path checking temporarily disabled for debugging');
-      return NextResponse.next();
-
       // Check if user is trying to access their allowed paths
       const allowedPaths = [
         ...publicPaths,
-        ...roleCommonPaths[userRole],
-        `/${userRole}-dashboard`,
-        `/${userRole}-dashboard/*`
+        ...roleCommonPaths[userRole]
       ]
 
-      console.log('[Middleware] Allowed paths:', allowedPaths)
+      // Add wildcard paths for each allowed path
+      const allowedPathsWithWildcards = [
+        ...allowedPaths,
+        ...allowedPaths.map(path => `${path}/*`)
+      ]
+
+      console.log('[Middleware] Allowed paths:', allowedPathsWithWildcards)
       console.log('[Middleware] Requested path:', request.nextUrl.pathname)
 
-      const isAllowed = allowedPaths.some(path => {
+      const isAllowed = allowedPathsWithWildcards.some(path => {
         if (path.endsWith('/*')) {
           const basePath = path.slice(0, -2)
           return request.nextUrl.pathname.startsWith(basePath)
@@ -151,9 +148,12 @@ export async function middleware(request: NextRequest) {
         return path === request.nextUrl.pathname
       })
 
+      // DISABLED: Forced redirection to dashboard
+      // Instead, just log the access attempt but allow it to proceed
       if (!isAllowed) {
-        console.log('[Middleware] Access denied, redirecting to dashboard')
-        return NextResponse.redirect(new URL(`/${userRole}-dashboard`, request.url))
+        console.log('[Middleware] Path not explicitly allowed, but proceeding anyway:', request.nextUrl.pathname)
+        // Allow the request to proceed instead of redirecting
+        // return NextResponse.redirect(new URL(`/${userRole}-dashboard`, request.url))
       }
     }
 
