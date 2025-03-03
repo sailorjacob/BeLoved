@@ -626,12 +626,11 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
         </div>
         <div className="flex space-x-4">
           <a 
-            href="/providers-dashboard" 
+            href="/providers-simple" 
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
             onClick={() => {
-              console.log('[SuperAdminDashboard] Navigating to root providers dashboard via direct link')
+              console.log('[SuperAdminDashboard] Navigating to simplified providers page')
             }}
-            target="_blank"
           >
             Manage Providers
           </a>
@@ -658,12 +657,11 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
               Retry
             </Button>
             <a 
-              href="/providers-dashboard" 
+              href="/providers-simple" 
               className="inline-flex items-center justify-center text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md h-9 px-3"
               onClick={() => {
-                console.log('[SuperAdminDashboard] Demo mode: Navigating to root providers dashboard via direct link')
+                console.log('[SuperAdminDashboard] Demo mode: Navigating to simplified providers page')
               }}
-              target="_blank"
             >
               Go to Provider Management
             </a>
