@@ -1,4 +1,4 @@
--- Check if ride_status enum type exists, if not create it
+-- First transaction: Check and create/modify the enum type
 DO $$
 DECLARE
     enum_exists boolean;
@@ -45,6 +45,12 @@ BEGIN
         END IF;
     END IF;
 END$$;
+
+-- Commit the transaction to make the enum changes available
+COMMIT;
+
+-- Second transaction: Create the rides table
+BEGIN;
 
 -- Create rides table
 create table if not exists rides (
@@ -142,6 +148,11 @@ BEGIN
     END IF;
 END $$;
 
+COMMIT;
+
+-- Third transaction: Insert sample data
+BEGIN;
+
 -- Get valid enum values for ride_status
 DO $$
 DECLARE
@@ -205,3 +216,5 @@ ON CONFLICT DO NOTHING;
 
 -- Clean up temporary table
 DROP TABLE IF EXISTS temp_ride_status_values;
+
+COMMIT;
