@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import Link from "next/link"
+import { useRouter } from 'next/navigation'
 
 interface Driver {
   id: number
@@ -91,6 +91,7 @@ const mockDrivers: Driver[] = [
 
 export function DriverList() {
   const [drivers, setDrivers] = useState<Driver[]>([])
+  const router = useRouter()
 
   useEffect(() => {
     // In a real application, you would fetch this data from your backend
@@ -153,8 +154,10 @@ export function DriverList() {
                   </div>
                 </TableCell>
                 <TableCell>
-                  <Button asChild>
-                    <Link href={`/driver-profile/${driver.id}`}>View Profile</Link>
+                  <Button 
+                    onClick={() => router.push(`/driver-profile/${driver.id}`)}
+                  >
+                    View Profile
                   </Button>
                 </TableCell>
               </TableRow>

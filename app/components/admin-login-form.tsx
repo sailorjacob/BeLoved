@@ -32,7 +32,7 @@ const validationRules = {
 
 export function AdminLoginForm() {
   const router = useRouter()
-  const { signIn } = useAuth()
+  const { login } = useAuth()
 
   const {
     values,
@@ -45,7 +45,7 @@ export function AdminLoginForm() {
     initialValues,
     validationRules,
     onSubmit: async (values) => {
-      const { error } = await signIn(values.email, values.password)
+      const { error } = await login(values.email, values.password)
       if (error) throw error
 
       // After successful login, verify the user is actually an admin
@@ -97,14 +97,20 @@ export function AdminLoginForm() {
 
       <div className="mt-4 text-center space-y-2">
         <div>
-          <Link href="/login" className="text-sm text-blue-600 hover:underline">
+          <button 
+            onClick={() => router.push('/login')}
+            className="text-sm text-blue-600 hover:underline"
+          >
             Member Login
-          </Link>
+          </button>
         </div>
         <div>
-          <Link href="/driver-login" className="text-sm text-blue-600 hover:underline">
+          <button 
+            onClick={() => router.push('/driver-login')}
+            className="text-sm text-blue-600 hover:underline"
+          >
             Driver Login
-          </Link>
+          </button>
         </div>
       </div>
     </div>

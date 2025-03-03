@@ -20,7 +20,7 @@ export default function AuthCallbackPage() {
 
         if (!session?.user) {
           console.log('[AuthCallback] No session found, redirecting to home')
-          window.location.href = '/'
+          router.push('/')
           return
         }
 
@@ -59,17 +59,16 @@ export default function AuthCallbackPage() {
         }
 
         console.log('[AuthCallback] Redirecting to:', redirectUrl)
-        // Use window.location for a hard redirect
-        window.location.href = redirectUrl
+        router.push(redirectUrl)
 
       } catch (error) {
         console.error('[AuthCallback] Error:', error)
-        window.location.href = '/'
+        router.push('/')
       }
     }
 
     handleAuthCallback()
-  }, [])
+  }, [router])
 
   return (
     <div className="flex items-center justify-center min-h-screen">
