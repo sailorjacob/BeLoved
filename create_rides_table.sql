@@ -156,6 +156,60 @@ BEGIN
 END;
 $$;
 
+-- Enable Row Level Security
+ALTER TABLE rides ENABLE ROW LEVEL SECURITY;
+
+-- Create policies for different user roles
+-- Super Admin can see and manage all rides
+CREATE POLICY super_admin_all_access ON rides
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.user_type = 'super_admin'
+        )
+    );
+
+-- Admin can see and manage all rides
+CREATE POLICY admin_all_access ON rides
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.user_type = 'admin'
+        )
+    );
+
+-- Drivers can see and update their own rides
+CREATE POLICY driver_access ON rides
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.user_type = 'driver'
+            AND rides.driver_id = profiles.id
+        )
+    );
+
+-- Members can see and manage their own rides
+CREATE POLICY member_access ON rides
+    FOR ALL
+    TO authenticated
+    USING (
+        EXISTS (
+            SELECT 1 FROM profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.user_type = 'member'
+            AND rides.member_id = profiles.id
+        )
+    );
+
 COMMIT;
 
 -- Third transaction: Insert sample data
