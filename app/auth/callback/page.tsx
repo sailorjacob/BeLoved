@@ -20,7 +20,8 @@ export default function AuthCallbackPage() {
 
         if (!session?.user) {
           console.log('[AuthCallback] No session found, redirecting to home')
-          router.push('/')
+          // Use window.location for a full page reload
+          window.location.href = '/'
           return
         }
 
@@ -59,16 +60,18 @@ export default function AuthCallbackPage() {
         }
 
         console.log('[AuthCallback] Redirecting to:', redirectUrl)
-        router.push(redirectUrl)
+        // Use window.location for a full page reload
+        window.location.href = redirectUrl
 
       } catch (error) {
         console.error('[AuthCallback] Error:', error)
-        router.push('/')
+        // Use window.location for a full page reload
+        window.location.href = '/'
       }
     }
 
     handleAuthCallback()
-  }, [router])
+  }, [])
 
   return (
     <div className="flex items-center justify-center min-h-screen">
