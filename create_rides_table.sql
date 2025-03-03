@@ -1,4 +1,6 @@
 -- First transaction: Check and create/modify the enum type
+BEGIN;
+
 DO $$
 DECLARE
     enum_exists boolean;
@@ -44,9 +46,9 @@ BEGIN
             END LOOP;
         END IF;
     END IF;
-END$$;
+END;
+$$;
 
--- Commit the transaction to make the enum changes available
 COMMIT;
 
 -- Second transaction: Create the rides table
@@ -85,7 +87,8 @@ BEGIN
     ) THEN
         ALTER TABLE rides ADD COLUMN provider_fee numeric default 0;
     END IF;
-END $$;
+END;
+$$;
 
 -- Add driver_earnings column if it doesn't exist
 DO $$
@@ -96,7 +99,8 @@ BEGIN
     ) THEN
         ALTER TABLE rides ADD COLUMN driver_earnings numeric default 0;
     END IF;
-END $$;
+END;
+$$;
 
 -- Add insurance_claim_amount column if it doesn't exist
 DO $$
@@ -107,7 +111,8 @@ BEGIN
     ) THEN
         ALTER TABLE rides ADD COLUMN insurance_claim_amount numeric default 0;
     END IF;
-END $$;
+END;
+$$;
 
 -- Add indexes for better query performance
 create index if not exists rides_member_id_idx on rides(member_id);
@@ -124,7 +129,8 @@ BEGIN
     ) THEN
         EXECUTE 'create index if not exists rides_provider_fee_idx on rides(provider_fee)';
     END IF;
-END $$;
+END;
+$$;
 
 -- Create driver_earnings index only if the column exists
 DO $$
@@ -135,7 +141,8 @@ BEGIN
     ) THEN
         EXECUTE 'create index if not exists rides_driver_earnings_idx on rides(driver_earnings)';
     END IF;
-END $$;
+END;
+$$;
 
 -- Create insurance_claim_amount index only if the column exists
 DO $$
@@ -146,7 +153,8 @@ BEGIN
     ) THEN
         EXECUTE 'create index if not exists rides_insurance_claim_amount_idx on rides(insurance_claim_amount)';
     END IF;
-END $$;
+END;
+$$;
 
 COMMIT;
 
@@ -174,7 +182,8 @@ BEGIN
     -- Insert the enum values
     INSERT INTO temp_ride_status_values
     SELECT unnest(enum_values);
-END$$;
+END;
+$$;
 
 -- Insert some sample data for testing
 INSERT INTO rides (
