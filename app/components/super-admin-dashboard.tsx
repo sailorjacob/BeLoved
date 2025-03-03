@@ -625,23 +625,16 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           <p className="text-muted-foreground">System-wide analytics and management</p>
         </div>
         <div className="flex space-x-4">
-          <Button variant="destructive" onClick={() => {
-            console.log('[SuperAdminDashboard] Navigating to providers page via direct navigation')
-            // Use direct navigation for maximum reliability
-            try {
-              window.location.href = '/super-admin/providers'
-              // Add a small delay to log that navigation was initiated
-              setTimeout(() => {
-                console.log('[SuperAdminDashboard] Navigation to providers page initiated')
-              }, 100)
-            } catch (error) {
-              console.error('[SuperAdminDashboard] Error during navigation:', error)
-              // Fallback if direct navigation fails
-              window.open('/super-admin/providers', '_self')
-            }
-          }}>
+          <a 
+            href="/super-admin/providers" 
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+            onClick={() => {
+              console.log('[SuperAdminDashboard] Navigating to providers page via direct link')
+              // Don't use event.preventDefault() - we want the native link behavior
+            }}
+          >
             Manage Providers
-          </Button>
+          </a>
           <Button variant="destructive" onClick={() => {
             console.log('[SuperAdminDashboard] Navigating to support page via direct navigation')
             // Use direct navigation for maximum reliability
@@ -664,16 +657,15 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             >
               Retry
             </Button>
-            <Button 
-              size="sm" 
-              variant="outline" 
+            <a 
+              href="/super-admin/providers" 
+              className="inline-flex items-center justify-center text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md h-9 px-3"
               onClick={() => {
-                console.log('[SuperAdminDashboard] Demo mode: Navigating to providers page')
-                window.location.href = '/super-admin/providers'
+                console.log('[SuperAdminDashboard] Demo mode: Navigating to providers page via direct link')
               }}
             >
               Go to Provider Management
-            </Button>
+            </a>
           </div>
         </div>
       )}
