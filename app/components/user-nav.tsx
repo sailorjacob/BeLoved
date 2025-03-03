@@ -15,6 +15,7 @@ import { useAuth } from "@/app/contexts/auth-context"
 import { useRouter } from 'next/navigation'
 import Link from "next/link"
 import type { UserRole } from '@/lib/auth-service'
+import { NavigationManager } from "@/app/contexts/auth-context"
 
 function getMenuItems(role: UserRole | null) {
   switch (role) {
@@ -82,21 +83,21 @@ export function UserNav() {
   const menuItems = getMenuItems(role)
 
   const handleLogout = async () => {
+    console.log('[UserNav] Logging out')
     try {
-      console.log('[UserNav] Initiating logout')
       await logout()
-      console.log('[UserNav] Redirecting to home')
-      window.location.href = '/'
+      console.log('[UserNav] Logout successful, redirecting to home')
+      NavigationManager.navigate('/', 'Logout successful', true)
     } catch (error) {
       console.error('[UserNav] Error during logout:', error)
       // Still redirect to home on error
-      window.location.href = '/'
+      NavigationManager.navigate('/', 'Logout error fallback', true)
     }
   }
 
   const handleNavigation = (href: string) => {
     console.log(`[UserNav] Navigating to: ${href}`)
-    window.location.href = href
+    NavigationManager.navigate(href, 'User navigation', true)
   }
 
   return (

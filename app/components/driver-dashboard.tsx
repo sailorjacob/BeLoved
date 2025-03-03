@@ -15,6 +15,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/app/contexts/auth-context'
 import type { Database } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
+import { NavigationManager } from "@/app/contexts/auth-context"
 
 interface Address {
   address: string
@@ -56,23 +57,23 @@ export function DriverDashboard() {
   // Direct navigation functions for better reliability
   const navigateToDriverInfo = () => {
     console.log('[DriverDashboard] Navigating to driver profile')
-    window.location.href = '/driver-profile'
+    NavigationManager.navigate('/driver-profile', 'Driver dashboard navigation', true)
   }
   const navigateToVehicles = () => {
     console.log('[DriverDashboard] Navigating to vehicles')
-    window.location.href = '/vehicles'
+    NavigationManager.navigate('/vehicles', 'Driver dashboard navigation', true)
   }
   const navigateToCompliance = () => {
     console.log('[DriverDashboard] Navigating to compliance')
-    window.location.href = '/compliance'
+    NavigationManager.navigate('/compliance', 'Driver dashboard navigation', true)
   }
   const navigateToUploadTrips = () => {
     console.log('[DriverDashboard] Navigating to upload trips')
-    window.location.href = '/upload-trips'
+    NavigationManager.navigate('/upload-trips', 'Driver dashboard navigation', true)
   }
   const navigateToAccount = () => {
     console.log('[DriverDashboard] Navigating to account')
-    window.location.href = '/account'
+    NavigationManager.navigate('/account', 'Driver dashboard navigation', true)
   }
 
   useEffect(() => {

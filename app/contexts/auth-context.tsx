@@ -11,9 +11,9 @@ type Profile = Database['public']['Tables']['profiles']['Row']
 
 // Simple logging with timestamps
 const logWithTime = (area: string, message: string, data?: any) => {
-  const timestamp = new Date().toISOString().split('T')[1].split('.')[0];
-  console.log(`[${timestamp}][${area}] ${message}`, data || '');
-};
+  const timestamp = new Date().toLocaleTimeString('en-US', { hour12: false })
+  console.log(`[${timestamp}][${area}] ${message}`, data || '')
+}
 
 // Auth state interface for the context
 interface AuthState {
@@ -65,10 +65,10 @@ const defaultState: AuthState = {
 const AuthContext = createContext<AuthContextType | null>(null)
 
 // Navigation management to prevent loops
-class NavigationManager {
+export class NavigationManager {
   private static lastNavigationTime: number = 0;
   private static isNavigating: boolean = false;
-  private static MIN_INTERVAL_MS: number = 3000; // 3 seconds between redirects
+  private static MIN_INTERVAL_MS: number = 500; // Reduced from 3000ms to 500ms for more responsive navigation
 
   // Clear navigation flags on session expiration or logout
   static reset(): void {
@@ -78,7 +78,13 @@ class NavigationManager {
   }
 
   // Check if we can navigate now
-  static canNavigate(path: string): boolean {
+  static canNavigate(path: string, forceNavigation: boolean = false): boolean {
+    // If force navigation is true, bypass all checks
+    if (forceNavigation) {
+      logWithTime('Navigation', `Force navigating to ${path}`);
+      return true;
+    }
+    
     // Don't navigate if already navigating
     if (this.isNavigating) {
       logWithTime('Navigation', `Already navigating, won't navigate to ${path}`);
@@ -100,8 +106,8 @@ class NavigationManager {
   }
 
   // Perform navigation with safeguards
-  static navigate(path: string, reason: string): void {
-    if (!this.canNavigate(path)) return;
+  static navigate(path: string, reason: string, forceNavigation: boolean = false): void {
+    if (!this.canNavigate(path, forceNavigation)) return;
 
     this.isNavigating = true;
     const now = Date.now();
@@ -118,7 +124,7 @@ class NavigationManager {
     // Reset flag after a delay
     setTimeout(() => {
       this.isNavigating = false;
-    }, 5000);
+    }, 1000); // Reduced from 5000ms to 1000ms
   }
 }
 
