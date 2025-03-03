@@ -125,16 +125,15 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <Link 
+            <DropdownMenuItem 
               key={item.href}
-              href={item.href}
-              passHref
-              legacyBehavior
+              className="cursor-pointer"
+              asChild
             >
-              <DropdownMenuItem className="cursor-pointer">
+              <Link href={item.href}>
                 {item.label}
-              </DropdownMenuItem>
-            </Link>
+              </Link>
+            </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
