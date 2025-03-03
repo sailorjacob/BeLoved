@@ -118,8 +118,15 @@ export class NavigationManager {
     
     logWithTime('Navigation', `Navigating to ${path} (Reason: ${reason})`);
     
-    // Use window.location.href for more reliable navigation
-    window.location.href = path;
+    // Force a full page navigation by setting window.location.href
+    // This ensures the URL actually changes in the browser
+    const fullUrl = window.location.origin + path;
+    logWithTime('Navigation', `Full URL: ${fullUrl}`);
+    
+    // Use setTimeout to ensure the navigation happens after the current execution context
+    setTimeout(() => {
+      window.location.href = fullUrl;
+    }, 0);
     
     // Reset flag after a delay
     setTimeout(() => {
