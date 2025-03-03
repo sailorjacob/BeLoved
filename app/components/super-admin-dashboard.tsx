@@ -416,6 +416,7 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
 
   const fetchStats = async (): Promise<DashboardStats> => {
     try {
+      console.log('[SuperAdminDashboard] Fetching dashboard stats...')
       const today = new Date()
       const startOfToday = startOfDay(today)
       const endOfToday = endOfDay(today)
@@ -426,15 +427,38 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
         .from('transportation_providers')
         .select('*')
       
-      // If table doesn't exist or there's an error, throw to use demo data
+      // If table doesn't exist or there's an error, use demo data
       if (providersError) {
         console.error('[SuperAdminDashboard] Error fetching providers:', providersError)
-        throw new Error('Error fetching providers')
+        console.log('[SuperAdminDashboard] Using demo stats data instead')
+        
+        // Return demo stats
+        return {
+          total_providers: 12,
+          active_providers: 8,
+          total_admins: 25,
+          total_drivers: 45,
+          active_drivers: 32,
+          total_rides: 358,
+          rides_today: 18,
+          completed_rides: 320,
+          cancelled_rides: 38,
+          total_revenue: 15780.50,
+          revenue_today: 780.25,
+          pending_support_tickets: 7,
+          average_ride_cost: 44.08,
+          total_providers_revenue: 9468.30,
+          total_drivers_earnings: 4734.15,
+          insurance_claims_amount: 1578.05,
+          pending_payouts: 3156.10,
+          monthly_growth_rate: 8.5,
+          driver_utilization_rate: 71.1,
+          average_response_time: 6.5,
+          customer_satisfaction_rate: 92.3
+        };
       }
 
-      // Continue with rest of fetches...
-
-      // Return dummy data structure with actual data if available
+      // Return data structure with actual provider data
       return {
         total_providers: providers?.length || 0,
         active_providers: providers?.filter(p => p.is_active)?.length || 0,
@@ -460,12 +484,38 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       }
     } catch (error) {
       console.error('[SuperAdminDashboard] Error in fetchStats:', error)
-      throw error
+      console.log('[SuperAdminDashboard] Using demo stats data due to error')
+      
+      // Return demo stats on error
+      return {
+        total_providers: 12,
+        active_providers: 8,
+        total_admins: 25,
+        total_drivers: 45,
+        active_drivers: 32,
+        total_rides: 358,
+        rides_today: 18,
+        completed_rides: 320,
+        cancelled_rides: 38,
+        total_revenue: 15780.50,
+        revenue_today: 780.25,
+        pending_support_tickets: 7,
+        average_ride_cost: 44.08,
+        total_providers_revenue: 9468.30,
+        total_drivers_earnings: 4734.15,
+        insurance_claims_amount: 1578.05,
+        pending_payouts: 3156.10,
+        monthly_growth_rate: 8.5,
+        driver_utilization_rate: 71.1,
+        average_response_time: 6.5,
+        customer_satisfaction_rate: 92.3
+      };
     }
   }
 
   const fetchRevenueData = async (): Promise<RevenueData[]> => {
     try {
+      console.log('[SuperAdminDashboard] Fetching revenue data...')
       const days = 30
       const startDate = subDays(new Date(), days)
 
@@ -482,10 +532,49 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
         .gte('created_at', startDate.toISOString())
         .order('created_at')
 
-      // If table doesn't exist or there's an error, throw to use demo data
+      // If table doesn't exist or there's an error, use demo data
       if (ridesError) {
         console.error('[SuperAdminDashboard] Error fetching rides:', ridesError)
-        throw new Error('Error fetching rides')
+        console.log('[SuperAdminDashboard] Using demo revenue data instead')
+        
+        // Return demo revenue data
+        const demoRevenueData: RevenueData[] = [];
+        for (let i = 0; i < 30; i++) {
+          const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+          const randomValue = Math.floor(400 + Math.random() * 600);
+          const rides = Math.floor(8 + Math.random() * 12);
+          demoRevenueData.push({
+            date,
+            revenue: randomValue,
+            rides,
+            provider_revenue: randomValue * 0.6,
+            driver_earnings: randomValue * 0.3,
+            insurance_claims: randomValue * 0.1
+          });
+        }
+        return demoRevenueData.reverse();
+      }
+
+      // If no rides data, return demo data
+      if (!rides || rides.length === 0) {
+        console.log('[SuperAdminDashboard] No ride data found, using demo revenue data')
+        
+        // Return demo revenue data
+        const demoRevenueData: RevenueData[] = [];
+        for (let i = 0; i < 30; i++) {
+          const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+          const randomValue = Math.floor(400 + Math.random() * 600);
+          const rides = Math.floor(8 + Math.random() * 12);
+          demoRevenueData.push({
+            date,
+            revenue: randomValue,
+            rides,
+            provider_revenue: randomValue * 0.6,
+            driver_earnings: randomValue * 0.3,
+            insurance_claims: randomValue * 0.1
+          });
+        }
+        return demoRevenueData.reverse();
       }
 
       const dailyData: { [key: string]: RevenueData } = {}
@@ -497,7 +586,7 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       }
 
       // Aggregate ride data
-      rides?.forEach(ride => {
+      rides.forEach(ride => {
         const date = format(new Date(ride.created_at), 'yyyy-MM-dd')
         if (dailyData[date]) {
           dailyData[date].revenue += ride.cost || 0
@@ -511,24 +600,63 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       return Object.values(dailyData).reverse()
     } catch (error) {
       console.error('[SuperAdminDashboard] Error in fetchRevenueData:', error)
-      throw error
+      console.log('[SuperAdminDashboard] Using demo revenue data due to error')
+      
+      // Return demo revenue data on error
+      const demoRevenueData: RevenueData[] = [];
+      for (let i = 0; i < 30; i++) {
+        const date = format(subDays(new Date(), i), 'yyyy-MM-dd');
+        const randomValue = Math.floor(400 + Math.random() * 600);
+        const rides = Math.floor(8 + Math.random() * 12);
+        demoRevenueData.push({
+          date,
+          revenue: randomValue,
+          rides,
+          provider_revenue: randomValue * 0.6,
+          driver_earnings: randomValue * 0.3,
+          insurance_claims: randomValue * 0.1
+        });
+      }
+      return demoRevenueData.reverse();
     }
   }
 
   const fetchRideStatusDistribution = async (): Promise<RideStatus[]> => {
     try {
+      console.log('[SuperAdminDashboard] Fetching ride status distribution...')
+      
       const { data: rides, error: ridesError } = await supabase
         .from('rides')
         .select('status')
 
-      // If table doesn't exist or there's an error, throw to use demo data
+      // If table doesn't exist or there's an error, use demo data
       if (ridesError) {
         console.error('[SuperAdminDashboard] Error fetching ride statuses:', ridesError)
-        throw new Error('Error fetching ride statuses')
+        console.log('[SuperAdminDashboard] Using demo ride status data instead')
+        
+        // Return demo data
+        return [
+          { status: 'completed', count: 320 },
+          { status: 'cancelled', count: 38 },
+          { status: 'in_progress', count: 12 },
+          { status: 'scheduled', count: 28 }
+        ]
       }
 
+      // If no rides data, return demo data
+      if (!rides || rides.length === 0) {
+        console.log('[SuperAdminDashboard] No ride data found, using demo data')
+        return [
+          { status: 'completed', count: 320 },
+          { status: 'cancelled', count: 38 },
+          { status: 'in_progress', count: 12 },
+          { status: 'scheduled', count: 28 }
+        ]
+      }
+
+      // Process actual ride data
       const statusCounts: { [key: string]: number } = {}
-      rides?.forEach(ride => {
+      rides.forEach(ride => {
         statusCounts[ride.status] = (statusCounts[ride.status] || 0) + 1
       })
 
@@ -538,7 +666,15 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       }))
     } catch (error) {
       console.error('[SuperAdminDashboard] Error in fetchRideStatusDistribution:', error)
-      throw error
+      console.log('[SuperAdminDashboard] Using demo ride status data due to error')
+      
+      // Return demo data on error
+      return [
+        { status: 'completed', count: 320 },
+        { status: 'cancelled', count: 38 },
+        { status: 'in_progress', count: 12 },
+        { status: 'scheduled', count: 28 }
+      ]
     }
   }
 
