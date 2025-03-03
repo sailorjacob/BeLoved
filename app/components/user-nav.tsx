@@ -117,20 +117,19 @@ export function UserNav() {
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           {menuItems.map((item) => (
-            <Link key={item.href} href={item.href} passHref>
-              <DropdownMenuItem 
-                className="cursor-pointer"
-                onSelect={(e) => {
-                  // Prevent the dropdown from closing
-                  e.preventDefault()
-                  // Clear the home_page_rendered flag to allow navigation
-                  localStorage.removeItem('home_page_rendered')
-                  console.log(`[UserNav] Cleared home_page_rendered flag for navigation to ${item.href}`)
-                }}
-              >
-                {item.label}
-              </DropdownMenuItem>
-            </Link>
+            <DropdownMenuItem 
+              key={item.href}
+              className="cursor-pointer"
+              onClick={() => {
+                // Clear the home_page_rendered flag to allow navigation
+                localStorage.removeItem('home_page_rendered')
+                console.log(`[UserNav] Navigating to ${item.href}`)
+                // Use window.location for direct navigation
+                window.location.href = item.href
+              }}
+            >
+              {item.label}
+            </DropdownMenuItem>
           ))}
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
