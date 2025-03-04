@@ -15,17 +15,17 @@ export default function ScheduleRidePage() {
         <div className="flex items-center gap-4">
           <Button 
             variant="ghost" 
-            onClick={() => router.push("/admin-dashboard")}
+            onClick={() => router.push("/")}
             className="flex items-center gap-2"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            Back to Home
           </Button>
           <h1 className="text-4xl font-bold">Schedule a Ride</h1>
         </div>
         <UserNav />
       </div>
-      <Scheduler isAdmin={true} />
+      <Scheduler isAdmin={false} />
     </main>
   )
 } 

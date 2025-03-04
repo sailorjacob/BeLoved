@@ -58,7 +58,7 @@ function getMenuItems(role: UserRole | null) {
       return [
         {
           label: "Schedule Ride",
-          href: "/dashboard",
+          href: "/schedule-ride",
         },
         {
           label: "My Rides",
