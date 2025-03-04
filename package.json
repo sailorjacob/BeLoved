@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "create-test-accounts": "node scripts/create-test-accounts.js"
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
