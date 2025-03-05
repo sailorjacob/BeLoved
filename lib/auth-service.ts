@@ -42,7 +42,7 @@ class AuthService {
       console.log('[AuthService] Fetching profile for user:', userId)
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, phone, user_role, created_at, updated_at')
+        .select('id, email, full_name, phone, user_role, provider_id, created_at, updated_at')
         .eq('id', userId)
         .single()
 
@@ -105,13 +105,14 @@ class AuthService {
         id: profile.id,
         email: profile.email,
         user_role: profile.user_role,
+        provider_id: profile.provider_id,
         created_at: profile.created_at,
         updated_at: profile.updated_at
       })
       
       // Validate user_role
       const validRoles: UserRole[] = ['member', 'driver', 'admin', 'super_admin']
-      const userRole = profile.user_role
+      const userRole = profile.user_role as UserRole
       
       if (!userRole || !validRoles.includes(userRole)) {
         console.error('[AuthService] Invalid user_role found:', userRole)
@@ -168,7 +169,10 @@ class AuthService {
         email,
         password,
         options: { 
-          data: userData,
+          data: {
+            ...userData,
+            user_role: userData?.user_role || 'member'
+          },
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
       })
@@ -213,6 +217,7 @@ class AuthService {
       if (error) throw error
       
       console.log('[AuthService] Logout successful')
+      window.location.href = '/'
     } catch (error) {
       console.error('[AuthService] Logout error:', error)
       // Don't throw the error, just log it

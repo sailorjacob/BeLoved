@@ -20,7 +20,6 @@ export default function AuthCallbackPage() {
 
         if (!session?.user) {
           console.log('[AuthCallback] No session found, redirecting to home')
-          // Use window.location for a full page reload
           window.location.href = '/'
           return
         }
@@ -29,7 +28,7 @@ export default function AuthCallbackPage() {
         // Get user profile to determine redirect
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('user_role')
+          .select('user_role, provider_id')
           .eq('id', session.user.id)
           .single()
 
@@ -57,15 +56,14 @@ export default function AuthCallbackPage() {
             break
           default:
             console.log('[AuthCallback] Unknown user role:', profile?.user_role)
+            redirectUrl = '/'
         }
 
         console.log('[AuthCallback] Redirecting to:', redirectUrl)
-        // Use window.location for a full page reload
         window.location.href = redirectUrl
 
       } catch (error) {
         console.error('[AuthCallback] Error:', error)
-        // Use window.location for a full page reload
         window.location.href = '/'
       }
     }
