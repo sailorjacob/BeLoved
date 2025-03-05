@@ -138,7 +138,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
       console.log('Making Supabase query for provider:', {
         table: 'transportation_providers',
         id: providerId,
-        userRole: session?.user?.user_metadata?.user_type
+        userRole: session?.user?.user_metadata?.user_role
       })
       
       const { data: providerData, error: providerError } = await supabase
@@ -182,14 +182,22 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
       try {
         // Try to fetch audit logs if table exists
-        const { data: logsData } = await supabase
+        const { data: logsData, error: logsError } = await supabase
           .from('audit_logs')
-          .select('*')
+          .select(`
+            *,
+            changed_by_user:profiles!audit_logs_changed_by_fkey(full_name)
+          `)
           .eq('entity_id', providerId)
           .order('created_at', { ascending: false })
           .limit(100)
 
-        setAuditLogs(logsData || [])
+        if (logsError) {
+          console.error('Audit logs error:', logsError)
+          setAuditLogs([])
+        } else {
+          setAuditLogs(logsData || [])
+        }
       } catch (error) {
         console.log('Audit logs table may not exist yet:', error)
         setAuditLogs([])
@@ -205,26 +213,32 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
   const fetchProviderStats = async (providerId: string): Promise<ProviderStats> => {
     try {
+      // Fetch admin and driver counts
       const { data: adminsCount } = await supabase
         .from('profiles')
         .select('id', { count: 'exact' })
         .eq('provider_id', providerId)
-        .eq('user_type', 'admin')
+        .eq('user_role', 'admin')
 
       const { data: driversCount } = await supabase
         .from('profiles')
         .select('id', { count: 'exact' })
         .eq('provider_id', providerId)
-        .eq('user_type', 'driver')
+        .eq('user_role', 'driver')
 
+      // Try to fetch rides if table exists
       let ridesData: RideStatus[] = []
       try {
-        const { data } = await supabase
+        const { data, error } = await supabase
           .from('rides')
           .select('status')
           .eq('provider_id', providerId)
         
-        if (data) ridesData = data as RideStatus[]
+        if (error) {
+          console.error('Rides fetch error:', error)
+        } else if (data) {
+          ridesData = data as RideStatus[]
+        }
       } catch (error) {
         console.log('Rides table may not exist yet:', error)
       }
@@ -279,39 +293,42 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
         .from('profiles')
         .select('*')
         .eq('provider_id', providerId)
-        .eq('user_type', 'admin')
+        .eq('user_role', 'admin')
 
       if (adminError) {
         console.error('Admin fetch error:', adminError)
-        throw adminError
+        setAdmins([])
+      } else {
+        setAdmins(adminData || [])
       }
-
-      console.log('Admin data:', adminData)
-      setAdmins(adminData || [])
 
       // Fetch drivers
       const { data: driverData, error: driverError } = await supabase
         .from('profiles')
         .select('*')
         .eq('provider_id', providerId)
-        .eq('user_type', 'driver')
+        .eq('user_role', 'driver')
 
       if (driverError) {
         console.error('Driver fetch error:', driverError)
-        throw driverError
+        setDrivers([])
+      } else {
+        setDrivers(driverData || [])
       }
-
-      console.log('Driver data:', driverData)
-      setDrivers(driverData || [])
 
       // Try to fetch vehicles if table exists
       try {
-        const { data: vehicleData } = await supabase
+        const { data: vehicleData, error: vehicleError } = await supabase
           .from('vehicles')
           .select('*')
           .eq('provider_id', providerId)
 
-        setVehicles(vehicleData || [])
+        if (vehicleError) {
+          console.error('Vehicle fetch error:', vehicleError)
+          setVehicles([])
+        } else {
+          setVehicles(vehicleData || [])
+        }
       } catch (error) {
         console.log('Vehicles table may not exist yet:', error)
         setVehicles([])
@@ -557,7 +574,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                 </Table>
               ) : (
                 <div className="text-center py-8">
-                  <p className="text-muted-foreground">No vehicles in the fleet</p>
+                  <p className="text-muted-foreground">No vehicles found</p>
                   <Button variant="outline" size="sm" className="mt-4">
                     Add First Vehicle
                   </Button>
@@ -637,34 +654,40 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
               <CardTitle>Recent Activity</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Action</TableHead>
-                    <TableHead>Changed By</TableHead>
-                    <TableHead>Changes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {auditLogs.map((log) => (
-                    <TableRow key={log.id}>
-                      <TableCell>
-                        {format(new Date(log.created_at), 'MMM d, yyyy HH:mm:ss')}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {log.action.toUpperCase()}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{log.changed_by_user?.full_name || 'System'}</TableCell>
-                      <TableCell className="max-w-md truncate">
-                        {formatChanges(log.changes)}
-                      </TableCell>
+              {auditLogs.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Action</TableHead>
+                      <TableHead>Changed By</TableHead>
+                      <TableHead>Changes</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {auditLogs.map((log) => (
+                      <TableRow key={log.id}>
+                        <TableCell>
+                          {format(new Date(log.created_at), 'MMM d, yyyy HH:mm:ss')}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {log.action.toUpperCase()}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{log.changed_by_user?.full_name || 'System'}</TableCell>
+                        <TableCell className="max-w-md truncate">
+                          {formatChanges(log.changes)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No activity logs found</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
