@@ -114,6 +114,8 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
     if (providerId) {
       fetchProviderDetails()
       fetchAdditionalData()
+    } else {
+      console.error('No provider ID provided')
     }
   }, [providerId])
 
@@ -130,7 +132,16 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
       if (providerError) {
         console.error('Provider fetch error:', providerError)
+        console.error('Provider fetch query:', {
+          table: 'transportation_providers',
+          id: providerId
+        })
         throw providerError
+      }
+
+      if (!providerData) {
+        console.error('No provider found with ID:', providerId)
+        throw new Error('Provider not found')
       }
 
       console.log('Provider data:', providerData)
@@ -155,11 +166,9 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
         throw logsError
       }
 
-      console.log('Audit logs:', logsData)
-
       setProvider(providerData)
       setStats(stats)
-      setAuditLogs(logsData)
+      setAuditLogs(logsData || [])
     } catch (error) {
       console.error('Error fetching provider details:', error)
       toast.error('Failed to fetch provider details')
@@ -173,13 +182,13 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
       .from('profiles')
       .select('id', { count: 'exact' })
       .eq('provider_id', providerId)
-      .eq('user_role', 'admin')
+      .eq('user_type', 'admin')
 
     const { data: driversCount } = await supabase
       .from('profiles')
       .select('id', { count: 'exact' })
       .eq('provider_id', providerId)
-      .eq('user_role', 'driver')
+      .eq('user_type', 'driver')
 
     const { data: ridesData } = await supabase
       .from('rides')
