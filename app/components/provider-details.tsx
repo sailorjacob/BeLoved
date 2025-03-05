@@ -123,7 +123,20 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
     try {
       console.log('Fetching provider details for ID:', providerId)
       
-      // Fetch provider details
+      // Log the current user's session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('Current session:', session)
+      if (sessionError) {
+        console.error('Session error:', sessionError)
+      }
+
+      // Fetch provider details with detailed logging
+      console.log('Making Supabase query for provider:', {
+        table: 'transportation_providers',
+        id: providerId,
+        userRole: session?.user?.user_metadata?.user_type
+      })
+      
       const { data: providerData, error: providerError } = await supabase
         .from('transportation_providers')
         .select('*')
@@ -132,19 +145,24 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
       if (providerError) {
         console.error('Provider fetch error:', providerError)
-        console.error('Provider fetch query:', {
+        console.error('Provider fetch query details:', {
           table: 'transportation_providers',
-          id: providerId
+          id: providerId,
+          error: providerError.message,
+          code: providerError.code,
+          details: providerError.details,
+          hint: providerError.hint
         })
         throw providerError
       }
 
       if (!providerData) {
         console.error('No provider found with ID:', providerId)
+        console.error('Query returned successfully but no data found')
         throw new Error('Provider not found')
       }
 
-      console.log('Provider data:', providerData)
+      console.log('Provider data found:', providerData)
 
       // Fetch provider statistics
       const stats = await fetchProviderStats(providerId)
