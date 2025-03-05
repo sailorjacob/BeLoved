@@ -40,11 +40,42 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     entity_type text NOT NULL,
     entity_id uuid NOT NULL,
     changed_by uuid REFERENCES profiles(id),
+    provider_id uuid REFERENCES transportation_providers(id),
     changes jsonb,
     ip_address text,
     user_agent text,
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
+
+-- Add provider_id column to existing tables if they don't have it
+DO $$ BEGIN
+    -- Add provider_id to rides if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'rides' 
+        AND column_name = 'provider_id'
+    ) THEN
+        ALTER TABLE rides ADD COLUMN provider_id uuid REFERENCES transportation_providers(id);
+    END IF;
+
+    -- Add provider_id to vehicles if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'vehicles' 
+        AND column_name = 'provider_id'
+    ) THEN
+        ALTER TABLE vehicles ADD COLUMN provider_id uuid REFERENCES transportation_providers(id);
+    END IF;
+
+    -- Add provider_id to audit_logs if it doesn't exist
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'audit_logs' 
+        AND column_name = 'provider_id'
+    ) THEN
+        ALTER TABLE audit_logs ADD COLUMN provider_id uuid REFERENCES transportation_providers(id);
+    END IF;
+END $$;
 
 -- Add foreign key for changed_by_user relationship if it doesn't exist
 DO $$ BEGIN
