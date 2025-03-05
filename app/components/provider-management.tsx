@@ -154,6 +154,20 @@ export function ProviderManagement() {
   const [isUsingDemoData, setIsUsingDemoData] = useState(false)
   const fetchAttemptedRef = useRef(false)
 
+  // One-time check of providers table
+  useEffect(() => {
+    const checkProviders = async () => {
+      console.log('[DEBUG] Checking providers table...')
+      const { data, error } = await supabase
+        .from('transportation_providers')
+        .select('*')
+      
+      console.log('[DEBUG] All providers in database:', data)
+      console.log('[DEBUG] Any errors:', error)
+    }
+    checkProviders()
+  }, [])
+
   useEffect(() => {
     fetchData()
   }, [])
