@@ -359,6 +359,9 @@ export function ProviderManagement() {
 
         console.log('[ProviderManagement] Creating admin for provider:', providerIdToUse);
 
+        // Show processing state
+        toast.loading('Creating admin account...')
+
         // 1. Create auth user
         const { data: authData, error: authError } = await supabase.auth.signUp({
           email: values.email,
@@ -390,13 +393,26 @@ export function ProviderManagement() {
 
         if (profileError) throw profileError
 
-        toast.success('Admin account created successfully')
-        setIsAdminDialogOpen(false)
-        adminForm.resetForm()
-        fetchData()
+        // Clear loading toast and show success
+        toast.dismiss()
+        toast.success('Admin account created successfully! A confirmation email has been sent.', {
+          duration: 5000,
+          description: `${values.full_name} can now confirm their email and log in.`
+        })
+        
+        // Close dialog with a slight delay for better UX
+        setTimeout(() => {
+          setIsAdminDialogOpen(false)
+          adminForm.resetForm()
+          fetchData()
+        }, 1000)
       } catch (error) {
+        // Clear loading toast and show error
+        toast.dismiss()
         console.error('Error creating admin:', error)
-        toast.error(error instanceof Error ? error.message : 'Failed to create admin account')
+        toast.error(error instanceof Error ? error.message : 'Failed to create admin account', {
+          duration: 5000
+        })
       }
     }
   })
