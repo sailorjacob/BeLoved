@@ -540,7 +540,7 @@ export function ProviderManagement() {
                             size="sm"
                             asChild
                           >
-                            <Link href={`/providers/${provider.id}/details`}>
+                            <Link href={`/provider/${provider.id}/details`}>
                               View Details
                             </Link>
                           </Button>

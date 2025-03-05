@@ -90,7 +90,11 @@ DO $$ BEGIN
     CREATE POLICY "Super admins can manage all providers"
         ON transportation_providers
         FOR ALL
-        USING (auth.jwt() ->> 'user_role' = 'super_admin');
+        USING (EXISTS (
+            SELECT 1 FROM profiles
+            WHERE profiles.id = auth.uid()
+            AND profiles.user_type = 'super_admin'
+        ));
         
     DROP POLICY IF EXISTS "Admins can view their own provider" ON transportation_providers;
     CREATE POLICY "Admins can view their own provider"

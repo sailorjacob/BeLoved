@@ -110,11 +110,17 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false)
 
   useEffect(() => {
-    fetchProviderDetails()
+    console.log('Provider Details mounted with ID:', providerId)
+    if (providerId) {
+      fetchProviderDetails()
+      fetchAdditionalData()
+    }
   }, [providerId])
 
   const fetchProviderDetails = async () => {
     try {
+      console.log('Fetching provider details for ID:', providerId)
+      
       // Fetch provider details
       const { data: providerData, error: providerError } = await supabase
         .from('transportation_providers')
@@ -122,10 +128,16 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
         .eq('id', providerId)
         .single()
 
-      if (providerError) throw providerError
+      if (providerError) {
+        console.error('Provider fetch error:', providerError)
+        throw providerError
+      }
+
+      console.log('Provider data:', providerData)
 
       // Fetch provider statistics
       const stats = await fetchProviderStats(providerId)
+      console.log('Provider stats:', stats)
       
       // Fetch audit logs
       const { data: logsData, error: logsError } = await supabase
@@ -138,7 +150,12 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
         .order('created_at', { ascending: false })
         .limit(100)
 
-      if (logsError) throw logsError
+      if (logsError) {
+        console.error('Audit logs error:', logsError)
+        throw logsError
+      }
+
+      console.log('Audit logs:', logsData)
 
       setProvider(providerData)
       setStats(stats)
@@ -203,25 +220,48 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
   const fetchAdditionalData = async () => {
     try {
+      console.log('Fetching additional data for provider:', providerId)
+      
       // Fetch admins
-      const { data: adminData } = await supabase
+      const { data: adminData, error: adminError } = await supabase
         .from('profiles')
         .select('*')
         .eq('provider_id', providerId)
         .eq('user_type', 'admin')
 
+      if (adminError) {
+        console.error('Admin fetch error:', adminError)
+        throw adminError
+      }
+
+      console.log('Admin data:', adminData)
+
       // Fetch drivers
-      const { data: driverData } = await supabase
+      const { data: driverData, error: driverError } = await supabase
         .from('profiles')
         .select('*')
         .eq('provider_id', providerId)
         .eq('user_type', 'driver')
 
+      if (driverError) {
+        console.error('Driver fetch error:', driverError)
+        throw driverError
+      }
+
+      console.log('Driver data:', driverData)
+
       // Fetch vehicles
-      const { data: vehicleData } = await supabase
+      const { data: vehicleData, error: vehicleError } = await supabase
         .from('vehicles')
         .select('*')
         .eq('provider_id', providerId)
+
+      if (vehicleError) {
+        console.error('Vehicle fetch error:', vehicleError)
+        throw vehicleError
+      }
+
+      console.log('Vehicle data:', vehicleData)
 
       setAdmins(adminData || [])
       setDrivers(driverData || [])
@@ -231,13 +271,6 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
       toast.error('Failed to fetch some provider data')
     }
   }
-
-  useEffect(() => {
-    if (providerId) {
-      fetchProviderDetails()
-      fetchAdditionalData()
-    }
-  }, [providerId])
 
   if (isLoading) {
     return (
@@ -375,43 +408,52 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
               <CardTitle>Administrator Accounts</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Email</TableHead>
-                    <TableHead>Phone</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {admins.map((admin) => (
-                    <TableRow key={admin.id}>
-                      <TableCell>{admin.full_name}</TableCell>
-                      <TableCell>{admin.email}</TableCell>
-                      <TableCell>{admin.phone}</TableCell>
-                      <TableCell>
-                        <Badge variant={admin.status === 'active' ? 'success' : 'secondary'}>
-                          {admin.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedProfile(admin)
-                            setIsProfileDialogOpen(true)
-                          }}
-                        >
-                          View Profile
-                        </Button>
-                      </TableCell>
+              {admins.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {admins.map((admin) => (
+                      <TableRow key={admin.id}>
+                        <TableCell>{admin.full_name}</TableCell>
+                        <TableCell>{admin.email}</TableCell>
+                        <TableCell>{admin.phone}</TableCell>
+                        <TableCell>
+                          <Badge variant={admin.status === 'active' ? 'success' : 'secondary'}>
+                            {admin.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProfile(admin)
+                              setIsProfileDialogOpen(true)
+                            }}
+                          >
+                            View Profile
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No administrators assigned</p>
+                  <Button variant="outline" size="sm" className="mt-4">
+                    Add First Admin
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -422,42 +464,51 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
               <CardTitle>Vehicle Fleet</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Vehicle</TableHead>
-                    <TableHead>License Plate</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Last Inspection</TableHead>
-                    <TableHead>Insurance Expiry</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {vehicles.map((vehicle) => (
-                    <TableRow key={vehicle.id}>
-                      <TableCell>{vehicle.year} {vehicle.make} {vehicle.model}</TableCell>
-                      <TableCell>{vehicle.license_plate}</TableCell>
-                      <TableCell>
-                        <Badge 
-                          variant={
-                            vehicle.status === 'active' ? 'success' : 
-                            vehicle.status === 'maintenance' ? 'secondary' : 
-                            'secondary'
-                          }
-                        >
-                          {vehicle.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{format(new Date(vehicle.last_inspection_date), 'MM/dd/yyyy')}</TableCell>
-                      <TableCell>{format(new Date(vehicle.insurance_expiry), 'MM/dd/yyyy')}</TableCell>
-                      <TableCell>
-                        <Button variant="outline" size="sm">View Details</Button>
-                      </TableCell>
+              {vehicles.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Vehicle</TableHead>
+                      <TableHead>License Plate</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Last Inspection</TableHead>
+                      <TableHead>Insurance Expiry</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {vehicles.map((vehicle) => (
+                      <TableRow key={vehicle.id}>
+                        <TableCell>{vehicle.year} {vehicle.make} {vehicle.model}</TableCell>
+                        <TableCell>{vehicle.license_plate}</TableCell>
+                        <TableCell>
+                          <Badge 
+                            variant={
+                              vehicle.status === 'active' ? 'success' : 
+                              vehicle.status === 'maintenance' ? 'secondary' : 
+                              'secondary'
+                            }
+                          >
+                            {vehicle.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{format(new Date(vehicle.last_inspection_date), 'MM/dd/yyyy')}</TableCell>
+                        <TableCell>{format(new Date(vehicle.insurance_expiry), 'MM/dd/yyyy')}</TableCell>
+                        <TableCell>
+                          <Button variant="outline" size="sm">View Details</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No vehicles in the fleet</p>
+                  <Button variant="outline" size="sm" className="mt-4">
+                    Add First Vehicle
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -468,51 +519,60 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
               <CardTitle>Drivers</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Contact</TableHead>
-                    <TableHead>License</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {drivers.map((driver) => (
-                    <TableRow key={driver.id}>
-                      <TableCell>{driver.full_name}</TableCell>
-                      <TableCell>
-                        <div>{driver.email}</div>
-                        <div className="text-sm text-muted-foreground">{driver.phone}</div>
-                      </TableCell>
-                      <TableCell>
-                        <div>{driver.license_number}</div>
-                        <div className="text-sm text-muted-foreground">
-                          Expires: {format(new Date(driver.license_expiry), 'MM/dd/yyyy')}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={driver.status === 'active' ? 'success' : 'secondary'}>
-                          {driver.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedProfile(driver)
-                            setIsProfileDialogOpen(true)
-                          }}
-                        >
-                          View Profile
-                        </Button>
-                      </TableCell>
+              {drivers.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Contact</TableHead>
+                      <TableHead>License</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {drivers.map((driver) => (
+                      <TableRow key={driver.id}>
+                        <TableCell>{driver.full_name}</TableCell>
+                        <TableCell>
+                          <div>{driver.email}</div>
+                          <div className="text-sm text-muted-foreground">{driver.phone}</div>
+                        </TableCell>
+                        <TableCell>
+                          <div>{driver.license_number}</div>
+                          <div className="text-sm text-muted-foreground">
+                            Expires: {format(new Date(driver.license_expiry), 'MM/dd/yyyy')}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={driver.status === 'active' ? 'success' : 'secondary'}>
+                            {driver.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedProfile(driver)
+                              setIsProfileDialogOpen(true)
+                            }}
+                          >
+                            View Profile
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">No drivers assigned to this provider</p>
+                  <Button variant="outline" size="sm" className="mt-4">
+                    Add First Driver
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
