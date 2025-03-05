@@ -183,7 +183,7 @@ export function ProviderManagement() {
           throw providerError
         }
         
-        console.log('[ProviderManagement] Providers fetched:', providerData?.length || 0)
+        console.log('[ProviderManagement] Providers fetched:', providerData)
         setProviders(providerData || [])
       } catch (providerError) {
         console.error('[ProviderManagement] Provider fetch failed:', providerError)
@@ -199,14 +199,14 @@ export function ProviderManagement() {
             *,
             provider:transportation_providers(*)
           `)
-          .eq('user_role', 'admin')
+          .eq('user_type', 'admin')
 
         if (adminError) {
           console.error('[ProviderManagement] Error fetching admins:', adminError)
           throw adminError
         }
         
-        console.log('[ProviderManagement] Admins fetched:', adminData?.length || 0)
+        console.log('[ProviderManagement] Admins fetched:', adminData)
         setAdmins(adminData || [])
       } catch (adminError) {
         console.error('[ProviderManagement] Admin fetch failed:', adminError)
@@ -332,7 +332,7 @@ export function ProviderManagement() {
           options: {
             data: {
               full_name: values.full_name,
-              user_role: 'admin'
+              user_type: 'admin'
             }
           }
         })
@@ -349,7 +349,7 @@ export function ProviderManagement() {
             email: values.email,
             phone: values.phone,
             username: values.username,
-            user_role: 'admin',
+            user_type: 'admin',
             provider_id: values.provider_id,
             status: 'active'
           })
@@ -391,7 +391,7 @@ export function ProviderManagement() {
         .from('profiles')
         .update({ status: newStatus })
         .eq('provider_id', providerToUpdate.id)
-        .eq('user_role', 'admin')
+        .eq('user_type', 'admin')
 
       if (adminError) throw adminError
 
