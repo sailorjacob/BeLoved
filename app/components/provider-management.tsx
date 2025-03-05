@@ -350,9 +350,14 @@ export function ProviderManagement() {
     validationRules: adminValidationRules,
     onSubmit: async (values) => {
       try {
-        if (!values.provider_id) {
+        // Use the selected provider's ID if available
+        const providerIdToUse = selectedProvider?.id || values.provider_id;
+        
+        if (!providerIdToUse) {
           throw new Error('Please select a provider')
         }
+
+        console.log('[ProviderManagement] Creating admin for provider:', providerIdToUse);
 
         // 1. Create auth user
         const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -379,7 +384,7 @@ export function ProviderManagement() {
             phone: values.phone,
             username: values.username,
             user_type: 'admin',
-            provider_id: values.provider_id,
+            provider_id: providerIdToUse,
             status: 'active'
           })
 
@@ -762,6 +767,10 @@ export function ProviderManagement() {
           </DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault()
+            // Set the provider_id from selectedProvider when form submits
+            if (selectedProvider) {
+              adminForm.handleChange('provider_id', selectedProvider.id)
+            }
             adminForm.handleSubmit(e)
           }} className="space-y-4">
             {!selectedProvider && (
