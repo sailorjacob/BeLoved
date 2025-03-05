@@ -50,8 +50,7 @@ export interface Database {
           full_name: string
           email: string
           phone: string
-          user_type: 'member' | 'driver' | 'admin' | 'super_admin'
-          user_role: 'super_admin' | 'admin' | 'driver'
+          user_role: 'super_admin' | 'admin' | 'driver' | 'member'
           provider_id?: string
           status?: 'active' | 'inactive'
           home_address?: {
@@ -68,8 +67,7 @@ export interface Database {
           full_name: string
           email: string
           phone: string
-          user_type: 'member' | 'driver' | 'admin' | 'super_admin'
-          user_role?: 'super_admin' | 'admin' | 'driver'
+          user_role?: 'super_admin' | 'admin' | 'driver' | 'member'
           provider_id?: string
           status?: 'active' | 'inactive'
           home_address?: {
@@ -83,7 +81,7 @@ export interface Database {
           full_name: string
           email: string
           phone: string
-          user_role: 'super_admin' | 'admin' | 'driver'
+          user_role: 'super_admin' | 'admin' | 'driver' | 'member'
           provider_id: string
           status: 'active' | 'inactive'
           home_address: {

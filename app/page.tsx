@@ -26,16 +26,16 @@ export default function Home() {
         // Redirect based on role
         switch(role) {
           case 'super_admin':
-            router.push('/super-admin-dashboard')
+            window.location.href = '/super-admin-dashboard'
             break
           case 'admin':
-            router.push('/admin-dashboard')
+            window.location.href = '/admin-dashboard'
             break
           case 'driver':
-            router.push('/driver-dashboard')
+            window.location.href = '/driver-dashboard'
             break
           case 'member':
-            router.push('/dashboard')
+            window.location.href = '/dashboard'
             break
           default:
             console.error("[HomePage] Unknown user role:", role)
@@ -43,11 +43,19 @@ export default function Home() {
         }
       }
     }
-  }, [isInitialized, isLoggedIn, role, router])
+  }, [isInitialized, isLoggedIn, role])
 
   if (isLoading) {
     return (
-      <main className="container mx-auto p-4 min-h-screen flex flex-col">
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+      </div>
+    )
+  }
+
+  if (!isLoggedIn || !role) {
+    return (
+      <main className="container mx-auto p-4">
         <div className="flex justify-between items-center mb-8">
           <div className="flex items-center gap-2">
             <div className="relative w-12 h-12">
@@ -62,47 +70,15 @@ export default function Home() {
             <h1 className="text-4xl font-bold">BeLoved Transportation</h1>
           </div>
         </div>
-        <div className="flex-grow flex items-center justify-center">
-          <div className="flex items-center justify-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
-          </div>
-        </div>
+        <LoginForm />
       </main>
     )
   }
 
   return (
-    <main className="container mx-auto p-4 min-h-screen flex flex-col">
-      <div className="flex justify-between items-center mb-8">
-        <div className="flex items-center gap-2">
-          <div className="relative w-12 h-12">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
-              alt="BeLoved Transportation Logo"
-              fill
-              className="object-contain"
-              priority
-            />
-          </div>
-          <h1 className="text-4xl font-bold">BeLoved Transportation</h1>
-        </div>
-        {isLoggedIn && <UserNav />}
-      </div>
-      <div className="flex-grow flex flex-col items-center justify-center">
-        {showLogin ? (
-          <LoginForm />
-        ) : (
-          <div className="text-center">
-            <div className="flex items-center justify-center my-8">
-              <Icons.spinner className="h-8 w-8 animate-spin" />
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Redirecting to your dashboard...
-            </p>
-          </div>
-        )}
-      </div>
-    </main>
+    <div className="flex justify-center items-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+    </div>
   )
 }
 
