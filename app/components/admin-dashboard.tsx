@@ -32,6 +32,7 @@ import type { Database } from "@/lib/supabase"
 import { RideDetailView } from "./ride-detail-view"
 import { StatsCards } from "./dashboard/stats-cards"
 import { RideTrendsChart } from "./dashboard/ride-trends-chart"
+import { toast } from 'sonner'
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
   member: Database['public']['Tables']['profiles']['Row']
@@ -42,6 +43,11 @@ type Driver = Database['public']['Tables']['profiles']['Row'] & {
   driver_profile: Database['public']['Tables']['driver_profiles']['Row']
 }
 
+interface DriverProfilePageProps {
+  driverId: string
+  onBack: () => void
+}
+
 export function AdminDashboard() {
   const [selectedView, setSelectedView] = useState<'overview' | 'driver' | 'ride'>('overview')
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
@@ -50,14 +56,64 @@ export function AdminDashboard() {
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [showAssignedRides, setShowAssignedRides] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  const [provider, setProvider] = useState<any>(null)
   const router = useRouter()
 
   useEffect(() => {
-    fetchRides()
-    fetchDrivers()
+    const initializeDashboard = async () => {
+      try {
+        // Get current user's session
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+        if (sessionError) throw sessionError
+
+        if (!session?.user) {
+          console.error('No session found')
+          router.push('/')
+          return
+        }
+
+        // Fetch user's profile including provider_id
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', session.user.id)
+          .single()
+
+        if (profileError) {
+          console.error('Error fetching profile:', profileError)
+          throw profileError
+        }
+
+        if (!profile?.provider_id) {
+          console.error('No provider ID found for user')
+          return
+        }
+
+        // Fetch provider details
+        const { data: providerData, error: providerError } = await supabase
+          .from('transportation_providers')
+          .select('*')
+          .eq('id', profile.provider_id)
+          .single()
+
+        if (providerError) {
+          console.error('Error fetching provider:', providerError)
+          throw providerError
+        }
+
+        setProvider(providerData)
+        await fetchRides(profile.provider_id)
+        await fetchDrivers(profile.provider_id)
+      } catch (error) {
+        console.error('Error initializing dashboard:', error)
+        toast.error('Failed to load dashboard data')
+      }
+    }
+
+    initializeDashboard()
   }, [])
 
-  const fetchRides = async () => {
+  const fetchRides = async (providerId: string) => {
     const { data, error } = await supabase
       .from('rides')
       .select(`
@@ -65,6 +121,7 @@ export function AdminDashboard() {
         member:profiles!rides_member_id_fkey(*),
         driver:profiles!rides_driver_id_fkey(*)
       `)
+      .eq('provider_id', providerId)
       .order('scheduled_pickup_time', { ascending: true })
 
     if (error) {
@@ -76,13 +133,14 @@ export function AdminDashboard() {
     setIsLoading(false)
   }
 
-  const fetchDrivers = async () => {
+  const fetchDrivers = async (providerId: string) => {
     const { data, error } = await supabase
       .from('profiles')
       .select(`
         *,
         driver_profile:driver_profiles(*)
       `)
+      .eq('provider_id', providerId)
       .eq('user_type', 'driver')
 
     if (error) {
@@ -108,7 +166,7 @@ export function AdminDashboard() {
       return
     }
 
-    fetchRides()
+    fetchRides(provider.id)
   }
 
   const filteredRides = showAssignedRides
@@ -154,7 +212,7 @@ export function AdminDashboard() {
       return
     }
 
-    fetchRides()
+    fetchRides(provider.id)
   }
 
   const handleMilesEdit = async (rideId: string, miles: { start?: number | null; end?: number | null }) => {
@@ -174,7 +232,10 @@ export function AdminDashboard() {
 
   if (selectedView === 'driver' && selectedDriver) {
     return (
-      <DriverProfilePage driver={selectedDriver} onBack={handleBackFromDriver} />
+      <DriverProfilePage 
+        driverId={selectedDriver.id} 
+        onBack={handleBackFromDriver} 
+      />
     )
   }
 
@@ -192,6 +253,20 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-8">
+      {provider && (
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">{provider.name}</h1>
+            <p className="text-muted-foreground">
+              {provider.address}, {provider.city}, {provider.state} {provider.zip}
+            </p>
+          </div>
+          <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
+            {provider.status.toUpperCase()}
+          </Badge>
+        </div>
+      )}
+
       <StatsCards rides={rides} drivers={drivers} />
       <RideTrendsChart rides={rides} />
       <div className="space-y-6">
@@ -347,160 +422,55 @@ export function AdminDashboard() {
         </Card>
       </div>
 
-      {/* Quick Access Section */}
-      <div>
-        <h2 className="text-2xl font-bold mb-4">Quick Access</h2>
-        <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
-          {/* First Row */}
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <BookOpen className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Information Base</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <Clock className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Pending Acceptance</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <CalendarDays className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Schedule</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <Grid className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Pickboard</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <Building2 className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Manifest</CardTitle>
-            </CardContent>
-          </Card>
-
-          {/* Second Row */}
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <DollarSign className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Invoicing</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <History className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">History</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <Ban className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Exclude Member</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <Target className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Counties</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <UserCircle className="w-8 h-8 text-red-500" />
-              </div>
-              <CardTitle className="text-sm font-medium">Calendar</CardTitle>
-            </CardContent>
-          </Card>
-
-          {/* Third Row - Additional Buttons */}
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                  <circle cx="9" cy="7" r="4" />
-                </svg>
-              </div>
-              <CardTitle className="text-sm font-medium">Driver Info</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M7 17h10v-4H7v4zm12-4h-1v4h1v-4zm-14 0H4v4h1v-4zM17.5 5h-11L4 11h16l-2.5-6z" />
-                </svg>
-              </div>
-              <CardTitle className="text-sm font-medium">Vehicles</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <CardTitle className="text-sm font-medium">Compliance</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
-              </div>
-              <CardTitle className="text-sm font-medium">Upload Trips</CardTitle>
-            </CardContent>
-          </Card>
-
-          <Card className="cursor-pointer hover:bg-gray-50 transition-colors">
-            <CardContent className="p-6 flex flex-col items-center justify-center text-center">
-              <div className="mb-2">
-                <svg className="w-8 h-8 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <CardTitle className="text-sm font-medium">Account</CardTitle>
-            </CardContent>
-          </Card>
-        </div>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Access</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Link href="/admin/info" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <BookOpen className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Information Base</span>
+            </Link>
+            <Link href="/admin/pending" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Clock className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Pending Acceptance</span>
+            </Link>
+            <Link href="/admin/schedule" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <CalendarDays className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Schedule</span>
+            </Link>
+            <Link href="/admin/pickboard" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Grid className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Pickboard</span>
+            </Link>
+            <Link href="/admin/manifest" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Building2 className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Manifest</span>
+            </Link>
+            <Link href="/admin/invoicing" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <DollarSign className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Invoicing</span>
+            </Link>
+            <Link href="/admin/history" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <History className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">History</span>
+            </Link>
+            <Link href="/admin/exclude" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Ban className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Exclude Member</span>
+            </Link>
+            <Link href="/admin/counties" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Target className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Counties</span>
+            </Link>
+            <Link href="/admin/calendar" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <UserCircle className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Calendar</span>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   )
 }
