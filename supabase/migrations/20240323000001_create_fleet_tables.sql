@@ -46,12 +46,20 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     created_at timestamp with time zone DEFAULT timezone('utc'::text, now())
 );
 
--- Add foreign key for changed_by_user relationship
-ALTER TABLE audit_logs
-    ADD CONSTRAINT audit_logs_changed_by_fkey
-    FOREIGN KEY (changed_by)
-    REFERENCES profiles(id)
-    ON DELETE SET NULL;
+-- Add foreign key for changed_by_user relationship if it doesn't exist
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'audit_logs_changed_by_fkey'
+        AND table_name = 'audit_logs'
+    ) THEN
+        ALTER TABLE audit_logs
+        ADD CONSTRAINT audit_logs_changed_by_fkey
+        FOREIGN KEY (changed_by)
+        REFERENCES profiles(id)
+        ON DELETE SET NULL;
+    END IF;
+END $$;
 
 -- Enable RLS on new tables
 ALTER TABLE vehicles ENABLE ROW LEVEL SECURITY;
@@ -59,6 +67,7 @@ ALTER TABLE rides ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_logs ENABLE ROW LEVEL SECURITY;
 
 -- Add RLS policies for vehicles
+DROP POLICY IF EXISTS "Super admins can manage all vehicles" ON vehicles;
 CREATE POLICY "Super admins can manage all vehicles"
     ON vehicles
     FOR ALL
@@ -68,6 +77,7 @@ CREATE POLICY "Super admins can manage all vehicles"
         AND profiles.user_role = 'super_admin'
     ));
 
+DROP POLICY IF EXISTS "Admins can manage vehicles in their provider" ON vehicles;
 CREATE POLICY "Admins can manage vehicles in their provider"
     ON vehicles
     FOR ALL
@@ -80,6 +90,7 @@ CREATE POLICY "Admins can manage vehicles in their provider"
     );
 
 -- Add RLS policies for rides
+DROP POLICY IF EXISTS "Super admins can manage all rides" ON rides;
 CREATE POLICY "Super admins can manage all rides"
     ON rides
     FOR ALL
@@ -89,6 +100,7 @@ CREATE POLICY "Super admins can manage all rides"
         AND profiles.user_role = 'super_admin'
     ));
 
+DROP POLICY IF EXISTS "Admins can manage rides in their provider" ON rides;
 CREATE POLICY "Admins can manage rides in their provider"
     ON rides
     FOR ALL
@@ -100,6 +112,7 @@ CREATE POLICY "Admins can manage rides in their provider"
         )
     );
 
+DROP POLICY IF EXISTS "Drivers can view and update their assigned rides" ON rides;
 CREATE POLICY "Drivers can view and update their assigned rides"
     ON rides
     FOR ALL
@@ -113,6 +126,7 @@ CREATE POLICY "Drivers can view and update their assigned rides"
     );
 
 -- Add RLS policies for audit_logs
+DROP POLICY IF EXISTS "Super admins can view all audit logs" ON audit_logs;
 CREATE POLICY "Super admins can view all audit logs"
     ON audit_logs
     FOR SELECT
@@ -122,6 +136,7 @@ CREATE POLICY "Super admins can view all audit logs"
         AND profiles.user_role = 'super_admin'
     ));
 
+DROP POLICY IF EXISTS "Admins can view audit logs for their provider" ON audit_logs;
 CREATE POLICY "Admins can view audit logs for their provider"
     ON audit_logs
     FOR SELECT
@@ -137,12 +152,24 @@ CREATE POLICY "Admins can view audit logs for their provider"
     );
 
 -- Add updated_at triggers
-CREATE TRIGGER update_vehicles_updated_at
-    BEFORE UPDATE ON vehicles
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column();
-
-CREATE TRIGGER update_rides_updated_at
-    BEFORE UPDATE ON rides
-    FOR EACH ROW
-    EXECUTE FUNCTION update_updated_at_column(); 
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_vehicles_updated_at'
+    ) THEN
+        CREATE TRIGGER update_vehicles_updated_at
+            BEFORE UPDATE ON vehicles
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+    
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_trigger 
+        WHERE tgname = 'update_rides_updated_at'
+    ) THEN
+        CREATE TRIGGER update_rides_updated_at
+            BEFORE UPDATE ON rides
+            FOR EACH ROW
+            EXECUTE FUNCTION update_updated_at_column();
+    END IF;
+END $$; 
