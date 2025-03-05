@@ -42,7 +42,7 @@ class AuthService {
       console.log('[AuthService] Fetching profile for user:', userId)
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, phone, user_type, created_at, updated_at')
+        .select('id, email, full_name, phone, user_role, created_at, updated_at')
         .eq('id', userId)
         .single()
 
@@ -58,12 +58,12 @@ class AuthService {
         return null
       }
 
-      if (!profile.user_type) {
-        console.error('[AuthService] Profile found but no user_type:', profile)
+      if (!profile.user_role) {
+        console.error('[AuthService] Profile found but no user_role:', profile)
         return profile as Profile
       }
 
-      console.log('[AuthService] Profile found with user_type:', profile.user_type)
+      console.log('[AuthService] Profile found with user_role:', profile.user_role)
       return profile as Profile
     } catch (error) {
       console.error('[AuthService] Error getting profile:', error)
@@ -104,17 +104,17 @@ class AuthService {
       console.log('[AuthService] Profile found:', {
         id: profile.id,
         email: profile.email,
-        user_type: profile.user_type,
+        user_role: profile.user_role,
         created_at: profile.created_at,
         updated_at: profile.updated_at
       })
       
-      // Validate user_type
+      // Validate user_role
       const validRoles: UserRole[] = ['member', 'driver', 'admin', 'super_admin']
-      const userType = profile.user_type
+      const userRole = profile.user_role
       
-      if (!userType || !validRoles.includes(userType)) {
-        console.error('[AuthService] Invalid user_type found:', userType)
+      if (!userRole || !validRoles.includes(userRole)) {
+        console.error('[AuthService] Invalid user_role found:', userRole)
         return {
           user: session.user,
           session,
@@ -124,13 +124,13 @@ class AuthService {
         }
       }
       
-      console.log('[AuthService] Valid role found:', userType)
+      console.log('[AuthService] Valid role found:', userRole)
       return {
         user: session.user,
         session,
         profile,
         isLoggedIn: true,
-        role: userType
+        role: userRole
       }
     } catch (error) {
       console.error('[AuthService] Error getting current user:', error)
@@ -161,7 +161,7 @@ class AuthService {
   async signup(email: string, password: string, userData?: { 
     full_name?: string
     phone?: string
-    user_type?: UserRole 
+    user_role?: UserRole 
   }) {
     try {
       const { data, error } = await supabase.auth.signUp({
@@ -184,7 +184,7 @@ class AuthService {
           full_name: userData?.full_name || '',
           email: email,
           phone: userData?.phone || '',
-          user_type: userData?.user_type || 'member'
+          user_role: userData?.user_role || 'member'
         })
 
       if (profileError) {

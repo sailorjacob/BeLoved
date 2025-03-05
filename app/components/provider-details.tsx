@@ -97,6 +97,10 @@ interface ProviderDetailsProps {
   providerId: string
 }
 
+interface RideStatus {
+  status: 'assigned' | 'in_progress' | 'completed' | 'cancelled' | 'pending'
+}
+
 export function ProviderDetails({ providerId }: ProviderDetailsProps) {
   const router = useRouter()
   const [provider, setProvider] = useState<Provider | null>(null)
@@ -145,48 +149,52 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
       if (providerError) {
         console.error('Provider fetch error:', providerError)
-        console.error('Provider fetch query details:', {
-          table: 'transportation_providers',
-          id: providerId,
-          error: providerError.message,
-          code: providerError.code,
-          details: providerError.details,
-          hint: providerError.hint
-        })
         throw providerError
       }
 
       if (!providerData) {
         console.error('No provider found with ID:', providerId)
-        console.error('Query returned successfully but no data found')
         throw new Error('Provider not found')
       }
 
       console.log('Provider data found:', providerData)
+      setProvider(providerData)
 
-      // Fetch provider statistics
-      const stats = await fetchProviderStats(providerId)
-      console.log('Provider stats:', stats)
-      
-      // Fetch audit logs
-      const { data: logsData, error: logsError } = await supabase
-        .from('audit_logs')
-        .select(`
-          *,
-          changed_by_user:profiles!audit_logs_changed_by_fkey(full_name)
-        `)
-        .eq('entity_id', providerId)
-        .order('created_at', { ascending: false })
-        .limit(100)
+      // Set empty stats by default
+      const defaultStats = {
+        total_admins: 0,
+        total_drivers: 0,
+        total_rides: 0,
+        active_rides: 0,
+        completed_rides: 0,
+        cancelled_rides: 0
+      }
+      setStats(defaultStats)
 
-      if (logsError) {
-        console.error('Audit logs error:', logsError)
-        throw logsError
+      try {
+        // Try to fetch stats if tables exist
+        const stats = await fetchProviderStats(providerId)
+        setStats(stats)
+      } catch (error) {
+        console.log('Stats tables may not exist yet:', error)
+        // Keep default stats
       }
 
-      setProvider(providerData)
-      setStats(stats)
-      setAuditLogs(logsData || [])
+      try {
+        // Try to fetch audit logs if table exists
+        const { data: logsData } = await supabase
+          .from('audit_logs')
+          .select('*')
+          .eq('entity_id', providerId)
+          .order('created_at', { ascending: false })
+          .limit(100)
+
+        setAuditLogs(logsData || [])
+      } catch (error) {
+        console.log('Audit logs table may not exist yet:', error)
+        setAuditLogs([])
+      }
+
     } catch (error) {
       console.error('Error fetching provider details:', error)
       toast.error('Failed to fetch provider details')
@@ -196,32 +204,49 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
   }
 
   const fetchProviderStats = async (providerId: string): Promise<ProviderStats> => {
-    const { data: adminsCount } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact' })
-      .eq('provider_id', providerId)
-      .eq('user_type', 'admin')
+    try {
+      const { data: adminsCount } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .eq('provider_id', providerId)
+        .eq('user_type', 'admin')
 
-    const { data: driversCount } = await supabase
-      .from('profiles')
-      .select('id', { count: 'exact' })
-      .eq('provider_id', providerId)
-      .eq('user_type', 'driver')
+      const { data: driversCount } = await supabase
+        .from('profiles')
+        .select('id', { count: 'exact' })
+        .eq('provider_id', providerId)
+        .eq('user_type', 'driver')
 
-    const { data: ridesData } = await supabase
-      .from('rides')
-      .select('status')
-      .eq('provider_id', providerId)
-
-    const rides = ridesData || []
-    
-    return {
-      total_admins: adminsCount?.length || 0,
-      total_drivers: driversCount?.length || 0,
-      total_rides: rides.length,
-      active_rides: rides.filter(r => ['assigned', 'in_progress'].includes(r.status)).length,
-      completed_rides: rides.filter(r => r.status === 'completed').length,
-      cancelled_rides: rides.filter(r => r.status === 'cancelled').length,
+      let ridesData: RideStatus[] = []
+      try {
+        const { data } = await supabase
+          .from('rides')
+          .select('status')
+          .eq('provider_id', providerId)
+        
+        if (data) ridesData = data as RideStatus[]
+      } catch (error) {
+        console.log('Rides table may not exist yet:', error)
+      }
+      
+      return {
+        total_admins: adminsCount?.length || 0,
+        total_drivers: driversCount?.length || 0,
+        total_rides: ridesData.length,
+        active_rides: ridesData.filter(r => ['assigned', 'in_progress'].includes(r.status)).length,
+        completed_rides: ridesData.filter(r => r.status === 'completed').length,
+        cancelled_rides: ridesData.filter(r => r.status === 'cancelled').length,
+      }
+    } catch (error) {
+      console.error('Error fetching provider stats:', error)
+      return {
+        total_admins: 0,
+        total_drivers: 0,
+        total_rides: 0,
+        active_rides: 0,
+        completed_rides: 0,
+        cancelled_rides: 0
+      }
     }
   }
 
@@ -262,6 +287,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
       }
 
       console.log('Admin data:', adminData)
+      setAdmins(adminData || [])
 
       // Fetch drivers
       const { data: driverData, error: driverError } = await supabase
@@ -276,26 +302,27 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
       }
 
       console.log('Driver data:', driverData)
+      setDrivers(driverData || [])
 
-      // Fetch vehicles
-      const { data: vehicleData, error: vehicleError } = await supabase
-        .from('vehicles')
-        .select('*')
-        .eq('provider_id', providerId)
+      // Try to fetch vehicles if table exists
+      try {
+        const { data: vehicleData } = await supabase
+          .from('vehicles')
+          .select('*')
+          .eq('provider_id', providerId)
 
-      if (vehicleError) {
-        console.error('Vehicle fetch error:', vehicleError)
-        throw vehicleError
+        setVehicles(vehicleData || [])
+      } catch (error) {
+        console.log('Vehicles table may not exist yet:', error)
+        setVehicles([])
       }
 
-      console.log('Vehicle data:', vehicleData)
-
-      setAdmins(adminData || [])
-      setDrivers(driverData || [])
-      setVehicles(vehicleData || [])
     } catch (error) {
       console.error('Error fetching additional data:', error)
-      toast.error('Failed to fetch some provider data')
+      // Set empty arrays as fallback
+      setAdmins([])
+      setDrivers([])
+      setVehicles([])
     }
   }
 

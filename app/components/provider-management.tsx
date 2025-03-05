@@ -369,7 +369,7 @@ export function ProviderManagement() {
           options: {
             data: {
               full_name: values.full_name,
-              user_type: 'admin'
+              user_role: 'admin'
             }
           }
         })
@@ -386,7 +386,7 @@ export function ProviderManagement() {
             email: values.email,
             phone: values.phone,
             username: values.username,
-            user_type: 'admin',
+            user_role: 'admin',
             provider_id: providerIdToUse,
             status: 'active'
           })

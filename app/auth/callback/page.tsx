@@ -29,7 +29,7 @@ export default function AuthCallbackPage() {
         // Get user profile to determine redirect
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('user_type')
+          .select('user_role')
           .eq('id', session.user.id)
           .single()
 
@@ -42,7 +42,7 @@ export default function AuthCallbackPage() {
 
         // Determine redirect URL
         let redirectUrl = '/'
-        switch (profile?.user_type) {
+        switch (profile?.user_role) {
           case 'super_admin':
             redirectUrl = '/super-admin-dashboard'
             break
@@ -56,7 +56,7 @@ export default function AuthCallbackPage() {
             redirectUrl = '/dashboard'
             break
           default:
-            console.log('[AuthCallback] Unknown user type:', profile?.user_type)
+            console.log('[AuthCallback] Unknown user role:', profile?.user_role)
         }
 
         console.log('[AuthCallback] Redirecting to:', redirectUrl)
