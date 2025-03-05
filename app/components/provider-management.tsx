@@ -171,6 +171,13 @@ export function ProviderManagement() {
         throw new Error('Database connection not available')
       }
 
+      // Log the current user's session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      console.log('[ProviderManagement] Current session:', session)
+      if (sessionError) {
+        console.error('[ProviderManagement] Session error:', sessionError)
+      }
+
       // Attempt to fetch providers with error handling
       try {
         console.log('[ProviderManagement] Fetching providers...')
@@ -183,7 +190,7 @@ export function ProviderManagement() {
           throw providerError
         }
         
-        console.log('[ProviderManagement] Providers fetched:', providerData)
+        console.log('[ProviderManagement] Raw provider data:', providerData)
         setProviders(providerData || [])
       } catch (providerError) {
         console.error('[ProviderManagement] Provider fetch failed:', providerError)
@@ -283,6 +290,7 @@ export function ProviderManagement() {
     validationRules: providerValidationRules,
     onSubmit: async (values) => {
       try {
+        console.log('[ProviderManagement] Attempting to create provider:', values)
         const { data, error } = await supabase
           .from('transportation_providers')
           .insert([{
@@ -296,14 +304,21 @@ export function ProviderManagement() {
           }])
           .select()
 
-        if (error) throw error
+        if (error) {
+          console.error('[ProviderManagement] Error creating provider:', error)
+          throw error
+        }
 
+        console.log('[ProviderManagement] Provider created successfully:', data)
         toast.success('Transportation provider created successfully')
         setIsProviderDialogOpen(false)
         providerForm.resetForm()
+        
+        // Reset the fetch attempt flag so we can fetch again
+        fetchAttemptedRef.current = false
         fetchData()
       } catch (error) {
-        console.error('Error creating provider:', error)
+        console.error('[ProviderManagement] Error creating provider:', error)
         toast.error('Failed to create provider')
       }
     }
