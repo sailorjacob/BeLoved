@@ -40,30 +40,65 @@ class AuthService {
   async getProfile(userId: string): Promise<Profile | null> {
     try {
       console.log('[AuthService] Fetching profile for user:', userId)
+
+      // Try to get the profile directly
       const { data: profile, error } = await supabase
         .from('profiles')
-        .select('id, email, full_name, phone, user_role, provider_id, created_at, updated_at')
+        .select('*')
         .eq('id', userId)
         .single()
 
       if (error) {
         console.error('[AuthService] Error fetching profile:', error)
-        throw error
+        console.error('[AuthService] Error details:', {
+          code: error.code,
+          message: error.message,
+          details: error.details,
+          hint: error.hint
+        })
+        
+        // If profile doesn't exist, create it
+        if (error.code === 'PGRST116') {
+          console.log('[AuthService] Profile not found, attempting to create')
+          
+          // Get the user's email from the session
+          const { data: { session } } = await supabase.auth.getSession()
+          const email = session?.user?.email
+
+          if (!email) {
+            console.error('[AuthService] No email found in session')
+            return null
+          }
+
+          const { data: newProfile, error: createError } = await supabase
+            .from('profiles')
+            .insert({
+              id: userId,
+              email: email,
+              full_name: '',
+              user_role: 'member'
+            })
+            .select()
+            .single()
+
+          if (createError) {
+            console.error('[AuthService] Error creating profile:', createError)
+            return null
+          }
+
+          console.log('[AuthService] Created new profile:', newProfile)
+          return newProfile as Profile
+        }
+        
+        return null
       }
 
-      console.log('[AuthService] Raw profile data:', profile)
-      
       if (!profile) {
         console.error('[AuthService] No profile found')
         return null
       }
 
-      if (!profile.user_role) {
-        console.error('[AuthService] Profile found but no user_role:', profile)
-        return profile as Profile
-      }
-
-      console.log('[AuthService] Profile found with user_role:', profile.user_role)
+      console.log('[AuthService] Profile found:', profile)
       return profile as Profile
     } catch (error) {
       console.error('[AuthService] Error getting profile:', error)
@@ -87,7 +122,12 @@ class AuthService {
         }
       }
 
-      console.log('[AuthService] Session found, fetching profile')
+      console.log('[AuthService] Session found:', {
+        id: session.user.id,
+        email: session.user.email,
+        role: session.user.role
+      })
+
       const profile = await this.getProfile(session.user.id)
       
       if (!profile) {
@@ -104,12 +144,9 @@ class AuthService {
       console.log('[AuthService] Profile found:', {
         id: profile.id,
         email: profile.email,
-        user_role: profile.user_role,
-        provider_id: profile.provider_id,
-        created_at: profile.created_at,
-        updated_at: profile.updated_at
+        role: profile.user_role
       })
-      
+
       // Validate user_role
       const validRoles: UserRole[] = ['member', 'driver', 'admin', 'super_admin']
       const userRole = profile.user_role as UserRole
