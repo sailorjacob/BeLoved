@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import { supabaseAdmin, ensureUserProfile } from './supabase-admin'
 import type { User, Session } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 
@@ -86,52 +87,20 @@ class AuthService {
       
       console.log('[AuthService] Creating profile with role:', userRole)
 
-      // First check if the profile already exists
-      const { data: existingProfile, error: checkError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle()
+      // Use the admin client to bypass RLS
+      const { profile, error } = await ensureUserProfile(userId, email, userRole as any)
       
-      if (checkError) {
-        console.error('[AuthService] Error checking for existing profile:', checkError)
-      } else if (existingProfile) {
-        console.log('[AuthService] Profile already exists:', existingProfile)
-        return existingProfile as Profile
-      }
-
-      // Create new profile
-      const { data: newProfile, error: createError } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: email,
-          full_name: email.split('@')[0], // Use email prefix as initial name
-          phone: '',
-          user_role: userRole,
-          status: 'active',
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        })
-        .select('*')
-        .single()
-
-      if (createError) {
-        console.error('[AuthService] Error creating profile:', createError)
-        console.error('[AuthService] Error details:', {
-          code: createError.code,
-          message: createError.message,
-          details: createError.details,
-          hint: createError.hint
-        })
-        
-        // Try direct insert with service role
-        console.log('[AuthService] Attempting direct insert with service role client')
+      if (error) {
+        console.error('[AuthService] Error ensuring profile:', error)
         return null
       }
 
-      console.log('[AuthService] Created new profile:', newProfile)
-      return newProfile as Profile
+      if (profile) {
+        console.log('[AuthService] Profile created/updated successfully:', profile)
+        return profile as Profile
+      }
+
+      return null
     } catch (error) {
       console.error('[AuthService] Exception in createProfile:', error)
       return null
@@ -149,7 +118,28 @@ class AuthService {
         return null
       }
 
-      // First try to get the profile
+      // Try using the admin client first
+      try {
+        console.log('[AuthService] Attempting to get profile with admin client')
+        const { data: profile, error } = await supabaseAdmin
+          .from('profiles')
+          .select('*')
+          .eq('id', userId)
+          .single()
+
+        if (!error && profile) {
+          console.log('[AuthService] Profile found with admin client:', {
+            id: profile.id,
+            email: profile.email,
+            role: profile.user_role
+          })
+          return profile as Profile
+        }
+      } catch (adminError) {
+        console.error('[AuthService] Error using admin client:', adminError)
+      }
+
+      // Fall back to regular client if admin fails
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -286,15 +276,49 @@ class AuthService {
 
   async login(email: string, password: string) {
     try {
+      console.log('[AuthService] Attempting login for:', email);
+      
+      // Clear any existing session first to avoid token conflicts
+      await supabase.auth.signOut();
+      
+      // Perform login with PKCE flow
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        password
-      })
-      if (error) throw error
-      return data
+        password,
+      });
+
+      if (error) {
+        console.error('[AuthService] Login error:', error);
+        return { error };
+      }
+
+      console.log('[AuthService] Login successful, session established');
+
+      // Force the Supabase client to set the auth token in storage and headers
+      if (data.session) {
+        // Set auth header manually for subsequent requests
+        supabase.realtime.setAuth(data.session.access_token);
+        
+        // Store session data for debugging
+        if (typeof window !== 'undefined') {
+          // Only run in browser context
+          try {
+            localStorage.setItem('supabase_debug_session', JSON.stringify({
+              timestamp: new Date().toISOString(),
+              hasSession: !!data.session,
+              hasToken: !!data.session?.access_token,
+              expiresAt: data.session?.expires_at
+            }));
+          } catch (e) {
+            console.error('[AuthService] Could not save debug session info', e);
+          }
+        }
+      }
+      
+      return { data, error: null };
     } catch (error) {
-      console.error('[AuthService] Login error:', error)
-      throw error
+      console.error('[AuthService] Unexpected login error:', error);
+      return { error: error as Error };
     }
   }
 
@@ -304,41 +328,56 @@ class AuthService {
     user_role?: UserRole 
   }) {
     try {
+      console.log('[AuthService] Signing up with email:', email);
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        options: { 
-          data: {
-            ...userData,
-            user_role: userData?.user_role || 'member'
-          },
+        options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
-      })
+      });
       
-      if (error) throw error
-      if (!data.user) throw new Error('No user returned from sign up')
-
-      // Create profile
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: data.user.id,
-          full_name: userData?.full_name || '',
-          email: email,
-          phone: userData?.phone || '',
-          user_role: userData?.user_role || 'member'
-        })
-
-      if (profileError) {
-        await supabase.auth.signOut()
-        throw profileError
+      if (error) {
+        console.error('[AuthService] Signup error:', error);
+        return { error };
       }
-
-      return data
+      
+      if (!data.user) {
+        console.error('[AuthService] No user returned from signup');
+        return { error: new Error('No user returned from signup') };
+      }
+      
+      console.log('[AuthService] User signed up:', data.user.id);
+      
+      // Create profile if needed
+      if (data.user.id) {
+        try {
+          const profile = await this.createProfile(
+            data.user.id, 
+            email
+          );
+          
+          // If profile creation was successful and we have userData, update it
+          if (profile && userData) {
+            const { error: updateError } = await this.updateProfile(data.user.id, userData);
+            if (updateError) {
+              console.error('[AuthService] Error updating profile after signup:', updateError);
+            }
+          }
+        } catch (error) {
+          console.error('[AuthService] Error creating profile after signup:', error);
+        }
+      }
+      
+      return { 
+        user: data.user, 
+        session: data.session,
+        error: null 
+      };
     } catch (error) {
-      console.error('[AuthService] Signup error:', error)
-      throw error
+      console.error('[AuthService] Unexpected signup error:', error);
+      return { error: error as Error, user: null, session: null };
     }
   }
 
@@ -365,15 +404,26 @@ class AuthService {
 
   async updateProfile(userId: string, data: Partial<Profile>) {
     try {
+      console.log('[AuthService] Updating profile for user:', userId);
+      
       const { error } = await supabase
         .from('profiles')
-        .update(data)
-        .eq('id', userId)
+        .update({
+          ...data,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', userId);
       
-      if (error) throw error
+      if (error) {
+        console.error('[AuthService] Error updating profile:', error);
+        return { error };
+      }
+      
+      console.log('[AuthService] Profile updated successfully');
+      return { error: null };
     } catch (error) {
-      console.error('[AuthService] Update profile error:', error)
-      throw error
+      console.error('[AuthService] Exception updating profile:', error);
+      return { error: error as Error };
     }
   }
 

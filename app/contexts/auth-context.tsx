@@ -260,47 +260,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [checkAuth]);
   
   // Login method
-  const login = async (email: string, password: string): Promise<AuthResponse> => {
-    logWithTime('AuthProvider', `Login attempt: ${email}`);
-    setIsLoading(true);
-    
+  const login = useCallback(async (email: string, password: string): Promise<AuthResponse> => {
     try {
+      logWithTime('AuthProvider', 'Login attempt:', email);
+      
+      // Call login method from auth service
       const result = await authService.login(email, password);
       
-      if ('error' in result && result.error) {
-        return { 
-          error: result.error instanceof Error 
-            ? result.error 
-            : new Error(String(result.error))
-        };
-      }
-      
-      if (!mountedRef.current) {
-        return { 
-          error: null, 
-          data: { user: result.user, session: result.session } 
-        };
+      if (result.error) {
+        logWithTime('AuthProvider', 'Login failed:', result.error);
+        return { error: result.error };
       }
       
       logWithTime('AuthProvider', 'Login successful');
-      // Auth state change will trigger checkAuth
-      return { 
-        error: null, 
-        data: { user: result.user, session: result.session } 
-      };
+      
+      // Perform auth check to update state after login
+      await checkAuth(false);
+      
+      return { error: null, data: result.data };
     } catch (error) {
-      logWithTime('AuthProvider', 'Login error:', error);
-      return { 
-        error: error instanceof Error 
-          ? error 
-          : new Error('Unknown login error')
-      };
-    } finally {
-      if (mountedRef.current) {
-        setIsLoading(false);
-      }
+      logWithTime('AuthProvider', 'Login exception:', error);
+      return { error: error as Error };
     }
-  };
+  }, [checkAuth]);
   
   // Signup method
   const signUp = async (
@@ -308,32 +290,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     password: string, 
     userData?: { full_name?: string; phone?: string }
   ): Promise<AuthResponse> => {
-    logWithTime('AuthProvider', `Signup attempt: ${email}`);
-    setIsLoading(true);
-    
     try {
-      const result = await authService.signup(email, password, {
-        full_name: userData?.full_name,
-        phone: userData?.phone,
-        user_type: 'member' as UserRole
-      });
+      logWithTime('AuthProvider', `Signup attempt: ${email}`);
+      setIsLoading(true);
       
-      if ('error' in result && result.error) {
-        return { 
-          error: result.error instanceof Error 
-            ? result.error 
-            : new Error(String(result.error))
-        };
-      }
+      // Map userData to the format expected by the auth service
+      const signupData = {
+        full_name: userData?.full_name || '',
+        phone: userData?.phone || '',
+        user_role: 'member' as const // Use user_role instead of user_type
+      };
       
-      if (!mountedRef.current) {
-        return { 
-          error: null, 
-          data: { user: result.user, session: result.session } 
-        };
+      const result = await authService.signup(email, password, signupData);
+      
+      if (result.error) {
+        return { error: result.error };
       }
       
       logWithTime('AuthProvider', 'Signup successful');
+      
       // Auth state change will trigger checkAuth
       return { 
         error: null, 
