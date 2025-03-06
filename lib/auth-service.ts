@@ -37,11 +37,45 @@ class AuthService {
     }
   }
 
+  private async createProfile(userId: string, email: string): Promise<Profile | null> {
+    try {
+      console.log('[AuthService] Creating new profile for:', { userId, email })
+
+      // Special case for super admin
+      const isSuperAdmin = userId === 'c8ef80bc-c7de-4ba8-a473-bb859b2efd9b'
+      const userRole = isSuperAdmin ? 'super_admin' : 'member'
+
+      const { data: newProfile, error: createError } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: email,
+          full_name: email.split('@')[0], // Use email prefix as initial name
+          user_role: userRole,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .select('*')
+        .single()
+
+      if (createError) {
+        console.error('[AuthService] Error creating profile:', createError)
+        return null
+      }
+
+      console.log('[AuthService] Created new profile:', newProfile)
+      return newProfile as Profile
+    } catch (error) {
+      console.error('[AuthService] Error in createProfile:', error)
+      return null
+    }
+  }
+
   async getProfile(userId: string): Promise<Profile | null> {
     try {
       console.log('[AuthService] Fetching profile for user:', userId)
 
-      // Try to get the profile directly
+      // First try to get the profile
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
@@ -57,37 +91,15 @@ class AuthService {
           hint: error.hint
         })
         
-        // If profile doesn't exist, create it
+        // If profile doesn't exist, try to create it
         if (error.code === 'PGRST116') {
-          console.log('[AuthService] Profile not found, attempting to create')
-          
-          // Get the user's email from the session
-          const { data: { session } } = await supabase.auth.getSession()
-          const email = session?.user?.email
-
-          if (!email) {
+          const session = await this.getSession()
+          if (!session?.user?.email) {
             console.error('[AuthService] No email found in session')
             return null
           }
 
-          const { data: newProfile, error: createError } = await supabase
-            .from('profiles')
-            .insert({
-              id: userId,
-              email: email,
-              full_name: '',
-              user_role: 'member'
-            })
-            .select()
-            .single()
-
-          if (createError) {
-            console.error('[AuthService] Error creating profile:', createError)
-            return null
-          }
-
-          console.log('[AuthService] Created new profile:', newProfile)
-          return newProfile as Profile
+          return this.createProfile(userId, session.user.email)
         }
         
         return null
