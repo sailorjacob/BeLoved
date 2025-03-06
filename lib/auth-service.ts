@@ -60,7 +60,8 @@ class AuthService {
   async testDatabaseConnection(): Promise<boolean> {
     try {
       console.log('[AuthService] Testing database connection')
-      const { data, error } = await supabase.from('profiles').select('count(*)').limit(1)
+      // Use a simpler query without functions that might cause parsing issues
+      const { data, error } = await supabase.from('profiles').select('id').limit(1)
       
       if (error) {
         console.error('[AuthService] Database connection test failed:', error)
