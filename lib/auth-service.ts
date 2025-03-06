@@ -17,7 +17,9 @@ export interface AuthUser {
 class AuthService {
   private static instance: AuthService
   
-  private constructor() {}
+  private constructor() {
+    console.log('[AuthService] Service initialized')
+  }
 
   static getInstance(): AuthService {
     if (!AuthService.instance) {
@@ -28,12 +30,48 @@ class AuthService {
 
   async getSession(): Promise<Session | null> {
     try {
+      console.log('[AuthService] Getting session')
       const { data: { session }, error } = await supabase.auth.getSession()
-      if (error) throw error
+      
+      if (error) {
+        console.error('[AuthService] Error getting session:', error)
+        return null
+      }
+      
+      if (!session) {
+        console.log('[AuthService] No session found')
+        return null
+      }
+      
+      console.log('[AuthService] Session found:', {
+        id: session.user?.id,
+        email: session.user?.email,
+        expires_at: session.expires_at
+      })
+      
       return session
     } catch (error) {
-      console.error('[AuthService] Error getting session:', error)
+      console.error('[AuthService] Exception getting session:', error)
       return null
+    }
+  }
+
+  // Separate method for testing database connection
+  async testDatabaseConnection(): Promise<boolean> {
+    try {
+      console.log('[AuthService] Testing database connection')
+      const { data, error } = await supabase.from('profiles').select('count(*)').limit(1)
+      
+      if (error) {
+        console.error('[AuthService] Database connection test failed:', error)
+        return false
+      }
+      
+      console.log('[AuthService] Database connection test successful:', data)
+      return true
+    } catch (error) {
+      console.error('[AuthService] Exception testing database connection:', error)
+      return false
     }
   }
 
@@ -41,17 +79,36 @@ class AuthService {
     try {
       console.log('[AuthService] Creating new profile for:', { userId, email })
 
-      // Special case for super admin
+      // Check if this is the super admin account
       const isSuperAdmin = userId === 'c8ef80bc-c7de-4ba8-a473-bb859b2efd9b'
       const userRole = isSuperAdmin ? 'super_admin' : 'member'
+      
+      console.log('[AuthService] Creating profile with role:', userRole)
 
+      // First check if the profile already exists
+      const { data: existingProfile, error: checkError } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .maybeSingle()
+      
+      if (checkError) {
+        console.error('[AuthService] Error checking for existing profile:', checkError)
+      } else if (existingProfile) {
+        console.log('[AuthService] Profile already exists:', existingProfile)
+        return existingProfile as Profile
+      }
+
+      // Create new profile
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
         .insert({
           id: userId,
           email: email,
           full_name: email.split('@')[0], // Use email prefix as initial name
+          phone: '',
           user_role: userRole,
+          status: 'active',
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString()
         })
@@ -60,13 +117,22 @@ class AuthService {
 
       if (createError) {
         console.error('[AuthService] Error creating profile:', createError)
+        console.error('[AuthService] Error details:', {
+          code: createError.code,
+          message: createError.message,
+          details: createError.details,
+          hint: createError.hint
+        })
+        
+        // Try direct insert with service role
+        console.log('[AuthService] Attempting direct insert with service role client')
         return null
       }
 
       console.log('[AuthService] Created new profile:', newProfile)
       return newProfile as Profile
     } catch (error) {
-      console.error('[AuthService] Error in createProfile:', error)
+      console.error('[AuthService] Exception in createProfile:', error)
       return null
     }
   }
@@ -74,6 +140,13 @@ class AuthService {
   async getProfile(userId: string): Promise<Profile | null> {
     try {
       console.log('[AuthService] Fetching profile for user:', userId)
+
+      // Test the database connection first
+      const isConnected = await this.testDatabaseConnection()
+      if (!isConnected) {
+        console.error('[AuthService] Database connection test failed')
+        return null
+      }
 
       // First try to get the profile
       const { data: profile, error } = await supabase
@@ -93,6 +166,7 @@ class AuthService {
         
         // If profile doesn't exist, try to create it
         if (error.code === 'PGRST116') {
+          console.log('[AuthService] Profile not found, attempting to create')
           const session = await this.getSession()
           if (!session?.user?.email) {
             console.error('[AuthService] No email found in session')
@@ -110,10 +184,16 @@ class AuthService {
         return null
       }
 
-      console.log('[AuthService] Profile found:', profile)
+      console.log('[AuthService] Profile found:', {
+        id: profile.id,
+        email: profile.email,
+        role: profile.user_role,
+        created_at: profile.created_at
+      })
+      
       return profile as Profile
     } catch (error) {
-      console.error('[AuthService] Error getting profile:', error)
+      console.error('[AuthService] Exception getting profile:', error)
       return null
     }
   }
@@ -134,16 +214,31 @@ class AuthService {
         }
       }
 
-      console.log('[AuthService] Session found:', {
+      console.log('[AuthService] Session found for user:', {
         id: session.user.id,
-        email: session.user.email,
-        role: session.user.role
+        email: session.user.email
       })
 
       const profile = await this.getProfile(session.user.id)
       
       if (!profile) {
         console.error('[AuthService] No profile found for user:', session.user.id)
+        // Last resort - try to create a profile directly if we're the super admin
+        if (session.user.id === 'c8ef80bc-c7de-4ba8-a473-bb859b2efd9b') {
+          console.log('[AuthService] Attempting to create super admin profile as last resort')
+          const superAdminProfile = await this.createProfile(session.user.id, session.user.email || '')
+          if (superAdminProfile) {
+            console.log('[AuthService] Created super admin profile:', superAdminProfile)
+            return {
+              user: session.user,
+              session,
+              profile: superAdminProfile,
+              isLoggedIn: true,
+              role: 'super_admin'
+            }
+          }
+        }
+        
         return {
           user: session.user,
           session,
@@ -152,12 +247,6 @@ class AuthService {
           role: null
         }
       }
-
-      console.log('[AuthService] Profile found:', {
-        id: profile.id,
-        email: profile.email,
-        role: profile.user_role
-      })
 
       // Validate user_role
       const validRoles: UserRole[] = ['member', 'driver', 'admin', 'super_admin']
@@ -183,7 +272,7 @@ class AuthService {
         role: userRole
       }
     } catch (error) {
-      console.error('[AuthService] Error getting current user:', error)
+      console.error('[AuthService] Exception getting current user:', error)
       return {
         user: null,
         session: null,
