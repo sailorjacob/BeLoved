@@ -53,7 +53,7 @@ export default function Home() {
       <div className="w-full max-w-md p-8 space-y-8 bg-white rounded-lg shadow-md">
         <div className="text-center">
           <Image 
-            src="/logo.svg" 
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png" 
             alt="BeLoved Logo" 
             width={128} 
             height={64} 
