@@ -54,7 +54,7 @@ export default function DashboardPage() {
             *,
             driver_profile:driver_profiles(*)
           `)
-          .eq('user_type', 'driver')
+          .eq('user_role', 'driver')
 
         setStats({
           rides: rides || [],

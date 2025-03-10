@@ -51,14 +51,14 @@ export function DriverLoginForm() {
       // After successful login, verify the user is actually a driver
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('user_type')
+        .select('user_role')
         .eq('id', (await supabase.auth.getUser()).data.user?.id)
         .single()
 
       if (profileError) throw profileError
 
-      if (profile.user_type !== 'driver') {
-        throw new Error('This login is for drivers only. Please use the regular login page.')
+      if (profile.user_role !== 'driver') {
+        throw new Error('Unauthorized: Only drivers can log in')
       }
 
       router.push('/driver-dashboard')

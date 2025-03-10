@@ -92,11 +92,9 @@ export function DriverManagement() {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select(`
-          *,
-          driver_profile:driver_profiles(*)
-        `)
-        .eq('user_type', 'driver')
+        .select('*')
+        .eq('user_role', 'driver')
+        .eq('provider_id', providerId)
 
       if (error) throw error
 

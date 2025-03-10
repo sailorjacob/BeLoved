@@ -51,14 +51,14 @@ export function AdminLoginForm() {
       // After successful login, verify the user is actually an admin
       const { data: profile, error: profileError } = await supabase
         .from('profiles')
-        .select('user_type')
+        .select('user_role')
         .eq('id', (await supabase.auth.getUser()).data.user?.id)
         .single()
 
       if (profileError) throw profileError
 
-      if (profile.user_type !== 'admin') {
-        throw new Error('This login is for administrators only. Please use the appropriate login page.')
+      if (profile.user_role !== 'admin') {
+        throw new Error('Unauthorized: Only admins can log in')
       }
 
       router.push('/admin-dashboard')

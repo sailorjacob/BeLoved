@@ -66,7 +66,10 @@ export function CreateMemberForm() {
         full_name: values.full_name,
         email: values.email,
         phone: values.phone,
-        user_type: 'member'
+        user_role: 'member',
+        status: 'active',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
       })
 
     if (profileError) throw profileError

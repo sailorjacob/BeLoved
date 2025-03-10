@@ -216,11 +216,8 @@ export function ProviderManagement() {
         console.log('[ProviderManagement] Fetching admins...')
         const { data: adminData, error: adminError } = await supabase
           .from('profiles')
-          .select(`
-            *,
-            provider:transportation_providers(*)
-          `)
-          .eq('user_type', 'admin')
+          .select('*, provider:transportation_providers!inner(*)')
+          .eq('user_role', 'admin')
 
         if (adminError) {
           console.error('[ProviderManagement] Error fetching admins:', adminError)
@@ -441,7 +438,7 @@ export function ProviderManagement() {
         .from('profiles')
         .update({ status: newStatus })
         .eq('provider_id', providerToUpdate.id)
-        .eq('user_type', 'admin')
+        .eq('user_role', 'admin')
 
       if (adminError) throw adminError
 

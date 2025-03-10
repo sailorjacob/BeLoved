@@ -140,8 +140,8 @@ export function AdminDashboard() {
         *,
         driver_profile:driver_profiles(*)
       `)
+      .eq('user_role', 'driver')
       .eq('provider_id', providerId)
-      .eq('user_type', 'driver')
 
     if (error) {
       console.error('Error fetching drivers:', error)

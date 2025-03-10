@@ -68,7 +68,7 @@ export function CreateDriverForm() {
         options: {
           data: {
             full_name: values.full_name,
-            user_type: 'driver'
+            user_role: 'driver'
           }
         }
       })
@@ -86,7 +86,7 @@ export function CreateDriverForm() {
           email: values.email,
           phone: values.phone,
           username: values.username,
-          user_type: 'driver'
+          user_role: 'driver'
         })
 
       if (profileError) throw profileError
