@@ -40,7 +40,7 @@ export default function Home() {
           router.push('/driver-dashboard')
           break
         case 'member':
-          router.push('/member-dashboard')
+          router.push('/dashboard')
           break
         default:
           console.error('[HomePage] Unknown user role:', role)
