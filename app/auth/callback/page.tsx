@@ -52,7 +52,7 @@ export default function AuthCallbackPage() {
             redirectUrl = '/driver-dashboard'
             break
           case 'member':
-            redirectUrl = '/dashboard'
+            redirectUrl = '/member-dashboard'
             break
           default:
             console.log('[AuthCallback] Unknown user role:', profile?.user_role)

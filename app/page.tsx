@@ -24,23 +24,23 @@ export default function Home() {
       if (!role) {
         console.log('[HomePage] User has no role, redirecting to default super admin dashboard')
         // Default to super admin dashboard if role is null but user is logged in
-        router.push('/super-admin/dashboard')
+        router.push('/super-admin-dashboard')
         return
       }
       
       // Redirect based on role
       switch (role) {
         case 'super_admin':
-          router.push('/super-admin/dashboard')
+          router.push('/super-admin-dashboard')
           break
         case 'admin':
-          router.push('/admin/dashboard')
+          router.push('/admin-dashboard')
           break
         case 'driver':
-          router.push('/driver/dashboard')
+          router.push('/driver-dashboard')
           break
         case 'member':
-          router.push('/member/dashboard')
+          router.push('/member-dashboard')
           break
         default:
           console.error('[HomePage] Unknown user role:', role)
