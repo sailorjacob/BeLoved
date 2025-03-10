@@ -20,6 +20,7 @@ import {
 import { PlusCircle, Calendar, Clock, MapPin } from 'lucide-react'
 import Link from 'next/link'
 import { format } from 'date-fns'
+import { UserNav } from '@/app/components/user-nav'
 
 type Ride = Database['public']['Tables']['rides']['Row']
 type Driver = Database['public']['Tables']['profiles']['Row'] & {
@@ -183,12 +184,15 @@ export default function DashboardPage() {
       <div className="container mx-auto p-4 max-w-7xl">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-3xl font-bold">My Dashboard</h1>
-          <Link href="/schedule-ride">
-            <Button className="flex items-center gap-2">
-              <PlusCircle size={18} />
-              Schedule a Ride
-            </Button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/schedule-ride">
+              <Button className="flex items-center gap-2">
+                <PlusCircle size={18} />
+                Schedule a Ride
+              </Button>
+            </Link>
+            <UserNav />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -354,7 +358,10 @@ export default function DashboardPage() {
   // Admin Dashboard UI (original)
   return (
     <div className="container mx-auto p-4">
-      <h1 className="text-4xl font-bold mb-8">Dashboard</h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-4xl font-bold">Dashboard</h1>
+        <UserNav />
+      </div>
       <StatsCards rides={stats?.rides || []} drivers={stats?.drivers || []} />
       <RideTrendsChart rides={stats?.rides || []} />
     </div>

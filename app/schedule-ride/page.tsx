@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { ArrowLeft } from "lucide-react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import { UserNav } from "@/app/components/user-nav"
 
 export default function ScheduleRidePage() {
   const router = useRouter()
@@ -24,6 +25,7 @@ export default function ScheduleRidePage() {
           </Link>
           <h1 className="text-3xl font-bold">Schedule a Ride</h1>
         </div>
+        <UserNav />
       </div>
       <Scheduler isAdmin={false} />
     </main>
