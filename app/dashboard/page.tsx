@@ -5,7 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { Database } from '@/types/supabase'
 import { StatsCards } from '@/app/dashboard/components/stats-cards'
 import { RideTrendsChart } from '@/app/dashboard/components/ride-trends-chart'
-import { useAuth } from '@/contexts/auth-context'
+import { useAuth } from '@/app/contexts/auth-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -26,13 +26,22 @@ type Driver = Database['public']['Tables']['profiles']['Row'] & {
   driver_profile: Database['public']['Tables']['driver_profiles']['Row']
 }
 
+// Extended ride type with driver info for member dashboard
+interface MemberRide extends Ride {
+  driver?: {
+    id: string;
+    full_name: string;
+    phone?: string;
+  };
+}
+
 export default function DashboardPage() {
   const { isLoggedIn, role, profile } = useAuth()
   const [isLoading, setIsLoading] = useState(true)
   const [stats, setStats] = useState<any>(null)
   const [rides, setRides] = useState<Ride[]>([])
-  const [upcomingRides, setUpcomingRides] = useState<Ride[]>([])
-  const [pastRides, setPastRides] = useState<Ride[]>([])
+  const [upcomingRides, setUpcomingRides] = useState<MemberRide[]>([])
+  const [pastRides, setPastRides] = useState<MemberRide[]>([])
   const [activeTab, setActiveTab] = useState('upcoming')
 
   useEffect(() => {
@@ -76,7 +85,7 @@ export default function DashboardPage() {
       console.error('Error fetching upcoming rides:', upcomingError)
     } else {
       console.log('[DashboardPage] Upcoming rides:', upcomingRidesData)
-      setUpcomingRides(upcomingRidesData || [])
+      setUpcomingRides(upcomingRidesData as MemberRide[] || [])
     }
 
     // Fetch past rides for this member
@@ -95,7 +104,7 @@ export default function DashboardPage() {
       console.error('Error fetching past rides:', pastError)
     } else {
       console.log('[DashboardPage] Past rides:', pastRidesData)
-      setPastRides(pastRidesData || [])
+      setPastRides(pastRidesData as MemberRide[] || [])
     }
 
     // Calculate some basic stats
@@ -127,10 +136,8 @@ export default function DashboardPage() {
         .eq('user_role', 'driver')
 
       setStats({
-        total_rides: ridesData?.length || 0,
-        active_drivers: drivers?.filter((d: any) => d.driver_profile?.status === 'active')?.length || 0,
-        on_time_rate: 100,
-        completion_rate: 0
+        rides: ridesData || [],
+        drivers: drivers || []
       })
     } catch (error) {
       console.error('Error fetching admin dashboard:', error)
@@ -256,7 +263,7 @@ export default function DashboardPage() {
                         <TableCell>{getRideStatusBadge(ride.status)}</TableCell>
                         <TableCell>
                           {ride.driver ? (
-                            <span className="text-sm">{(ride.driver as any).full_name}</span>
+                            <span className="text-sm">{ride.driver.full_name}</span>
                           ) : (
                             <span className="text-sm text-gray-500">Not assigned</span>
                           )}
@@ -322,7 +329,7 @@ export default function DashboardPage() {
                         <TableCell>{getRideStatusBadge(ride.status)}</TableCell>
                         <TableCell>
                           {ride.driver ? (
-                            <span className="text-sm">{(ride.driver as any).full_name}</span>
+                            <span className="text-sm">{ride.driver.full_name}</span>
                           ) : (
                             <span className="text-sm text-gray-500">No driver</span>
                           )}
@@ -348,8 +355,8 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto p-4">
       <h1 className="text-4xl font-bold mb-8">Dashboard</h1>
-      <StatsCards stats={stats} />
-      <RideTrendsChart rides={rides} />
+      <StatsCards rides={stats?.rides || []} drivers={stats?.drivers || []} />
+      <RideTrendsChart rides={stats?.rides || []} />
     </div>
   )
 } 
