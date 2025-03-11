@@ -8,19 +8,39 @@ import { DriverDashboard } from '../components/driver-dashboard'
 import Image from 'next/image'
 
 export default function DriverDashboardPage() {
-  const { isLoggedIn, isDriver } = useAuth()
+  const { isLoggedIn, isDriver, isInitialized } = useAuth()
   const router = useRouter()
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    if (!isLoggedIn || !isDriver) {
-      router.push('/driver-login')
-    }
-  }, [isLoggedIn, isDriver, router])
+  }, [])
 
-  if (!mounted) {
-    return null
+  // Handle auth redirects
+  useEffect(() => {
+    if (mounted && isInitialized) {
+      if (!isLoggedIn) {
+        // Redirect to main login page instead of driver-specific login
+        console.log('[DriverDashboardPage] Not logged in, redirecting to home/login')
+        router.push('/')
+      } else if (!isDriver) {
+        // If logged in but not a driver, redirect to appropriate dashboard
+        console.log('[DriverDashboardPage] Not a driver, redirecting to home')
+        router.push('/')
+      }
+    }
+  }, [isLoggedIn, isDriver, isInitialized, mounted, router])
+
+  // Show nothing while checking auth
+  if (!mounted || !isInitialized || !isLoggedIn || !isDriver) {
+    return (
+      <div className="flex justify-center items-center min-h-screen">
+        <div className="text-center">
+          <div className="text-lg font-semibold mb-2">Loading dashboard...</div>
+          <div className="text-sm text-gray-500">Please wait while we verify your account</div>
+        </div>
+      </div>
+    )
   }
 
   return (
