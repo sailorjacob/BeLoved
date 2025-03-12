@@ -877,6 +877,31 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
               <Users className="h-6 w-6 text-red-500 mb-2" />
               <span className="text-center text-sm">Calendar</span>
             </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <UserPlus className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Driver Info</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Car className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Vehicles</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <ClipboardList className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Compliance</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Activity className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Upload Trips</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Cog className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Account</span>
+            </div>
           </div>
         </CardContent>
       </Card>
