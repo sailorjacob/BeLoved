@@ -652,7 +652,7 @@ export function ProviderManagement() {
                       <TableCell className="font-medium">
                         <Link 
                           href={`/provider/${provider.id}/details`}
-                          className="text-primary hover:underline hover:text-primary/90 transition-colors"
+                          className="text-foreground font-bold hover:underline transition-colors"
                         >
                           {provider.name}
                         </Link>
