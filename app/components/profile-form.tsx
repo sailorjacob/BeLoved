@@ -162,6 +162,19 @@ export function ProfileForm() {
                 required 
               />
             </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="member_id">Member ID</Label>
+              <Input 
+                id="member_id"
+                value={profile?.member_id || 'Not assigned'}
+                readOnly
+                disabled
+                className="bg-gray-100 text-gray-500"
+              />
+              <p className="text-xs text-gray-500">Your unique member identifier for customer service reference</p>
+            </div>
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input 
