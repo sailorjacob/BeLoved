@@ -33,6 +33,7 @@ import type { Database } from "@/lib/supabase"
 import { RideDetailView } from "./ride-detail-view"
 import { StatsCards } from "./dashboard/stats-cards"
 import { RideTrendsChart } from "./dashboard/ride-trends-chart"
+import { DriverDirectory } from "./driver-directory"
 import { toast } from 'sonner'
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
@@ -446,42 +447,13 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Driver Profiles</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-4">
-              {drivers.map((driver) => (
-                <li key={driver.id}>
-                  <Collapsible>
-                    <div className="flex items-center justify-between space-x-4">
-                      <div className="flex items-center space-x-4">
-                        <Avatar>
-                          <AvatarFallback>{driver.full_name.charAt(0)}</AvatarFallback>
-                        </Avatar>
-                        <div>
-                          <p className="font-semibold">{driver.full_name}</p>
-                          <p className="text-sm text-muted-foreground">Status: {driver.driver_profile?.status || 'Unknown'}</p>
-                          <p className="text-sm text-muted-foreground">Completed Rides: {driver.driver_profile?.completed_rides || 0}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-4">
-                        <Button variant="outline" size="sm" onClick={() => handleViewSchedule(driver)}>
-                          Schedule
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => handleViewSchedule(driver)}>
-                          View Profile
-                        </Button>
-                      </div>
-                    </div>
-                    <CollapsibleContent className="mt-4"></CollapsibleContent>
-                  </Collapsible>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
+        <div className="mt-8">
+          <DriverDirectory 
+            providerId={provider?.id} 
+            onViewProfile={handleViewSchedule} 
+            onViewSchedule={handleViewSchedule}
+          />
+        </div>
       </div>
     </div>
   )
