@@ -165,12 +165,18 @@ export function MembersDirectory() {
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={member.user_role === 'driver' ? 'secondary' : 'outline'}>
-                            {member.user_role === 'driver' ? 'Driver' : 'Member'}
+                          <Badge variant={
+                            member.user_role === 'driver' ? 'secondary' :
+                            member.user_role === 'admin' ? 'outline' :
+                            member.user_role === 'super_admin' ? 'default' : 'outline'
+                          }>
+                            {member.user_role === 'driver' ? 'Driver' : 
+                             member.user_role === 'admin' ? 'Admin' :
+                             member.user_role === 'super_admin' ? 'Super Admin' : 'Member'}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <Badge variant={member.status === 'active' ? 'default' : 'destructive'}>
+                          <Badge variant={member.status === 'active' ? 'success' : 'destructive'}>
                             {member.status === 'active' ? 'Active' : 'Inactive'}
                           </Badge>
                         </TableCell>
