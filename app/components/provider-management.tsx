@@ -8,6 +8,7 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from "@/components/ui/card"
 import {
   Table,
@@ -41,6 +42,8 @@ import { useFormHandling } from '@/hooks/useFormHandling'
 import { Switch } from "@/components/ui/switch"
 import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog"
 import Link from "next/link"
+import { Search } from "lucide-react"
+import { Input } from "@/components/ui/input"
 
 interface Provider {
   id: string
@@ -62,6 +65,8 @@ interface Admin {
   provider_id?: string
   provider?: Provider
   status: 'active' | 'inactive'
+  member_id?: string
+  user_role: 'admin' | 'super_admin'
 }
 
 interface ProviderFormData {
@@ -153,6 +158,8 @@ export function ProviderManagement() {
   const [providerToUpdate, setProviderToUpdate] = useState<Provider | null>(null)
   const [isUsingDemoData, setIsUsingDemoData] = useState(false)
   const fetchAttemptedRef = useRef(false)
+  const [searchQuery, setSearchQuery] = useState('')
+  const [error, setError] = useState<string | null>(null)
 
   // One-time check of providers table
   useEffect(() => {
@@ -177,62 +184,71 @@ export function ProviderManagement() {
       if (fetchAttemptedRef.current) return;
       fetchAttemptedRef.current = true;
       setIsLoading(true)
-      console.log('[ProviderManagement] Attempting to fetch data from database...')
+      setError(null)
 
-      // Check if we can access the supabase client
-      if (!supabase) {
-        console.error('[ProviderManagement] Supabase client is not available')
-        throw new Error('Database connection not available')
-      }
-
-      // Log the current user's session
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-      console.log('[ProviderManagement] Current session:', session)
-      if (sessionError) {
-        console.error('[ProviderManagement] Session error:', sessionError)
-      }
-
-      // Attempt to fetch providers with error handling
-      try {
-        console.log('[ProviderManagement] Fetching providers...')
-        const { data: providerData, error: providerError } = await supabase
-          .from('transportation_providers')
-          .select('*')
-
-        if (providerError) {
-          console.error('[ProviderManagement] Error fetching providers:', providerError)
-          throw providerError
-        }
+      // Fetch providers
+      const { data: providersData, error: providersError } = await supabase
+        .from('transportation_providers')
+        .select('*')
+        .order('name')
+      
+      if (providersError) throw providersError
+      
+      // Map providers to proper format
+      const mappedProviders = providersData.map(provider => ({
+        id: provider.id,
+        name: provider.name,
+        organization_code: provider.organization_code,
+        address: provider.address,
+        city: provider.city,
+        state: provider.state,
+        zip: provider.zip,
+        status: provider.status
+      }))
+      
+      setProviders(mappedProviders)
+      
+      // Fetch admins - Note: in a real app, you'd fetch admin users differently
+      // This is just fetching all users with admin/super_admin roles from profiles table
+      const { data: adminsData, error: adminsError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          email,
+          phone,
+          user_role,
+          provider_id,
+          status,
+          member_id
+        `)
+        .in('user_role', ['admin', 'super_admin'])
+      
+      if (adminsError) throw adminsError
+      
+      // Map admin profiles to the required format
+      const mappedAdmins = adminsData.map(admin => {
+        const provider = mappedProviders.find(p => p.id === admin.provider_id)
         
-        console.log('[ProviderManagement] Raw provider data:', providerData)
-        setProviders(providerData || [])
-      } catch (providerError) {
-        console.error('[ProviderManagement] Provider fetch failed:', providerError)
-        throw new Error('Could not fetch providers')
-      }
-
-      // Attempt to fetch admins with error handling
-      try {
-        console.log('[ProviderManagement] Fetching admins...')
-        const { data: adminData, error: adminError } = await supabase
-          .from('profiles')
-          .select('*, provider:transportation_providers!inner(*)')
-          .eq('user_role', 'admin')
-
-        if (adminError) {
-          console.error('[ProviderManagement] Error fetching admins:', adminError)
-          throw adminError
+        return {
+          id: admin.id,
+          full_name: admin.full_name,
+          email: admin.email,
+          phone: admin.phone,
+          username: admin.email.split('@')[0], // Just use the first part of email as username
+          provider_id: admin.provider_id,
+          provider: provider,
+          status: admin.status || 'active',
+          member_id: admin.member_id,
+          user_role: admin.user_role
         }
-        
-        console.log('[ProviderManagement] Admins fetched:', adminData)
-        setAdmins(adminData || [])
-      } catch (adminError) {
-        console.error('[ProviderManagement] Admin fetch failed:', adminError)
-        throw new Error('Could not fetch admins')
-      }
+      })
+      
+      setAdmins(mappedAdmins)
     } catch (error) {
       console.error('[ProviderManagement] Error fetching data:', error)
       toast.error('Failed to fetch data - using demo data instead')
+      setError('Failed to fetch provider data. Using demo data instead.')
       // Load demo data as fallback
       setIsUsingDemoData(true)
       setDemoData()
@@ -284,7 +300,41 @@ export function ProviderManagement() {
           zip: '47401',
           status: 'active'
         },
-        status: 'active'
+        status: 'active',
+        member_id: 'A100001',
+        user_role: 'admin'
+      },
+      {
+        id: 'admin-2',
+        full_name: 'Demo Admin 2',
+        email: 'admin2@example.com',
+        phone: '555-234-5678',
+        username: 'admin2',
+        provider_id: 'demo-2',
+        provider: {
+          id: 'demo-2',
+          name: 'Demo Provider 2',
+          organization_code: 'DEMO2',
+          address: '456 Oak Ave',
+          city: 'Somewhere',
+          state: 'IN',
+          zip: '47403',
+          status: 'inactive'
+        },
+        status: 'active',
+        member_id: 'A100002',
+        user_role: 'admin'
+      },
+      {
+        id: 'admin-3',
+        full_name: 'Super Admin',
+        email: 'superadmin@example.com',
+        phone: '555-345-6789',
+        username: 'superadmin',
+        provider_id: undefined,
+        status: 'active',
+        member_id: 'SA100001',
+        user_role: 'super_admin'
       }
     ])
   }
@@ -452,6 +502,11 @@ export function ProviderManagement() {
     }
   }
 
+  const filteredAdmins = admins.filter(admin =>
+    admin.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    admin.id.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
@@ -570,102 +625,96 @@ export function ProviderManagement() {
       {/* Admins Section with Enhanced Filtering */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
               <CardTitle>Provider Admins</CardTitle>
-              <p className="text-sm text-muted-foreground mt-2">
-                Manage administrator accounts for all providers
-              </p>
+              <CardDescription>
+                View and manage administrator accounts for all providers
+              </CardDescription>
             </div>
-            <div className="flex items-center space-x-4">
-              <Select
-                onValueChange={(value) => {
-                  // Add filtering logic here
-                }}
-              >
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Filter by provider" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Providers</SelectItem>
-                  {providers.map((provider) => (
-                    <SelectItem key={provider.id} value={provider.id}>
-                      {provider.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select
-                onValueChange={(value) => {
-                  // Add status filtering logic here
-                }}
-              >
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue placeholder="Filter by status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="active">Active</SelectItem>
-                  <SelectItem value="inactive">Inactive</SelectItem>
-                </SelectContent>
-              </Select>
+            <div className="relative w-full sm:w-auto max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or ID..."
+                className="pl-8 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Username</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>Phone</TableHead>
-                <TableHead>Provider</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {admins.map((admin) => (
-                <TableRow key={admin.id}>
-                  <TableCell>{admin.full_name}</TableCell>
-                  <TableCell>{admin.username}</TableCell>
-                  <TableCell>{admin.email}</TableCell>
-                  <TableCell>{admin.phone}</TableCell>
-                  <TableCell>
-                    {admin.provider?.name || 'Not assigned'}
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={admin.status === 'active' ? 'success' : 'secondary'}>
-                      {admin.status}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          // Add edit admin functionality
-                        }}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        asChild
-                      >
-                        <Link href={`/admin/${admin.id}/activity`}>
-                          View Activity
-                        </Link>
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {isLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500 mr-2"></div>
+              <span>Loading admins...</span>
+            </div>
+          ) : error ? (
+            <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
+              <p>{error}</p>
+            </div>
+          ) : (
+            <>
+              <div className="text-sm text-muted-foreground mb-4">
+                {filteredAdmins.length} {filteredAdmins.length === 1 ? 'admin' : 'admins'} found
+              </div>
+              <div className="rounded-md border overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Member ID</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Phone</TableHead>
+                      <TableHead>Provider</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredAdmins.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={7} className="text-center py-4">
+                          No admins found matching your search.
+                        </TableCell>
+                      </TableRow>
+                    ) : (
+                      filteredAdmins.map((admin) => (
+                        <TableRow key={admin.id}>
+                          <TableCell className="font-mono">{admin.member_id || '-'}</TableCell>
+                          <TableCell className="font-medium">
+                            <Link 
+                              href={`/super-admin-dashboard/members/${admin.id}`}
+                              className="text-primary hover:underline hover:text-primary/90 transition-colors"
+                            >
+                              {admin.full_name}
+                            </Link>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={
+                              admin.user_role === 'super_admin' ? 'default' : 'outline'
+                            }>
+                              {admin.user_role === 'super_admin' ? 'Super Admin' : 'Admin'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant={admin.status === 'active' ? 'success' : 'destructive'}>
+                              {admin.status === 'active' ? 'Active' : 'Inactive'}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">{admin.email}</TableCell>
+                          <TableCell className="text-muted-foreground">{admin.phone}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {admin.provider?.name || 'Not assigned'}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
