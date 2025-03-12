@@ -267,6 +267,56 @@ export function AdminDashboard() {
         </div>
       )}
 
+      <Card>
+        <CardHeader>
+          <CardTitle>Quick Access</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+            <Link href="/admin/info" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <BookOpen className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Information Base</span>
+            </Link>
+            <Link href="/admin/pending" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Clock className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Pending Acceptance</span>
+            </Link>
+            <Link href="/admin/schedule" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <CalendarDays className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Schedule</span>
+            </Link>
+            <Link href="/admin/pickboard" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Grid className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Pickboard</span>
+            </Link>
+            <Link href="/admin/manifest" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Building2 className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Manifest</span>
+            </Link>
+            <Link href="/admin/invoicing" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <DollarSign className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Invoicing</span>
+            </Link>
+            <Link href="/admin/history" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <History className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">History</span>
+            </Link>
+            <Link href="/admin/exclude" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Ban className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Exclude Member</span>
+            </Link>
+            <Link href="/admin/counties" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Target className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Counties</span>
+            </Link>
+            <Link href="/admin/calendar" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <UserCircle className="h-6 w-6 mb-2 text-red-500" />
+              <span className="text-sm">Calendar</span>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+
       <StatsCards rides={rides} drivers={drivers} />
       <RideTrendsChart rides={rides} />
       <div className="space-y-6">
@@ -421,56 +471,6 @@ export function AdminDashboard() {
           </CardContent>
         </Card>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Quick Access</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <Link href="/admin/info" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <BookOpen className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Information Base</span>
-            </Link>
-            <Link href="/admin/pending" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Clock className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Pending Acceptance</span>
-            </Link>
-            <Link href="/admin/schedule" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <CalendarDays className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Schedule</span>
-            </Link>
-            <Link href="/admin/pickboard" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Grid className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Pickboard</span>
-            </Link>
-            <Link href="/admin/manifest" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Building2 className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Manifest</span>
-            </Link>
-            <Link href="/admin/invoicing" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <DollarSign className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Invoicing</span>
-            </Link>
-            <Link href="/admin/history" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <History className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">History</span>
-            </Link>
-            <Link href="/admin/exclude" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Ban className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Exclude Member</span>
-            </Link>
-            <Link href="/admin/counties" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Target className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Counties</span>
-            </Link>
-            <Link href="/admin/calendar" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <UserCircle className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Calendar</span>
-            </Link>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   )
 }
