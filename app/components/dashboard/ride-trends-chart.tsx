@@ -32,7 +32,7 @@ export function RideTrendsChart({ rides }: RideTrendsChartProps) {
       date: format(date, 'MMM dd'),
       total: dayRides.length,
       completed: dayRides.filter(
-        ride => ride.status === 'completed' || ride.status === 'return_completed'
+        ride => ride.status && (ride.status === 'completed' || ride.status === 'return_completed')
       ).length,
       onTime: dayRides.filter(ride => {
         if (!ride.start_time) return false;

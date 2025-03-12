@@ -118,11 +118,11 @@ export function StatsCards({ rides, drivers }: StatsCardsProps) {
   });
   
   const completedTodayRides = todayRides.filter(
-    ride => ride.status === 'completed' || ride.status === 'return_completed'
+    ride => ride.status && (ride.status === 'completed' || ride.status === 'return_completed')
   );
   
   const activeDrivers = drivers.filter(
-    driver => driver.driver_profile.status === 'active'
+    driver => driver.driver_profile?.status === 'active'
   );
   
   // Calculate on-time rate for the last 30 days
@@ -171,7 +171,7 @@ export function StatsCards({ rides, drivers }: StatsCardsProps) {
     {
       title: "Completion Rate",
       value: Math.round((rides.filter(ride => 
-        ride.status === 'completed' || ride.status === 'return_completed'
+        ride.status && (ride.status === 'completed' || ride.status === 'return_completed')
       ).length / (rides.length || 1)) * 100),
       description: "Overall completion rate",
       color: "#f59e0b" // amber
