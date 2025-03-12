@@ -343,6 +343,17 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
     }
   }
 
+  // Add a safe date format function after the component variables
+  const safeFormatDate = (dateString: string | null | undefined, formatString: string = 'MM/dd/yyyy') => {
+    if (!dateString) return 'N/A';
+    try {
+      return format(new Date(dateString), formatString);
+    } catch (error) {
+      console.error('Error formatting date:', dateString, error);
+      return 'Invalid Date';
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
@@ -563,8 +574,8 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                             {vehicle.status}
                           </Badge>
                         </TableCell>
-                        <TableCell>{format(new Date(vehicle.last_inspection_date), 'MM/dd/yyyy')}</TableCell>
-                        <TableCell>{format(new Date(vehicle.insurance_expiry), 'MM/dd/yyyy')}</TableCell>
+                        <TableCell>{vehicle.last_inspection_date ? safeFormatDate(vehicle.last_inspection_date) : 'N/A'}</TableCell>
+                        <TableCell>{vehicle.insurance_expiry ? safeFormatDate(vehicle.insurance_expiry) : 'N/A'}</TableCell>
                         <TableCell>
                           <Button variant="outline" size="sm">View Details</Button>
                         </TableCell>
@@ -612,7 +623,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                         <TableCell>
                           <div>{driver.license_number}</div>
                           <div className="text-sm text-muted-foreground">
-                            Expires: {format(new Date(driver.license_expiry), 'MM/dd/yyyy')}
+                            Expires: {driver.license_expiry ? safeFormatDate(driver.license_expiry) : 'N/A'}
                           </div>
                         </TableCell>
                         <TableCell>
@@ -668,7 +679,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                     {auditLogs.map((log) => (
                       <TableRow key={log.id}>
                         <TableCell>
-                          {format(new Date(log.created_at), 'MMM d, yyyy HH:mm:ss')}
+                          {log.created_at ? safeFormatDate(log.created_at, 'MMM d, yyyy HH:mm:ss') : 'N/A'}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline">
@@ -711,7 +722,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                 <div>
                   <h3 className="font-semibold">License Information</h3>
                   <p className="text-sm">License Number: {selectedProfile.license_number}</p>
-                  <p className="text-sm">Expiry: {format(new Date(selectedProfile.license_expiry), 'MM/dd/yyyy')}</p>
+                  <p className="text-sm">Expiry: {selectedProfile.license_expiry ? safeFormatDate(selectedProfile.license_expiry) : 'N/A'}</p>
                 </div>
               )}
               <div>
