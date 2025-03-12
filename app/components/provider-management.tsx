@@ -64,6 +64,7 @@ interface Admin {
   username: string
   provider_id?: string
   provider?: Provider
+  organization_code?: string
   status: 'active' | 'inactive'
   member_id?: string
   user_role: 'admin' | 'super_admin'
@@ -146,6 +147,25 @@ const adminValidationRules = {
   }
 }
 
+// Add organization code for drivers too
+// For example:
+//
+// interface Driver {
+//   id: string
+//   full_name: string
+//   email: string
+//   phone: string
+//   provider_id?: string
+//   organization_code?: string  // Add organization code from provider
+//   status: 'active' | 'inactive'
+//   member_id?: string
+//   // ... other driver fields
+// }
+//
+// When creating or updating drivers, make sure to store the organization_code
+// from their associated provider, similar to how admins are handled.
+// This will ensure consistent organization across the application.
+
 export function ProviderManagement() {
   const router = useRouter()
   const [providers, setProviders] = useState<Provider[]>([])
@@ -226,7 +246,8 @@ export function ProviderManagement() {
           user_role,
           provider_id,
           status,
-          member_id
+          member_id,
+          organization_code
         `)
         .in('user_role', ['admin', 'super_admin'])
       
@@ -244,6 +265,7 @@ export function ProviderManagement() {
           username: admin.email.split('@')[0], // Just use the first part of email as username
           provider_id: admin.provider_id,
           provider: provider,
+          organization_code: admin.organization_code || provider?.organization_code,
           status: admin.status || 'active',
           member_id: admin.member_id,
           user_role: admin.user_role
@@ -296,6 +318,7 @@ export function ProviderManagement() {
         phone: '555-123-4567',
         username: 'admin1',
         provider_id: 'demo-1',
+        organization_code: 'DEMO1',
         provider: {
           id: 'demo-1',
           name: 'Demo Provider 1',
@@ -317,6 +340,7 @@ export function ProviderManagement() {
         phone: '555-234-5678',
         username: 'admin2',
         provider_id: 'demo-2',
+        organization_code: 'DEMO2',
         provider: {
           id: 'demo-2',
           name: 'Demo Provider 2',
@@ -338,6 +362,7 @@ export function ProviderManagement() {
         phone: '555-345-6789',
         username: 'superadmin',
         provider_id: undefined,
+        organization_code: 'SYSTEM',
         status: 'active',
         member_id: 'SA100001',
         user_role: 'super_admin'
@@ -410,6 +435,12 @@ export function ProviderManagement() {
           throw new Error('Please select a provider')
         }
 
+        // Get the provider object to access its organization_code
+        const provider = providers.find(p => p.id === providerIdToUse);
+        if (!provider) {
+          throw new Error('Provider not found')
+        }
+
         console.log('[ProviderManagement] Creating admin for provider:', providerIdToUse);
 
         // Show processing state
@@ -441,6 +472,7 @@ export function ProviderManagement() {
             username: values.username,
             user_role: 'admin',
             provider_id: providerIdToUse,
+            organization_code: provider.organization_code,
             status: 'active'
           })
 
@@ -758,12 +790,13 @@ export function ProviderManagement() {
                       <TableHead>Email</TableHead>
                       <TableHead>Phone</TableHead>
                       <TableHead>Provider</TableHead>
+                      <TableHead>Org Code</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredAdmins.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-4">
+                        <TableCell colSpan={8} className="text-center py-4">
                           No admins found matching your search.
                         </TableCell>
                       </TableRow>
@@ -795,6 +828,9 @@ export function ProviderManagement() {
                           <TableCell className="text-muted-foreground">{admin.phone}</TableCell>
                           <TableCell className="text-muted-foreground">
                             {admin.provider?.name || 'Not assigned'}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground font-mono">
+                            {admin.organization_code || '-'}
                           </TableCell>
                         </TableRow>
                       ))
