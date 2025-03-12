@@ -52,6 +52,19 @@ import {
   TrendingUp,
   Activity,
   Star,
+  Cog,
+  Bell,
+  BarChart3,
+  Headphones,
+  UserPlus,
+  MapPin,
+  ClipboardList,
+  BookOpen,
+  Target,
+  FileText,
+  Ban,
+  Table as TableIcon,
+  History
 } from 'lucide-react'
 
 interface DashboardStats {
@@ -807,6 +820,66 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           </div>
         </div>
       )}
+
+      {/* Quick Access Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Quick Access</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <BookOpen className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Information Base</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Clock className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Pending Acceptance</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Calendar className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Schedule</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <TableIcon className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Pickboard</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <FileText className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Manifest</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <DollarSign className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Invoicing</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <History className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">History</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Ban className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Exclude Member</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Target className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Counties</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Users className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Calendar</span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Quick Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
