@@ -25,7 +25,8 @@ import {
   History,
   Ban,
   Target,
-  UserCircle
+  UserCircle,
+  CheckCircle
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
@@ -174,9 +175,9 @@ export function AdminDashboard() {
     : rides.filter((ride) => !ride.driver_id)
 
   const getDriverRides = (driverName: string) => {
-    const allRides = rides.filter((ride) => ride.driver_id === driverName)
-    const completedRides = allRides.filter((ride) => ride.status === "completed")
-    const uncompletedRides = allRides.filter((ride) => ride.status !== "completed")
+    const allRides = rides.filter((ride) => ride.driver?.full_name === driverName)
+    const completedRides = allRides.filter((ride) => ride.status && ride.status === "completed")
+    const uncompletedRides = allRides.filter((ride) => ride.status && ride.status !== "completed")
     return { completedRides, uncompletedRides }
   }
 
@@ -261,9 +262,11 @@ export function AdminDashboard() {
               {provider.address}, {provider.city}, {provider.state} {provider.zip}
             </p>
           </div>
-          <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
-            {provider.status.toUpperCase()}
-          </Badge>
+          {provider.status && (
+            <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
+              {provider.status.toUpperCase()}
+            </Badge>
+          )}
         </div>
       )}
 
@@ -337,19 +340,24 @@ export function AdminDashboard() {
               <CardTitle>Fulfilled Rides</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold">
-                {rides.filter((ride) => ride.status === 'completed' || ride.status === 'return_completed').length}
-              </p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Unfulfilled Rides</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-3xl font-bold">
-                {rides.length - rides.filter((ride) => ride.status === 'completed' || ride.status === 'return_completed').length}
-              </p>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <CheckCircle className="mr-2 h-5 w-5 text-green-500" />
+                  <span>Completed Rides</span>
+                </div>
+                <Badge variant="outline">
+                  {rides.filter((ride) => ride.status && (ride.status === 'completed' || ride.status === 'return_completed')).length}
+                </Badge>
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center">
+                  <Clock className="mr-2 h-5 w-5 text-yellow-500" />
+                  <span>Active Rides</span>
+                </div>
+                <Badge variant="outline">
+                  {rides.length - rides.filter((ride) => ride.status && (ride.status === 'completed' || ride.status === 'return_completed')).length}
+                </Badge>
+              </div>
             </CardContent>
           </Card>
         </div>
@@ -394,9 +402,13 @@ export function AdminDashboard() {
                       {format(new Date(new Date(ride.scheduled_pickup_time).getTime() - 60 * 60 * 1000), "h:mm a")}
                     </TableCell>
                     <TableCell>
-                      <Badge variant={ride.status === 'completed' || ride.status === 'return_completed' ? "default" : "secondary"}>
-                        {ride.status.replace(/_/g, ' ').toUpperCase()}
-                      </Badge>
+                      {ride.status ? (
+                        <Badge variant={(ride.status === 'completed' || ride.status === 'return_completed') ? "default" : "secondary"}>
+                          {ride.status.replace(/_/g, ' ').toUpperCase()}
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">UNKNOWN</Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Select
@@ -450,8 +462,8 @@ export function AdminDashboard() {
                         </Avatar>
                         <div>
                           <p className="font-semibold">{driver.full_name}</p>
-                          <p className="text-sm text-muted-foreground">Status: {driver.driver_profile.status}</p>
-                          <p className="text-sm text-muted-foreground">Completed Rides: {driver.driver_profile.completed_rides}</p>
+                          <p className="text-sm text-muted-foreground">Status: {driver.driver_profile?.status || 'Unknown'}</p>
+                          <p className="text-sm text-muted-foreground">Completed Rides: {driver.driver_profile?.completed_rides || 0}</p>
                         </div>
                       </div>
                       <div className="flex items-center space-x-4">
