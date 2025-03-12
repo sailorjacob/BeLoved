@@ -23,10 +23,11 @@ import { Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
 import type { Database } from "@/lib/supabase"
+import { toast } from 'sonner'
 
 // Use the same Driver type as in admin-dashboard.tsx
 type Driver = Database['public']['Tables']['profiles']['Row'] & {
-  driver_profile: Database['public']['Tables']['driver_profiles']['Row']
+  driver_profile?: Database['public']['Tables']['driver_profiles']['Row'] | null
 }
 
 interface DriverDirectoryProps {
@@ -40,8 +41,10 @@ export function DriverDirectory({ providerId, onViewProfile, onViewSchedule }: D
   const [searchQuery, setSearchQuery] = useState('')
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [debugInfo, setDebugInfo] = useState<string | null>(null)
 
   useEffect(() => {
+    console.log("DriverDirectory mounted, providerId:", providerId);
     fetchDrivers()
   }, [providerId])
 
@@ -49,6 +52,9 @@ export function DriverDirectory({ providerId, onViewProfile, onViewSchedule }: D
     try {
       setIsLoading(true)
       setError(null)
+      setDebugInfo(null)
+
+      console.log("Fetching drivers with providerId:", providerId);
 
       let query = supabase
         .from('profiles')
@@ -60,33 +66,51 @@ export function DriverDirectory({ providerId, onViewProfile, onViewSchedule }: D
       
       // Only filter by provider if providerId is provided
       if (providerId) {
+        console.log("Adding provider filter:", providerId);
         query = query.eq('provider_id', providerId);
       }
 
-      const { data, error } = await query;
+      const { data, error, status } = await query;
+
+      console.log("Supabase response status:", status);
+      console.log("Supabase response error:", error);
+      console.log("Supabase response data length:", data?.length);
+      console.log("Supabase response first item:", data?.[0]);
+      
+      setDebugInfo(`Status: ${status}, Data count: ${data?.length || 0}`);
 
       if (error) {
-        throw error
+        throw error;
       }
 
-      setDrivers(data as Driver[])
-    } catch (err) {
-      console.error('Error fetching drivers:', err)
-      setError('Failed to load drivers. Please try again.')
-      // We won't use demo data to avoid type issues
-      setIsLoading(false)
+      if (!data || data.length === 0) {
+        console.log("No drivers found");
+        setDrivers([]);
+        setError("No drivers found. Please add drivers to your organization.");
+        setIsLoading(false);
+        return;
+      }
+
+      setDrivers(data as Driver[]);
+    } catch (err: any) {
+      console.error('Error fetching drivers:', err);
+      setError(`Failed to load drivers: ${err.message || 'Unknown error'}`);
+      // We'll use real error messaging instead of demo data
+      setDrivers([]);
+    } finally {
+      setIsLoading(false);
     }
   }
 
   const filteredDrivers = useMemo(() => {
-    const query = searchQuery.toLowerCase().trim()
-    if (!query) return drivers
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return drivers;
 
     return drivers.filter(driver => 
-      driver.full_name.toLowerCase().includes(query) ||
-      driver.phone.toLowerCase().includes(query)
-    )
-  }, [drivers, searchQuery])
+      driver.full_name?.toLowerCase().includes(query) ||
+      driver.phone?.toLowerCase().includes(query)
+    );
+  }, [drivers, searchQuery]);
 
   return (
     <Card className="w-full">
@@ -121,6 +145,18 @@ export function DriverDirectory({ providerId, onViewProfile, onViewSchedule }: D
         ) : error ? (
           <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
             <p>{error}</p>
+            {debugInfo && (
+              <p className="text-xs mt-2">Debug info: {debugInfo}</p>
+            )}
+            <div className="mt-4">
+              <Button 
+                variant="outline"
+                size="sm"
+                onClick={() => fetchDrivers()}
+              >
+                Retry
+              </Button>
+            </div>
           </div>
         ) : (
           <>
@@ -160,7 +196,7 @@ export function DriverDirectory({ providerId, onViewProfile, onViewSchedule }: D
                         </TableCell>
                         <TableCell>
                           <Badge variant={driver.driver_profile?.status === 'active' ? 'success' : 'destructive'}>
-                            {driver.driver_profile?.status === 'active' ? 'Active' : 'Inactive'}
+                            {driver.driver_profile?.status || 'Unknown'}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-center">

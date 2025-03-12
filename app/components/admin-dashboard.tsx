@@ -42,7 +42,7 @@ type Ride = Database['public']['Tables']['rides']['Row'] & {
 }
 
 type Driver = Database['public']['Tables']['profiles']['Row'] & {
-  driver_profile: Database['public']['Tables']['driver_profiles']['Row']
+  driver_profile?: Database['public']['Tables']['driver_profiles']['Row'] | null
 }
 
 interface DriverProfilePageProps {
@@ -59,36 +59,52 @@ export function AdminDashboard() {
   const [showAssignedRides, setShowAssignedRides] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [provider, setProvider] = useState<any>(null)
+  const [providerLoaded, setProviderLoaded] = useState(false)
+  const [dashboardError, setDashboardError] = useState<string | null>(null)
   const router = useRouter()
 
   useEffect(() => {
     const initializeDashboard = async () => {
       try {
+        console.log("Initializing admin dashboard...");
+        setIsLoading(true);
+        setDashboardError(null);
+        
         // Get current user's session
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-        if (sessionError) throw sessionError
-
-        if (!session?.user) {
-          console.error('No session found')
-          router.push('/')
-          return
+        if (sessionError) {
+          console.error('Error getting session:', sessionError);
+          throw sessionError;
         }
 
+        if (!session?.user) {
+          console.error('No session found');
+          setDashboardError('No active session found. Please log in again.');
+          router.push('/');
+          return;
+        }
+
+        console.log("Session user ID:", session.user.id);
+        
         // Fetch user's profile including provider_id
         const { data: profile, error: profileError } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', session.user.id)
-          .single()
+          .single();
 
         if (profileError) {
-          console.error('Error fetching profile:', profileError)
-          throw profileError
+          console.error('Error fetching profile:', profileError);
+          setDashboardError('Failed to load your profile information.');
+          throw profileError;
         }
 
+        console.log("Profile with provider_id:", profile?.provider_id);
+
         if (!profile?.provider_id) {
-          console.error('No provider ID found for user')
-          return
+          console.error('No provider ID found for user');
+          setDashboardError('Your account is not associated with any provider organization.');
+          return;
         }
 
         // Fetch provider details
@@ -96,61 +112,85 @@ export function AdminDashboard() {
           .from('transportation_providers')
           .select('*')
           .eq('id', profile.provider_id)
-          .single()
+          .single();
 
         if (providerError) {
-          console.error('Error fetching provider:', providerError)
-          throw providerError
+          console.error('Error fetching provider:', providerError);
+          setDashboardError('Failed to load provider details.');
+          throw providerError;
         }
 
-        setProvider(providerData)
-        await fetchRides(profile.provider_id)
-        await fetchDrivers(profile.provider_id)
-      } catch (error) {
-        console.error('Error initializing dashboard:', error)
-        toast.error('Failed to load dashboard data')
+        console.log("Provider loaded:", providerData);
+        setProvider(providerData);
+        setProviderLoaded(true);
+        
+        // Fetch rides and drivers after provider is set
+        await fetchRides(profile.provider_id);
+        await fetchDrivers(profile.provider_id);
+        
+        setIsLoading(false);
+      } catch (error: any) {
+        console.error('Error initializing dashboard:', error);
+        setDashboardError(`Failed to load dashboard data: ${error.message || 'Unknown error'}`);
+        setIsLoading(false);
+        toast.error('Failed to load dashboard data');
       }
     }
 
-    initializeDashboard()
-  }, [])
+    initializeDashboard();
+  }, [router])
 
   const fetchRides = async (providerId: string) => {
-    const { data, error } = await supabase
-      .from('rides')
-      .select(`
-        *,
-        member:profiles!rides_member_id_fkey(*),
-        driver:profiles!rides_driver_id_fkey(*)
-      `)
-      .eq('provider_id', providerId)
-      .order('scheduled_pickup_time', { ascending: true })
+    try {
+      console.log("Fetching rides for provider:", providerId);
+      
+      const { data, error } = await supabase
+        .from('rides')
+        .select(`
+          *,
+          member:profiles!rides_member_id_fkey(*),
+          driver:profiles!rides_driver_id_fkey(*)
+        `)
+        .eq('provider_id', providerId)
+        .order('scheduled_pickup_time', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching rides:', error)
-      return
+      if (error) {
+        console.error('Error fetching rides:', error);
+        return;
+      }
+
+      console.log(`Fetched ${data?.length || 0} rides for provider`);
+      setRides(data || []);
+    } catch (error) {
+      console.error('Error in fetchRides:', error);
     }
-
-    setRides(data)
-    setIsLoading(false)
   }
 
   const fetchDrivers = async (providerId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select(`
-        *,
-        driver_profile:driver_profiles(*)
-      `)
-      .eq('user_role', 'driver')
-      .eq('provider_id', providerId)
+    try {
+      console.log("Fetching drivers for provider:", providerId);
+      
+      const { data, error, status } = await supabase
+        .from('profiles')
+        .select(`
+          *,
+          driver_profile:driver_profiles(*)
+        `)
+        .eq('user_role', 'driver')
+        .eq('provider_id', providerId);
 
-    if (error) {
-      console.error('Error fetching drivers:', error)
-      return
+      if (error) {
+        console.error('Error fetching drivers:', error);
+        return;
+      }
+
+      console.log(`Fetched ${data?.length || 0} drivers with status ${status}`);
+      console.log("First driver:", data?.[0]);
+      
+      setDrivers(data as Driver[]);
+    } catch (error) {
+      console.error('Error in fetchDrivers:', error);
     }
-
-    setDrivers(data as Driver[])
   }
 
   const assignDriver = async (rideId: string, driverId: string | null) => {
@@ -448,11 +488,58 @@ export function AdminDashboard() {
         </Card>
 
         <div className="mt-8">
-          <DriverDirectory 
-            providerId={provider?.id} 
-            onViewProfile={handleViewSchedule} 
-            onViewSchedule={handleViewSchedule}
-          />
+          {dashboardError ? (
+            <Card>
+              <CardContent className="py-4">
+                <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+                  <p>{dashboardError}</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={() => window.location.reload()}
+                  >
+                    Reload Dashboard
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : isLoading ? (
+            <Card>
+              <CardContent className="flex justify-center items-center py-8">
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500 mb-4"></div>
+                  <p>Loading driver directory...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : providerLoaded && provider?.id ? (
+            <DriverDirectory 
+              providerId={provider.id} 
+              onViewProfile={handleViewSchedule} 
+              onViewSchedule={handleViewSchedule}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-4">
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4">
+                  <p>Cannot load driver directory: Provider information is missing</p>
+                  <p className="text-xs mt-2">
+                    Debug: Provider loaded status - {providerLoaded ? 'Yes' : 'No'}, 
+                    Provider ID - {provider?.id || 'Missing'}
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-4"
+                    onClick={() => window.location.reload()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>
