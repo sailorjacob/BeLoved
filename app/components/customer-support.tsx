@@ -77,7 +77,7 @@ interface TicketFormData {
   provider_id?: string
 }
 
-export function CustomerSupport() {
+export function AISupport() {
   const router = useRouter()
   const [tickets, setTickets] = useState<SupportTicket[]>([])
   const [selectedTicket, setSelectedTicket] = useState<SupportTicket | null>(null)
@@ -234,7 +234,7 @@ export function CustomerSupport() {
             <span>Back to Dashboard</span>
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Customer Support</h1>
+            <h1 className="text-3xl font-bold">AI Support</h1>
             <p className="text-muted-foreground">Manage support tickets and inquiries</p>
           </div>
         </div>

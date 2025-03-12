@@ -788,9 +788,9 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
               Members Directory
             </Link>
           </Button>
-          <Button variant="destructive" asChild>
+          <Button className="bg-purple-600 hover:bg-purple-700 text-white" asChild>
             <Link href="/super-admin/support">
-              Customer Support
+              AI Support
             </Link>
           </Button>
         </div>
