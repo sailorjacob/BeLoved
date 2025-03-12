@@ -53,6 +53,7 @@ export interface Database {
           user_role: 'super_admin' | 'admin' | 'driver' | 'member'
           provider_id?: string
           status?: 'active' | 'inactive'
+          member_id?: string
           home_address?: {
             address: string
             city: string
@@ -70,6 +71,7 @@ export interface Database {
           user_role?: 'super_admin' | 'admin' | 'driver' | 'member'
           provider_id?: string
           status?: 'active' | 'inactive'
+          member_id?: string
           home_address?: {
             address: string
             city: string
@@ -84,6 +86,7 @@ export interface Database {
           user_role: 'super_admin' | 'admin' | 'driver' | 'member'
           provider_id: string
           status: 'active' | 'inactive'
+          member_id: string
           home_address: {
             address: string
             city: string
@@ -139,6 +142,7 @@ export interface Database {
           id: string
           member_id: string
           driver_id?: string
+          trip_id?: string
           pickup_address: {
             address: string
             city: string
@@ -166,6 +170,7 @@ export interface Database {
         Insert: {
           member_id: string
           driver_id?: string
+          trip_id?: string
           pickup_address: {
             address: string
             city: string
@@ -190,6 +195,7 @@ export interface Database {
         }
         Update: Partial<{
           driver_id: string
+          trip_id: string
           pickup_address: {
             address: string
             city: string
