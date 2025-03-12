@@ -370,7 +370,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
           className="mt-4"
           asChild
         >
-          <Link href="/super-admin/providers">
+          <Link href="/providers-dashboard">
             Back to Providers
           </Link>
         </Button>
@@ -388,7 +388,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
         <Button
           asChild
         >
-          <Link href="/super-admin/providers">
+          <Link href="/providers-dashboard">
             Back to Providers
           </Link>
         </Button>
