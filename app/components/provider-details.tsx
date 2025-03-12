@@ -35,6 +35,7 @@ interface Provider {
   city: string
   state: string
   zip: string
+  phone: string
   status: 'active' | 'inactive'
 }
 
@@ -463,6 +464,7 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                   <h3 className="font-semibold">Contact Information</h3>
                   <p className="text-sm text-muted-foreground">{provider.address}</p>
                   <p className="text-sm text-muted-foreground">{provider.city}, {provider.state} {provider.zip}</p>
+                  <p className="text-sm text-muted-foreground">Phone: {provider.phone || 'N/A'}</p>
                 </div>
               </div>
               

@@ -53,6 +53,7 @@ interface Provider {
   city: string
   state: string
   zip: string
+  phone: string
   status: 'active' | 'inactive'
 }
 
@@ -77,6 +78,7 @@ interface ProviderFormData {
   city: string
   state: string
   zip: string
+  phone: string
 }
 
 interface AdminFormData {
@@ -115,6 +117,12 @@ const providerValidationRules = {
   zip: (value: string) => {
     if (!value) return 'ZIP code is required'
     if (!/^\d{5}(-\d{4})?$/.test(value)) return 'Invalid ZIP code format'
+    return undefined
+  },
+  phone: (value: string) => {
+    if (!value) return 'Phone number is required'
+    if (!/^(\+\d{1,2}\s)?\(?\d{3}\)?[\s.-]?\d{3}[\s.-]?\d{4}$/.test(value)) 
+      return 'Invalid phone number format (e.g., 555-123-4567)'
     return undefined
   }
 }
@@ -229,6 +237,7 @@ export function ProviderManagement() {
         city: provider.city,
         state: provider.state,
         zip: provider.zip,
+        phone: provider.phone,
         status: provider.status
       }))
       
@@ -296,6 +305,7 @@ export function ProviderManagement() {
         city: 'Anytown',
         state: 'IN',
         zip: '47401',
+        phone: '555-123-4567',
         status: 'active'
       },
       {
@@ -306,6 +316,7 @@ export function ProviderManagement() {
         city: 'Somewhere',
         state: 'IN',
         zip: '47403',
+        phone: '555-234-5678',
         status: 'inactive'
       }
     ])
@@ -327,6 +338,7 @@ export function ProviderManagement() {
           city: 'Anytown',
           state: 'IN',
           zip: '47401',
+          phone: '555-123-4567',
           status: 'active'
         },
         status: 'active',
@@ -349,6 +361,7 @@ export function ProviderManagement() {
           city: 'Somewhere',
           state: 'IN',
           zip: '47403',
+          phone: '555-234-5678',
           status: 'inactive'
         },
         status: 'active',
@@ -377,7 +390,8 @@ export function ProviderManagement() {
       address: '',
       city: '',
       state: '',
-      zip: ''
+      zip: '',
+      phone: ''
     },
     validationRules: providerValidationRules,
     onSubmit: async (values) => {
@@ -392,6 +406,7 @@ export function ProviderManagement() {
             city: values.city,
             state: values.state,
             zip: values.zip,
+            phone: values.phone,
             status: 'active'
           }])
           .select()
@@ -553,7 +568,8 @@ export function ProviderManagement() {
           address: values.address,
           city: values.city,
           state: values.state,
-          zip: values.zip
+          zip: values.zip,
+          phone: values.phone
         })
         .eq('id', providerToEdit.id)
 
@@ -933,6 +949,14 @@ export function ProviderManagement() {
               onChange={(e) => providerForm.handleChange('zip', e.target.value)}
               required
             />
+            <FormInput
+              label="Phone Number"
+              name="phone"
+              value={providerForm.values.phone}
+              error={providerForm.errors.phone}
+              onChange={(e) => providerForm.handleChange('phone', e.target.value)}
+              required
+            />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setIsProviderDialogOpen(false)}>
                 Cancel
@@ -1049,7 +1073,8 @@ export function ProviderManagement() {
                   address: (e.currentTarget.elements.namedItem('address') as HTMLInputElement).value,
                   city: (e.currentTarget.elements.namedItem('city') as HTMLInputElement).value,
                   state: (e.currentTarget.elements.namedItem('state') as HTMLInputElement).value,
-                  zip: (e.currentTarget.elements.namedItem('zip') as HTMLInputElement).value
+                  zip: (e.currentTarget.elements.namedItem('zip') as HTMLInputElement).value,
+                  phone: (e.currentTarget.elements.namedItem('phone') as HTMLInputElement).value
                 }
                 handleEditProvider(formData)
               }} 
@@ -1090,6 +1115,12 @@ export function ProviderManagement() {
                 label="ZIP Code"
                 name="zip"
                 defaultValue={providerToEdit.zip}
+                required
+              />
+              <FormInput
+                label="Phone Number"
+                name="phone"
+                defaultValue={providerToEdit.phone}
                 required
               />
               <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-between">
