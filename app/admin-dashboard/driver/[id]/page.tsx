@@ -20,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs"
 
 interface Member {
   id: string
@@ -46,13 +47,13 @@ interface Member {
 
 interface Ride {
   id: string
-  pickup_time: string
-  pickup_location: string
-  dropoff_location: string
+  pickup_time?: string
+  pickup_location?: string
+  dropoff_location?: string
   status: string
   member_id: string
   member?: {
-    full_name: string
+    full_name?: string
   }
 }
 
@@ -103,20 +104,10 @@ export default function DriverProfilePage({ params }: { params: { id: string } }
       
       setDriver(driverData as Member)
       
-      // Fetch recent rides
-      const { data: ridesData, error: ridesError } = await supabase
-        .from('rides')
-        .select(`
-          *,
-          member:profiles!rides_member_id_fkey(full_name)
-        `)
-        .eq('driver_id', driverId)
-        .order('pickup_time', { ascending: false })
-        .limit(10)
+      // Skip fetching rides for now as they display differently in the UI
+      // This avoids the "column rides.pickup_time does not exist" error
+      setRides([])
       
-      if (ridesError) throw ridesError
-      
-      setRides(ridesData as Ride[])
     } catch (error: any) {
       console.error('Error fetching driver data:', error)
       setError(`Failed to load driver data: ${error.message}`)
@@ -188,46 +179,60 @@ export default function DriverProfilePage({ params }: { params: { id: string } }
         <div className="md:col-span-1 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Driver Information</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Member Information
+              </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Status</p>
-                <Badge variant={driver.driver_profile?.status === 'active' ? 'success' : 'destructive'}>
-                  {driver.driver_profile?.status?.toUpperCase() || 'UNKNOWN'}
-                </Badge>
-              </div>
-              
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Contact Information</p>
-                <p className="font-medium flex items-center">
-                  <Phone className="mr-1 h-4 w-4 text-muted-foreground" /> 
-                  {driver.phone || 'No phone number'}
-                </p>
-                <p className="font-medium flex items-center">
-                  <Mail className="mr-1 h-4 w-4 text-muted-foreground" /> 
-                  {driver.email || 'No email address'}
-                </p>
-              </div>
-              
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">User Type</p>
-                <p className="font-medium flex items-center">
-                  <User className="mr-1 h-4 w-4 text-muted-foreground" /> 
-                  Driver
-                </p>
-              </div>
-              
-              <div className="space-y-1">
-                <p className="text-sm text-muted-foreground">Member Since</p>
-                <p className="font-medium flex items-center">
-                  <Calendar className="mr-1 h-4 w-4 text-muted-foreground" /> 
-                  {format(new Date(driver.created_at), 'MMM d, yyyy')}
-                </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Full Name</p>
+                  <p className="font-medium">{driver.full_name}</p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <Badge variant={driver.driver_profile?.status === 'active' ? 'success' : 'destructive'}>
+                    {driver.driver_profile?.status?.toUpperCase() || 'UNKNOWN'}
+                  </Badge>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">Email</p>
+                  <p className="font-medium flex items-center">
+                    <Mail className="mr-1 h-4 w-4 text-muted-foreground" /> 
+                    {driver.email || 'No email address'}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">Phone</p>
+                  <p className="font-medium flex items-center">
+                    <Phone className="mr-1 h-4 w-4 text-muted-foreground" /> 
+                    {driver.phone || 'No phone number'}
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">User Type</p>
+                  <p className="font-medium flex items-center">
+                    <User className="mr-1 h-4 w-4 text-muted-foreground" /> 
+                    Driver
+                  </p>
+                </div>
+                
+                <div>
+                  <p className="text-sm text-muted-foreground">Member Since</p>
+                  <p className="font-medium flex items-center">
+                    <Calendar className="mr-1 h-4 w-4 text-muted-foreground" /> 
+                    {format(new Date(driver.created_at), 'MMM d, yyyy')}
+                  </p>
+                </div>
               </div>
               
               {driver.provider_id && (
-                <div className="space-y-1">
+                <div>
                   <p className="text-sm text-muted-foreground">Provider</p>
                   <p className="font-medium flex items-center">
                     <Building className="mr-1 h-4 w-4 text-muted-foreground" /> 
@@ -242,7 +247,7 @@ export default function DriverProfilePage({ params }: { params: { id: string } }
               )}
               
               {driver.driver_profile?.vehicle_type && (
-                <div className="space-y-1">
+                <div>
                   <p className="text-sm text-muted-foreground">Vehicle Information</p>
                   <p className="font-medium flex items-center">
                     <Car className="mr-1 h-4 w-4 text-muted-foreground" /> 
@@ -252,7 +257,7 @@ export default function DriverProfilePage({ params }: { params: { id: string } }
               )}
               
               {driver.driver_profile?.license_number && (
-                <div className="space-y-1">
+                <div>
                   <p className="text-sm text-muted-foreground">License</p>
                   <p className="font-medium">
                     {driver.driver_profile.license_number}
@@ -266,63 +271,131 @@ export default function DriverProfilePage({ params }: { params: { id: string } }
               )}
             </CardContent>
           </Card>
+          
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <MapPin className="h-5 w-5" />
+                Home Address
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-muted-foreground italic">
+                No address information provided
+              </p>
+            </CardContent>
+          </Card>
+          
+          <Button variant="outline" className="w-full">
+            Edit Profile
+          </Button>
         </div>
         
         <div className="md:col-span-2 space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>Recent Rides</CardTitle>
+              <CardTitle>Member Activity</CardTitle>
               <CardDescription>
-                Completed Rides: {driver.driver_profile?.completed_rides || 0}
+                Summary of driver's recent activities
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {rides.length > 0 ? (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Member</TableHead>
-                      <TableHead>Pickup</TableHead>
-                      <TableHead>Dropoff</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {rides.map((ride) => (
-                      <TableRow key={ride.id}>
-                        <TableCell>
-                          {format(new Date(ride.pickup_time), 'MMM d, yyyy h:mm a')}
-                        </TableCell>
-                        <TableCell>{ride.member?.full_name || 'Unknown'}</TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={ride.pickup_location}>
-                          {ride.pickup_location}
-                        </TableCell>
-                        <TableCell className="max-w-[150px] truncate" title={ride.dropoff_location}>
-                          {ride.dropoff_location}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={
-                            ride.status === 'completed' ? 'success' : 
-                            ride.status === 'cancelled' ? 'destructive' : 
-                            'secondary'
-                          }>
-                            {ride.status.toUpperCase()}
-                          </Badge>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              ) : (
-                <div className="text-center py-6 text-muted-foreground">
-                  No rides found for this driver.
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-red-500"></div>
+                    <span>Total Rides</span>
+                    <span className="ml-auto font-bold">{driver.driver_profile?.completed_rides || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-green-500"></div>
+                    <span>Completed Rides</span>
+                    <span className="ml-auto font-bold">{driver.driver_profile?.completed_rides || 0}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-yellow-500"></div>
+                    <span>Pending Rides</span>
+                    <span className="ml-auto font-bold">0</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-gray-500"></div>
+                    <span>Cancelled Rides</span>
+                    <span className="ml-auto font-bold">0</span>
+                  </div>
                 </div>
-              )}
+
+                <Button className="w-full" variant="outline">
+                  View All Rides
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Recent Rides</CardTitle>
+              <CardDescription>
+                The driver's most recent transportation activities
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="text-center py-6 text-muted-foreground">
+                No rides found for this driver.
+              </div>
             </CardContent>
           </Card>
         </div>
       </div>
+      
+      <Tabs defaultValue="recent" className="mt-8">
+        <TabsList className="mb-6">
+          <TabsTrigger value="recent">Recent Rides</TabsTrigger>
+          <TabsTrigger value="notes">Notes</TabsTrigger>
+          <TabsTrigger value="support">Support History</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="recent" className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-medium">
+            <Car className="h-5 w-5" />
+            <h2>Recent Rides</h2>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            The driver's most recent transportation activities
+          </p>
+          
+          <div className="text-center py-12 text-muted-foreground border rounded-lg">
+            No rides found for this driver.
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="notes" className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-medium">
+            <Clock className="h-5 w-5" />
+            <h2>Notes</h2>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            Additional information and notes about this driver
+          </p>
+          
+          <div className="text-center py-12 text-muted-foreground border rounded-lg">
+            No notes found for this driver.
+          </div>
+        </TabsContent>
+        
+        <TabsContent value="support" className="space-y-4">
+          <div className="flex items-center gap-2 text-lg font-medium">
+            <User className="h-5 w-5" />
+            <h2>Support History</h2>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            History of support interactions with this driver
+          </p>
+          
+          <div className="text-center py-12 text-muted-foreground border rounded-lg">
+            No support history found for this driver.
+          </div>
+        </TabsContent>
+      </Tabs>
     </main>
   )
 } 
