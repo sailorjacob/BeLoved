@@ -1,14 +1,3 @@
--- Migration: Add member_id and trip_id fields
--- Creates 7-digit numeric identifiers for both members (profiles) and trips (rides)
-
--- IMPORTANT SAFETY CHECKS:
--- 1. First check if the columns already exist before attempting to add them
--- 2. Use IF NOT EXISTS for all functions and triggers
-
--- =============================================
--- MEMBER ID IMPLEMENTATION
--- =============================================
-
 -- Add member_id column to profiles table if it doesn't exist
 DO $$ 
 BEGIN
@@ -23,7 +12,7 @@ BEGIN
     END IF;
 END $$;
 
--- Create function to generate the next member ID if it doesn't exist
+-- Create function to generate the next member ID
 CREATE OR REPLACE FUNCTION generate_member_id() 
 RETURNS VARCHAR AS $$
 DECLARE
@@ -48,7 +37,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a trigger to auto-assign member_id on insert if not provided
+-- Create a trigger to auto-assign member_id on insert
 DO $$ 
 BEGIN
     -- Drop the trigger if it exists
@@ -72,14 +61,10 @@ BEGIN
     EXECUTE FUNCTION set_member_id();
 END $$;
 
--- Update existing profiles with a member_id - simplified to avoid nested BEGIN blocks
+-- Update existing profiles with a member_id
 UPDATE profiles 
 SET member_id = generate_member_id() 
 WHERE member_id IS NULL OR member_id = '';
-
--- =============================================
--- TRIP ID IMPLEMENTATION
--- =============================================
 
 -- Add trip_id column to rides table if it doesn't exist
 DO $$ 
@@ -95,7 +80,7 @@ BEGIN
     END IF;
 END $$;
 
--- Create function to generate the next trip ID if it doesn't exist
+-- Create function to generate the next trip ID
 CREATE OR REPLACE FUNCTION generate_trip_id() 
 RETURNS VARCHAR AS $$
 DECLARE
@@ -120,7 +105,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Create a trigger to auto-assign trip_id on insert if not provided
+-- Create a trigger to auto-assign trip_id on insert
 DO $$ 
 BEGIN
     -- Drop the trigger if it exists
@@ -144,16 +129,12 @@ BEGIN
     EXECUTE FUNCTION set_trip_id();
 END $$;
 
--- Update existing rides with a trip_id - simplified to avoid nested BEGIN blocks
+-- Update existing rides with a trip_id
 UPDATE rides 
 SET trip_id = generate_trip_id() 
 WHERE trip_id IS NULL OR trip_id = '';
 
--- =============================================
--- VERIFICATION
--- =============================================
-
--- Output counts of updated records
+-- Verify that the migration worked
 DO $$
 DECLARE
     profile_count INTEGER;
@@ -164,4 +145,4 @@ BEGIN
     
     RAISE NOTICE 'Migration complete. % profiles have member_id and % rides have trip_id.', 
         profile_count, ride_count;
-END $$; 
+END $$;
