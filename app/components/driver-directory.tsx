@@ -207,9 +207,11 @@ export function DriverDirectory({ providerId, onViewProfile, onViewSchedule }: D
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => onViewProfile && onViewProfile(driver)}
+                              asChild
                             >
-                              Profile
+                              <Link href={`/admin-dashboard/driver/${driver.id}`}>
+                                Profile
+                              </Link>
                             </Button>
                             <Button
                               variant="outline"
