@@ -37,22 +37,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Create the trigger function for member_id
+CREATE OR REPLACE FUNCTION set_member_id() 
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.member_id IS NULL THEN
+        NEW.member_id := generate_member_id();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Create a trigger to auto-assign member_id on insert
 DO $$ 
 BEGIN
     -- Drop the trigger if it exists
     DROP TRIGGER IF EXISTS before_insert_profiles ON profiles;
-    
-    -- Create or replace the trigger function
-    CREATE OR REPLACE FUNCTION set_member_id() 
-    RETURNS TRIGGER AS $$
-    BEGIN
-        IF NEW.member_id IS NULL THEN
-            NEW.member_id := generate_member_id();
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
     
     -- Create the trigger
     CREATE TRIGGER before_insert_profiles
@@ -105,22 +105,22 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+-- Create the trigger function for trip_id
+CREATE OR REPLACE FUNCTION set_trip_id() 
+RETURNS TRIGGER AS $$
+BEGIN
+    IF NEW.trip_id IS NULL THEN
+        NEW.trip_id := generate_trip_id();
+    END IF;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
 -- Create a trigger to auto-assign trip_id on insert
 DO $$ 
 BEGIN
     -- Drop the trigger if it exists
     DROP TRIGGER IF EXISTS before_insert_rides ON rides;
-    
-    -- Create or replace the trigger function
-    CREATE OR REPLACE FUNCTION set_trip_id() 
-    RETURNS TRIGGER AS $$
-    BEGIN
-        IF NEW.trip_id IS NULL THEN
-            NEW.trip_id := generate_trip_id();
-        END IF;
-        RETURN NEW;
-    END;
-    $$ LANGUAGE plpgsql;
     
     -- Create the trigger
     CREATE TRIGGER before_insert_rides
