@@ -33,7 +33,8 @@ import type { Database } from "@/lib/supabase"
 import { RideDetailView } from "./ride-detail-view"
 import { StatsCards } from "./dashboard/stats-cards"
 import { RideTrendsChart } from "./dashboard/ride-trends-chart"
-import { DriverDirectory } from "./driver-directory"
+import { DriverDirectory as AdminDriverDirectory } from "./driver-directory"
+import { AdminMembersDirectory } from "./admin-members-directory"
 import { toast } from 'sonner'
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
@@ -514,7 +515,7 @@ export function AdminDashboard() {
               </CardContent>
             </Card>
           ) : providerLoaded && provider?.id ? (
-            <DriverDirectory 
+            <AdminDriverDirectory 
               providerId={provider.id} 
               onViewProfile={handleViewSchedule} 
               onViewSchedule={handleViewSchedule}
@@ -536,6 +537,41 @@ export function AdminDashboard() {
                   >
                     Retry
                   </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+        
+        {/* Member Directory Section */}
+        <div className="mt-8">
+          {dashboardError ? (
+            <Card>
+              <CardContent className="py-4">
+                <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4">
+                  <p>{dashboardError}</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : isLoading ? (
+            <Card>
+              <CardContent className="flex justify-center items-center py-8">
+                <div className="flex flex-col items-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500 mb-4"></div>
+                  <p>Loading member directory...</p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : providerLoaded && provider?.id ? (
+            <AdminMembersDirectory 
+              providerId={provider.id} 
+              onViewProfile={(memberId) => window.location.href = `/admin-dashboard/member/${memberId}`}
+            />
+          ) : (
+            <Card>
+              <CardContent className="py-4">
+                <div className="bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg p-4">
+                  <p>Cannot load member directory: Provider information is missing</p>
                 </div>
               </CardContent>
             </Card>
