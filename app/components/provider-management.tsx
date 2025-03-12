@@ -160,6 +160,12 @@ export function ProviderManagement() {
   const fetchAttemptedRef = useRef(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [isEditProviderDialogOpen, setIsEditProviderDialogOpen] = useState(false)
+  const [providerToEdit, setProviderToEdit] = useState<Provider | null>(null)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
 
   // One-time check of providers table
   useEffect(() => {
@@ -502,6 +508,91 @@ export function ProviderManagement() {
     }
   }
 
+  const handleEditProvider = async (values: ProviderFormData) => {
+    if (!providerToEdit) return
+
+    try {
+      console.log('[ProviderManagement] Attempting to update provider:', values)
+      const { error } = await supabase
+        .from('transportation_providers')
+        .update({
+          name: values.name,
+          organization_code: values.organization_code,
+          address: values.address,
+          city: values.city,
+          state: values.state,
+          zip: values.zip
+        })
+        .eq('id', providerToEdit.id)
+
+      if (error) {
+        console.error('[ProviderManagement] Error updating provider:', error)
+        throw error
+      }
+
+      toast.success('Transportation provider updated successfully')
+      setIsEditProviderDialogOpen(false)
+      // Reset the fetch attempt flag so we can fetch again
+      fetchAttemptedRef.current = false
+      fetchData()
+    } catch (error) {
+      console.error('[ProviderManagement] Error updating provider:', error)
+      toast.error('Failed to update provider')
+    }
+  }
+
+  const handleDeleteProvider = async () => {
+    if (!providerToEdit) return
+
+    try {
+      setIsDeleting(true)
+      setDeleteError(null)
+
+      // First verify the super admin password
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+      
+      if (authError) throw new Error("Authentication error")
+      
+      // Verify the password with Supabase Auth
+      const { error: signInError } = await supabase.auth.signInWithPassword({
+        email: user!.email!,
+        password: deletePassword
+      })
+
+      if (signInError) {
+        setDeleteError("Incorrect password. Please try again.")
+        return
+      }
+
+      // Check if this provider has any admins
+      const providerAdmins = admins.filter(admin => admin.provider_id === providerToEdit.id)
+      
+      if (providerAdmins.length > 0) {
+        throw new Error("Cannot delete provider with active admins. Please reassign or delete the admin accounts first.")
+      }
+
+      // Delete the provider
+      const { error: deleteError } = await supabase
+        .from('transportation_providers')
+        .delete()
+        .eq('id', providerToEdit.id)
+
+      if (deleteError) throw deleteError
+
+      toast.success('Provider deleted successfully')
+      setIsDeleteDialogOpen(false)
+      setIsEditProviderDialogOpen(false)
+      fetchAttemptedRef.current = false
+      fetchData()
+    } catch (error: any) {
+      console.error('[ProviderManagement] Error deleting provider:', error)
+      setDeleteError(error.message || 'Failed to delete provider')
+      toast.error(error.message || 'Failed to delete provider')
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const filteredAdmins = admins.filter(admin =>
     admin.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     admin.id.toLowerCase().includes(searchQuery.toLowerCase())
@@ -558,7 +649,14 @@ export function ProviderManagement() {
                   const providerAdmins = admins.filter(admin => admin.provider_id === provider.id)
                   return (
                     <TableRow key={provider.id}>
-                      <TableCell>{provider.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <Link 
+                          href={`/provider/${provider.id}/details`}
+                          className="text-primary hover:underline hover:text-primary/90 transition-colors"
+                        >
+                          {provider.name}
+                        </Link>
+                      </TableCell>
                       <TableCell>{provider.organization_code}</TableCell>
                       <TableCell>
                         {`${provider.address}, ${provider.city}, ${provider.state} ${provider.zip}`}
@@ -595,6 +693,16 @@ export function ProviderManagement() {
                             <Link href={`/provider/${provider.id}/details`}>
                               View Details
                             </Link>
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setProviderToEdit(provider)
+                              setIsEditProviderDialogOpen(true)
+                            }}
+                          >
+                            Edit
                           </Button>
                         </div>
                       </TableCell>
@@ -901,6 +1009,147 @@ export function ProviderManagement() {
               <Button type="submit">Create Admin</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Provider Dialog */}
+      <Dialog open={isEditProviderDialogOpen} onOpenChange={setIsEditProviderDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Transportation Provider</DialogTitle>
+            <DialogDescription>
+              Update the details for the selected provider.
+            </DialogDescription>
+          </DialogHeader>
+          {providerToEdit && (
+            <form 
+              onSubmit={(e) => {
+                e.preventDefault()
+                // Use the values directly from the form elements
+                const formData: ProviderFormData = {
+                  name: (e.currentTarget.elements.namedItem('name') as HTMLInputElement).value,
+                  organization_code: (e.currentTarget.elements.namedItem('organization_code') as HTMLInputElement).value,
+                  address: (e.currentTarget.elements.namedItem('address') as HTMLInputElement).value,
+                  city: (e.currentTarget.elements.namedItem('city') as HTMLInputElement).value,
+                  state: (e.currentTarget.elements.namedItem('state') as HTMLInputElement).value,
+                  zip: (e.currentTarget.elements.namedItem('zip') as HTMLInputElement).value
+                }
+                handleEditProvider(formData)
+              }} 
+              className="space-y-4"
+            >
+              <FormInput
+                label="Provider Name"
+                name="name"
+                defaultValue={providerToEdit.name}
+                required
+              />
+              <FormInput
+                label="Organization Code"
+                name="organization_code"
+                defaultValue={providerToEdit.organization_code}
+                required
+                placeholder="e.g., BLOOMINGTON1"
+              />
+              <FormInput
+                label="Address"
+                name="address"
+                defaultValue={providerToEdit.address}
+                required
+              />
+              <FormInput
+                label="City"
+                name="city"
+                defaultValue={providerToEdit.city}
+                required
+              />
+              <FormInput
+                label="State"
+                name="state"
+                defaultValue={providerToEdit.state}
+                required
+              />
+              <FormInput
+                label="ZIP Code"
+                name="zip"
+                defaultValue={providerToEdit.zip}
+                required
+              />
+              <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-between">
+                <Button 
+                  type="button" 
+                  variant="destructive" 
+                  onClick={() => setIsDeleteDialogOpen(true)}
+                >
+                  Delete Provider
+                </Button>
+                <div className="flex space-x-2">
+                  <Button type="button" variant="outline" onClick={() => setIsEditProviderDialogOpen(false)}>
+                    Cancel
+                  </Button>
+                  <Button type="submit">Update Provider</Button>
+                </div>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-destructive">Confirm Provider Deletion</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. This will permanently delete the provider and all associated data.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <p className="font-medium">
+              Are you sure you want to delete {providerToEdit?.name}?
+            </p>
+            
+            <div className="border rounded-md p-4 bg-muted/50">
+              <p className="text-sm font-medium mb-2">Please enter your super admin password to confirm:</p>
+              <FormInput
+                type="password"
+                label="Password"
+                name="deletePassword"
+                id="deletePassword"
+                value={deletePassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setDeletePassword(e.target.value)}
+                placeholder="Enter password to confirm"
+                required
+              />
+              {deleteError && (
+                <p className="text-sm text-destructive mt-2">{deleteError}</p>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button
+              variant="outline" 
+              onClick={() => setIsDeleteDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteProvider}
+              disabled={!deletePassword || isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <span className="animate-spin mr-2">⟳</span>
+                  Deleting...
+                </>
+              ) : (
+                "Delete Provider"
+              )}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
