@@ -6,9 +6,22 @@ import { FormInput } from '@/components/ui/form-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
 import { supabase } from '@/lib/supabase'
 import { Button } from '@/components/ui/button'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { toast } from 'sonner'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+
+interface Provider {
+  id: string
+  name: string
+  organization_code: string
+}
 
 interface DriverFormData {
   username: string
@@ -16,6 +29,7 @@ interface DriverFormData {
   full_name: string
   email: string
   phone: string
+  provider_id: string
 }
 
 const initialValues: DriverFormData = {
@@ -23,7 +37,8 @@ const initialValues: DriverFormData = {
   password: '',
   full_name: '',
   email: '',
-  phone: ''
+  phone: '',
+  provider_id: ''
 }
 
 const validationRules = {
@@ -51,16 +66,49 @@ const validationRules = {
     if (!value) return 'Phone number is required'
     if (!/^\+?[\d\s-]{10,}$/.test(value)) return 'Invalid phone number format'
     return undefined
+  },
+  provider_id: (value: string) => {
+    if (!value) return 'Provider is required'
+    return undefined
   }
 }
 
 export function CreateDriverForm() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
+  const [providers, setProviders] = useState<Provider[]>([])
+  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(null)
+
+  useEffect(() => {
+    // Fetch providers for the dropdown
+    const fetchProviders = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('transportation_providers')
+          .select('id, name, organization_code')
+          .eq('status', 'active')
+          .order('name');
+
+        if (error) throw error;
+        setProviders(data || []);
+      } catch (error) {
+        console.error('Error fetching providers:', error);
+        toast.error('Failed to load providers');
+      }
+    };
+
+    fetchProviders();
+  }, []);
 
   const handleCreateDriver = async (values: DriverFormData) => {
     setIsLoading(true)
     try {
+      // Find the selected provider to get its organization code
+      const provider = providers.find(p => p.id === values.provider_id);
+      if (!provider) {
+        throw new Error('Selected provider not found');
+      }
+      
       // 1. Create auth user with username/password
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: values.email,
@@ -86,7 +134,9 @@ export function CreateDriverForm() {
           email: values.email,
           phone: values.phone,
           username: values.username,
-          user_role: 'driver'
+          user_role: 'driver',
+          provider_id: values.provider_id,
+          organization_code: provider.organization_code  // Set the organization code
         })
 
       if (profileError) throw profileError
@@ -138,6 +188,29 @@ export function CreateDriverForm() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium leading-none">
+              Provider <span className="text-red-500">*</span>
+            </label>
+            <Select
+              value={values.provider_id}
+              onValueChange={(value) => handleChange('provider_id', value)}
+            >
+              <SelectTrigger className={errors.provider_id ? "border-red-500" : ""}>
+                <SelectValue placeholder="Select a provider" />
+              </SelectTrigger>
+              <SelectContent>
+                {providers.map((provider) => (
+                  <SelectItem key={provider.id} value={provider.id}>
+                    {provider.name} ({provider.organization_code})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {errors.provider_id && (
+              <p className="text-sm text-red-500">{errors.provider_id}</p>
+            )}
+          </div>
           <FormInput
             label="Username"
             name="username"

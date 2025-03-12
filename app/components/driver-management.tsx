@@ -38,6 +38,8 @@ interface Driver {
   phone: string
   username: string
   user_type: string
+  provider_id?: string
+  organization_code?: string
   driver_profile: {
     status: string
     completed_rides: number
@@ -75,7 +77,7 @@ const validationRules = {
   }
 }
 
-export function DriverManagement() {
+export function DriverManagement({ providerId }: { providerId?: string }) {
   const router = useRouter()
   const [drivers, setDrivers] = useState<Driver[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -86,19 +88,34 @@ export function DriverManagement() {
 
   useEffect(() => {
     fetchDrivers()
-  }, [])
+  }, [providerId])
 
   const fetchDrivers = async () => {
     try {
-      const { data, error } = await supabase
+      let query = supabase
         .from('profiles')
-        .select('*')
-        .eq('user_role', 'driver')
-        .eq('provider_id', providerId)
+        .select(`
+          *,
+          provider:transportation_providers(id, organization_code)
+        `)
+        .eq('user_role', 'driver');
+      
+      // Only filter by provider if providerId is provided
+      if (providerId) {
+        query = query.eq('provider_id', providerId);
+      }
 
-      if (error) throw error
+      const { data, error } = await query;
 
-      setDrivers(data as Driver[])
+      if (error) throw error;
+
+      // Map the returned data to include organization_code
+      const mappedDrivers = data.map(driver => ({
+        ...driver,
+        organization_code: driver.organization_code || (driver.provider ? driver.provider.organization_code : undefined)
+      }));
+
+      setDrivers(mappedDrivers as Driver[])
     } catch (error) {
       console.error('Error fetching drivers:', error)
       toast.error('Failed to fetch drivers')
@@ -128,7 +145,8 @@ export function DriverManagement() {
           full_name: values.full_name,
           email: values.email,
           phone: values.phone,
-          username: values.username
+          username: values.username,
+          organization_code: selectedDriver.organization_code
         })
         .eq('id', selectedDriver.id)
 
@@ -222,6 +240,7 @@ export function DriverManagement() {
                 <TableHead>Username</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Phone</TableHead>
+                <TableHead>Org Code</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Completed Rides</TableHead>
                 <TableHead>Actions</TableHead>
@@ -234,6 +253,7 @@ export function DriverManagement() {
                   <TableCell>{driver.username}</TableCell>
                   <TableCell>{driver.email}</TableCell>
                   <TableCell>{driver.phone}</TableCell>
+                  <TableCell className="font-mono">{driver.organization_code || '-'}</TableCell>
                   <TableCell>
                     <Badge variant={driver.driver_profile.status === 'active' ? 'success' : 'secondary'}>
                       {driver.driver_profile.status}
