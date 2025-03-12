@@ -172,7 +172,7 @@ export function ProfileForm() {
                 disabled
                 className="bg-gray-100 text-gray-500"
               />
-              <p className="text-xs text-gray-500">Your unique member identifier for customer service reference</p>
+              <p className="text-xs text-gray-500">Your unique member identifier</p>
             </div>
             
             <div className="space-y-2">
