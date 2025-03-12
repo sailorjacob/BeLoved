@@ -820,17 +820,17 @@ export function ProviderManagement() {
                       filteredAdmins.map((admin) => (
                         <TableRow key={admin.id}>
                           <TableCell className="font-mono">{admin.member_id || '-'}</TableCell>
-                          <TableCell className="font-medium">
+                          <TableCell className="font-bold">
                             <Link 
                               href={`/super-admin-dashboard/members/${admin.id}`}
-                              className="text-primary hover:underline hover:text-primary/90 transition-colors"
+                              className="text-foreground hover:underline transition-colors"
                             >
                               {admin.full_name}
                             </Link>
                           </TableCell>
                           <TableCell>
                             <Badge variant={
-                              admin.user_role === 'super_admin' ? 'default' : 'outline'
+                              admin.user_role === 'super_admin' ? 'purple' : 'outline'
                             }>
                               {admin.user_role === 'super_admin' ? 'Super Admin' : 'Admin'}
                             </Badge>
