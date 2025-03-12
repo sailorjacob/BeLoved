@@ -40,6 +40,11 @@ interface Member {
   user_role: 'super_admin' | 'admin' | 'driver' | 'member'
   status: 'active' | 'inactive'
   provider_id?: string
+  provider?: {
+    name: string
+    organization_code: string
+  }
+  organization_code?: string
   home_address?: {
     address: string
     city: string
@@ -97,10 +102,13 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
       setIsLoading(true)
       setError(null)
 
-      // Fetch member profile
+      // Fetch member profile with provider details
       const { data: memberData, error: memberError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(`
+          *,
+          provider:provider_id(name, organization_code)
+        `)
         .eq('id', memberId)
         .single()
 
@@ -136,6 +144,28 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
   }
 
   const setDemoData = (memberId: string) => {
+    // Generate appropriate provider data based on ID
+    let providerInfo = undefined;
+    let providerID = undefined;
+    let organizationCode = undefined;
+    
+    // Generate different provider data based on ID
+    if (parseInt(memberId) % 3 === 0) {
+      providerID = 'provider-1';
+      providerInfo = { 
+        name: 'BeLoved Transportation', 
+        organization_code: 'BELOVED' 
+      };
+      organizationCode = 'BELOVED';
+    } else if (parseInt(memberId) % 3 === 1) {
+      providerID = 'provider-2';
+      providerInfo = { 
+        name: 'Bloomington Transit', 
+        organization_code: 'BLOOM123' 
+      };
+      organizationCode = 'BLOOM123';
+    }
+    
     // Create demo member data
     const demoMember: Member = {
       id: memberId,
@@ -143,9 +173,13 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
       full_name: `Member ${memberId}`,
       email: `member${memberId}@example.com`,
       phone: `555-${String(1000 + parseInt(memberId)).slice(1)}`,
-      user_role: parseInt(memberId) % 5 === 0 ? 'driver' : 'member',
+      user_role: parseInt(memberId) % 5 === 0 ? 'driver' : 
+                 parseInt(memberId) % 7 === 0 ? 'admin' :
+                 parseInt(memberId) % 11 === 0 ? 'super_admin' : 'member',
       status: 'active',
-      provider_id: parseInt(memberId) % 3 === 0 ? 'provider-1' : undefined,
+      provider_id: providerID,
+      provider: providerInfo,
+      organization_code: organizationCode,
       home_address: {
         address: '123 Main Street',
         city: 'Bloomington',
@@ -304,8 +338,13 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
                   <p className="text-sm text-muted-foreground">Provider</p>
                   <p className="font-medium flex items-center">
                     <Building className="mr-1 h-4 w-4 text-muted-foreground" /> 
-                    Provider {member.provider_id}
+                    {member.provider?.name || 'Unknown Provider'}
                   </p>
+                  {(member.provider?.organization_code || member.organization_code) && (
+                    <p className="text-sm font-mono text-muted-foreground">
+                      Organization Code: {member.provider?.organization_code || member.organization_code}
+                    </p>
+                  )}
                 </div>
               )}
             </div>
