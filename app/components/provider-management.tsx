@@ -679,25 +679,6 @@ export function ProviderManagement() {
                             variant="outline"
                             size="sm"
                             onClick={() => {
-                              setSelectedProvider(provider)
-                              setIsAdminDialogOpen(true)
-                            }}
-                          >
-                            Add Admin
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            asChild
-                          >
-                            <Link href={`/provider/${provider.id}/details`}>
-                              View Details
-                            </Link>
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
                               setProviderToEdit(provider)
                               setIsEditProviderDialogOpen(true)
                             }}
