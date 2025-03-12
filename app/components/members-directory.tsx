@@ -106,15 +106,15 @@ export function MembersDirectory() {
             <CardDescription>
               View and search all members in the system
             </CardDescription>
-          </div>
-          <div className="relative w-full sm:w-auto max-w-sm">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search by name or ID..."
-              className="pl-8 w-full"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+            <div className="relative w-full mt-4 max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or ID..."
+                className="pl-8 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
           </div>
         </div>
       </CardHeader>
@@ -156,10 +156,10 @@ export function MembersDirectory() {
                     filteredMembers.map((member) => (
                       <TableRow key={member.id}>
                         <TableCell className="font-mono">{member.member_id || '-'}</TableCell>
-                        <TableCell className="font-medium">
+                        <TableCell className="font-bold">
                           <Link 
                             href={`/super-admin-dashboard/members/${member.id}`}
-                            className="text-primary hover:underline hover:text-primary/90 transition-colors"
+                            className="text-foreground hover:underline transition-colors"
                           >
                             {member.full_name}
                           </Link>
@@ -168,7 +168,7 @@ export function MembersDirectory() {
                           <Badge variant={
                             member.user_role === 'driver' ? 'secondary' :
                             member.user_role === 'admin' ? 'outline' :
-                            member.user_role === 'super_admin' ? 'default' : 'outline'
+                            member.user_role === 'super_admin' ? 'purple' : 'outline'
                           }>
                             {member.user_role === 'driver' ? 'Driver' : 
                              member.user_role === 'admin' ? 'Admin' :
