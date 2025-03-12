@@ -771,6 +771,11 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             Manage Providers
           </a>
           <Button variant="destructive" asChild>
+            <Link href="/super-admin-dashboard/members">
+              Members Directory
+            </Link>
+          </Button>
+          <Button variant="destructive" asChild>
             <Link href="/super-admin/support">
               Customer Support
             </Link>
