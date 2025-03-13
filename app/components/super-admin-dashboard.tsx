@@ -827,241 +827,232 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           <CardTitle className="text-xl">Quick Access</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Quick Access</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  <Link href="/super-admin-dashboard/members" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
-                    <Users className="h-6 w-6 text-primary" />
-                    <span className="text-sm text-center">Members</span>
-                  </Link>
-                  
-                  <Link href="/super-admin-dashboard/drivers" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
-                    <Car className="h-6 w-6 text-primary" />
-                    <span className="text-sm text-center">Drivers</span>
-                  </Link>
-                  
-                  <Link href="/super-admin-dashboard/providers" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
-                    <Building2 className="h-6 w-6 text-primary" />
-                    <span className="text-sm text-center">Providers</span>
-                  </Link>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            <Link href="/super-admin-dashboard/members" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
+              <Users className="h-6 w-6 text-primary" />
+              <span className="text-sm text-center">Members</span>
+            </Link>
+            
+            <Link href="/super-admin-dashboard/drivers" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
+              <Car className="h-6 w-6 text-primary" />
+              <span className="text-sm text-center">Drivers</span>
+            </Link>
+            
+            <Link href="/super-admin-dashboard/providers" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
+              <Building2 className="h-6 w-6 text-primary" />
+              <span className="text-sm text-center">Providers</span>
+            </Link>
 
-                  <Link href="/super-admin-dashboard/ride-requests" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
-                    <Calendar className="h-6 w-6 text-primary" />
-                    <span className="text-sm text-center">Ride Requests</span>
-                  </Link>
+            <Link href="/super-admin-dashboard/ride-requests" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors">
+              <Calendar className="h-6 w-6 text-primary" />
+              <span className="text-sm text-center">Ride Requests</span>
+            </Link>
 
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <BookOpen className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Information Base</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Clock className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Pending Acceptance</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Calendar className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Schedule</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <TableIcon className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Pickboard</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <FileText className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Manifest</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <DollarSign className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Invoicing</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <History className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">History</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Ban className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Exclude Member</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Target className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Counties</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Users className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Calendar</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <UserPlus className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Driver Info</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Car className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Vehicles</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <ClipboardList className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Compliance</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Activity className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Upload Trips</span>
-                  </div>
-                  
-                  <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
-                    <Cog className="h-6 w-6 text-red-500 mb-2" />
-                    <span className="text-center text-sm">Account</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Revenue
-                  </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${stats?.total_revenue.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    +${stats?.revenue_today.toFixed(2)} today
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Provider Revenue
-                  </CardTitle>
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${(stats?.total_providers_revenue || 0).toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    ${((stats?.total_providers_revenue || 0) / (stats?.total_providers || 1)).toFixed(2)} avg/provider
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Driver Earnings
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${(stats?.total_drivers_earnings || 0).toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    ${((stats?.total_drivers_earnings || 0) / (stats?.total_drivers || 1)).toFixed(2)} avg/driver
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Insurance Claims
-                  </CardTitle>
-                  <AlertTriangle className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${(stats?.insurance_claims_amount || 0).toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    ${((stats?.insurance_claims_amount || 0) / (stats?.total_rides || 1)).toFixed(2)} avg/ride
-                  </p>
-                </CardContent>
-              </Card>
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <BookOpen className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Information Base</span>
             </div>
-
-            {/* Performance Metrics */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Monthly Growth
-                  </CardTitle>
-                  <TrendingUp className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats?.monthly_growth_rate.toFixed(1)}%</div>
-                  <p className="text-xs text-muted-foreground">
-                    Month over month revenue growth
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Driver Utilization
-                  </CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats?.driver_utilization_rate.toFixed(1)}%</div>
-                  <p className="text-xs text-muted-foreground">
-                    Average rides per active driver
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Avg. Revenue/Ride
-                  </CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">${stats?.average_ride_cost.toFixed(2)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Average revenue per completed ride
-                  </p>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Completion Rate
-                  </CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats ? ((stats.completed_rides / stats.total_rides) * 100).toFixed(1) : 0}%
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Percentage of completed rides
-                  </p>
-                </CardContent>
-              </Card>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Clock className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Pending Acceptance</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Calendar className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Schedule</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <TableIcon className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Pickboard</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <FileText className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Manifest</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <DollarSign className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Invoicing</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <History className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">History</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Ban className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Exclude Member</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Target className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Counties</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Users className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Calendar</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <UserPlus className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Driver Info</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Car className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Vehicles</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <ClipboardList className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Compliance</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Activity className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Upload Trips</span>
+            </div>
+            
+            <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+              <Cog className="h-6 w-6 text-red-500 mb-2" />
+              <span className="text-center text-sm">Account</span>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Stats Dashboard */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Total Revenue
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats?.total_revenue.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              +${stats?.revenue_today.toFixed(2)} today
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Provider Revenue
+            </CardTitle>
+            <Building2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${(stats?.total_providers_revenue || 0).toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              ${((stats?.total_providers_revenue || 0) / (stats?.total_providers || 1)).toFixed(2)} avg/provider
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Driver Earnings
+            </CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${(stats?.total_drivers_earnings || 0).toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              ${((stats?.total_drivers_earnings || 0) / (stats?.total_drivers || 1)).toFixed(2)} avg/driver
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Insurance Claims
+            </CardTitle>
+            <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${(stats?.insurance_claims_amount || 0).toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              ${((stats?.insurance_claims_amount || 0) / (stats?.total_rides || 1)).toFixed(2)} avg/ride
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Performance Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Monthly Growth
+            </CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.monthly_growth_rate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">
+              Month over month revenue growth
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Driver Utilization
+            </CardTitle>
+            <Activity className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats?.driver_utilization_rate.toFixed(1)}%</div>
+            <p className="text-xs text-muted-foreground">
+              Average rides per active driver
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Avg. Revenue/Ride
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">${stats?.average_ride_cost.toFixed(2)}</div>
+            <p className="text-xs text-muted-foreground">
+              Average revenue per completed ride
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              Completion Rate
+            </CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {stats ? ((stats.completed_rides / stats.total_rides) * 100).toFixed(1) : 0}%
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Percentage of completed rides
+            </p>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
