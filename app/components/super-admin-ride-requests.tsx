@@ -26,6 +26,8 @@ import { formatAddress } from "@/lib/utils"
 import { format } from "date-fns"
 import { supabase } from "@/lib/supabase"
 import { useAuth } from "@/app/contexts/auth-context"
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 
 interface Provider {
   id: string
@@ -48,6 +50,8 @@ interface Ride {
   notes: string
   status: string
   super_admin_status: string
+  payment_method?: string
+  recurring?: string
   member?: Member
 }
 
@@ -55,8 +59,11 @@ export function SuperAdminRideRequests() {
   const [pendingRequests, setPendingRequests] = useState<Ride[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false)
   const { user } = useAuth()
   const { toast } = useToast()
+  const router = useRouter()
   
   useEffect(() => {
     fetchPendingRequests()
@@ -143,6 +150,9 @@ export function SuperAdminRideRequests() {
         description: "Ride approved and assigned to provider",
       })
       
+      // Close the details dialog if open
+      setIsDetailsDialogOpen(false)
+      
       // Refresh the list
       fetchPendingRequests()
     } catch (error) {
@@ -186,6 +196,9 @@ export function SuperAdminRideRequests() {
         description: "Ride request declined",
       })
       
+      // Close the details dialog if open
+      setIsDetailsDialogOpen(false)
+      
       // Refresh the list
       fetchPendingRequests()
     } catch (error) {
@@ -196,6 +209,15 @@ export function SuperAdminRideRequests() {
         variant: "destructive"
       })
     }
+  }
+
+  const handleViewDetails = (ride: Ride) => {
+    setSelectedRide(ride)
+    setIsDetailsDialogOpen(true)
+  }
+  
+  const handleNavigateToMember = (memberId: string) => {
+    router.push(`/super-admin-dashboard/members/${memberId}`)
   }
   
   return (
@@ -216,7 +238,7 @@ export function SuperAdminRideRequests() {
       ) : (
         <div className="space-y-4">
           {pendingRequests.map(ride => (
-            <Card key={ride.id}>
+            <Card key={ride.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => handleViewDetails(ride)}>
               <CardHeader>
                 <CardTitle>Ride Request from {ride.member?.full_name}</CardTitle>
                 <CardDescription>
@@ -247,6 +269,110 @@ export function SuperAdminRideRequests() {
                 </div>
               </CardContent>
               <CardFooter className="flex justify-end gap-2">
+                <Button 
+                  variant="outline" 
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleViewDetails(ride)
+                  }}
+                >
+                  View Details
+                </Button>
+              </CardFooter>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {/* Detailed Ride View Dialog */}
+      <Dialog open={isDetailsDialogOpen} onOpenChange={setIsDetailsDialogOpen}>
+        <DialogContent className="max-w-3xl">
+          {selectedRide && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl">
+                  Ride Request Details
+                </DialogTitle>
+                <DialogDescription>
+                  Submitted on {format(new Date(selectedRide.scheduled_pickup_time), 'PPP')}
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6 py-4">
+                {/* Member Information */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Member Information</h3>
+                  <div className="bg-secondary/50 p-4 rounded-lg">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <p>
+                          <span 
+                            className="font-medium text-primary hover:underline cursor-pointer"
+                            onClick={() => {
+                              if (selectedRide.member_id) {
+                                setIsDetailsDialogOpen(false)
+                                handleNavigateToMember(selectedRide.member_id)
+                              }
+                            }}
+                          >
+                            {selectedRide.member?.full_name}
+                          </span>
+                        </p>
+                        <p className="text-sm">{selectedRide.member?.phone}</p>
+                        <p className="text-sm text-muted-foreground">{selectedRide.member?.email}</p>
+                      </div>
+                      <Link 
+                        href={`/super-admin-dashboard/members/${selectedRide.member_id}`} 
+                        className="text-sm text-primary hover:underline"
+                        onClick={() => setIsDetailsDialogOpen(false)}
+                      >
+                        View Profile
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Ride Details */}
+                <div>
+                  <h3 className="text-lg font-semibold mb-2">Ride Details</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <p className="font-medium">Pickup Location</p>
+                      <p>{formatAddress(selectedRide.pickup_address)}</p>
+                    </div>
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <p className="font-medium">Destination</p>
+                      <p>{formatAddress(selectedRide.dropoff_address)}</p>
+                    </div>
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <p className="font-medium">Scheduled Pickup Time</p>
+                      <p>{format(new Date(selectedRide.scheduled_pickup_time), 'PPP p')}</p>
+                    </div>
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <p className="font-medium">Payment Method</p>
+                      <p className="capitalize">{selectedRide.payment_method || 'Not specified'}</p>
+                    </div>
+                    {selectedRide.recurring && selectedRide.recurring !== 'none' && (
+                      <div className="bg-secondary/50 p-4 rounded-lg">
+                        <p className="font-medium">Recurring</p>
+                        <p className="capitalize">{selectedRide.recurring}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Special Requirements */}
+                {selectedRide.notes && (
+                  <div>
+                    <h3 className="text-lg font-semibold mb-2">Special Requirements</h3>
+                    <div className="bg-secondary/50 p-4 rounded-lg">
+                      <p>{selectedRide.notes}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
+              
+              <DialogFooter className="flex justify-between sm:justify-end gap-2">
                 <Dialog>
                   <DialogTrigger asChild>
                     <Button variant="outline">Decline</Button>
@@ -262,7 +388,7 @@ export function SuperAdminRideRequests() {
                       e.preventDefault()
                       const formData = new FormData(e.target as HTMLFormElement)
                       const reason = formData.get('reason') as string
-                      handleDecline(ride.id, reason)
+                      handleDecline(selectedRide.id, reason)
                     }}>
                       <div className="py-4">
                         <Label htmlFor="decline-reason">Reason for declining</Label>
@@ -295,7 +421,7 @@ export function SuperAdminRideRequests() {
                       e.preventDefault()
                       const formData = new FormData(e.target as HTMLFormElement)
                       const providerId = formData.get('provider') as string
-                      handleAccept(ride.id, providerId)
+                      handleAccept(selectedRide.id, providerId)
                     }}>
                       <div className="py-4">
                         <Label htmlFor="provider">Select Provider</Label>
@@ -322,11 +448,11 @@ export function SuperAdminRideRequests() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-              </CardFooter>
-            </Card>
-          ))}
-        </div>
-      )}
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 } 
