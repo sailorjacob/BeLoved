@@ -124,7 +124,7 @@ export function ProviderRideAssignments() {
         .from('profiles')
         .select('id, full_name, phone')
         .eq('provider_id', providerId)
-        .eq('user_type', 'driver')
+        .eq('user_role', 'driver')
         .eq('status', 'active')
         .order('full_name')
       

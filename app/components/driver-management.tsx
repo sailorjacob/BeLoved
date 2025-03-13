@@ -37,7 +37,7 @@ interface Driver {
   email: string
   phone: string
   username: string
-  user_type: string
+  user_role: string
   provider_id?: string
   organization_code?: string
   driver_profile: {
@@ -52,6 +52,16 @@ interface DriverFormData {
   email: string
   phone: string
   username: string
+}
+
+interface Profile {
+  id: string
+  full_name: string
+  email: string
+  phone: string
+  user_role: string
+  provider_id?: string
+  status: 'active' | 'inactive'
 }
 
 const validationRules = {

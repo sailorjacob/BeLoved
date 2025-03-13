@@ -50,7 +50,7 @@ export function CreateMemberForm() {
       options: {
         data: {
           full_name: values.full_name,
-          user_type: 'member'
+          user_role: 'member'
         }
       }
     })
@@ -63,10 +63,10 @@ export function CreateMemberForm() {
       .from('profiles')
       .insert({
         id: authData.user.id,
+        user_role: 'member',
         full_name: values.full_name,
         email: values.email,
         phone: values.phone,
-        user_role: 'member',
         status: 'active',
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

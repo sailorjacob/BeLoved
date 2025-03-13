@@ -179,7 +179,7 @@ export function LocationManagement() {
           *,
           location:locations(name)
         `)
-        .eq('user_type', 'admin')
+        .eq('user_role', 'admin')
 
       if (adminError) throw adminError
 
@@ -254,7 +254,7 @@ export function LocationManagement() {
           options: {
             data: {
               full_name: values.full_name,
-              user_type: 'admin'
+              user_role: 'admin'
             }
           }
         })
@@ -271,7 +271,7 @@ export function LocationManagement() {
             email: values.email,
             phone: values.phone,
             username: values.username,
-            user_type: 'admin'
+            user_role: 'admin'
           })
 
         if (profileError) throw profileError
