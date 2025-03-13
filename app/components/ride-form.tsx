@@ -103,7 +103,8 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
         payment_method: values.payment_method,
         recurring: values.recurring,
         status: 'pending',
-        payment_status: 'pending'
+        payment_status: 'pending',
+        super_admin_status: 'pending',
       })
 
     if (error) throw error

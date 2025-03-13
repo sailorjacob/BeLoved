@@ -31,7 +31,11 @@ import {
   Car,
   CheckSquare,
   Upload,
-  Shield
+  Shield,
+  Info,
+  Calendar,
+  CalendarCheck,
+  ClipboardList
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
@@ -322,22 +326,26 @@ export function AdminDashboard() {
           <CardTitle>Quick Access</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-3 md:grid-cols-5 gap-4">
             <Link href="/admin/info" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <BookOpen className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Information Base</span>
+              <Info className="h-6 w-6 mb-2 text-primary" />
+              <span className="text-xs text-center">Info</span>
             </Link>
             <Link href="/admin/pending" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Clock className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Pending Acceptance</span>
+              <Clock className="h-6 w-6 mb-2 text-primary" />
+              <span className="text-xs text-center">Pending</span>
             </Link>
             <Link href="/admin/schedule" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <CalendarDays className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Schedule</span>
+              <Calendar className="h-6 w-6 mb-2 text-primary" />
+              <span className="text-xs text-center">Schedule</span>
+            </Link>
+            <Link href="/admin-dashboard/ride-assignments" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <CalendarCheck className="h-6 w-6 mb-2 text-primary" />
+              <span className="text-xs text-center">Ride Assignments</span>
             </Link>
             <Link href="/admin/pickboard" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Grid className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Pickboard</span>
+              <ClipboardList className="h-6 w-6 mb-2 text-primary" />
+              <span className="text-xs text-center">Pickboard</span>
             </Link>
             <Link href="/admin/manifest" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
               <Building2 className="h-6 w-6 mb-2 text-red-500" />
