@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, forwardRef, useImperativeHandle } from 'react'
 import { Button } from "@/components/ui/button"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -39,12 +39,22 @@ interface Ride {
   driver?: Driver
 }
 
-export function MemberRideStatus() {
+// Define the handle type to expose methods to parent
+export type MemberRideStatusHandle = {
+  fetchRides: () => Promise<void>;
+};
+
+const MemberRideStatus = forwardRef<MemberRideStatusHandle>((props, ref) => {
   const [rides, setRides] = useState<Ride[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const { user } = useAuth()
   const { toast } = useToast()
   const router = useRouter()
+  
+  // Expose fetchRides to parent component
+  useImperativeHandle(ref, () => ({
+    fetchRides
+  }));
   
   useEffect(() => {
     fetchRides()
@@ -183,20 +193,6 @@ export function MemberRideStatus() {
   
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">My Rides</h2>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchRides}>
-            Refresh
-          </Button>
-          <Button asChild>
-            <Link href="/member-dashboard/schedule-ride">
-              Schedule New Ride
-            </Link>
-          </Button>
-        </div>
-      </div>
-      
       <Tabs defaultValue="upcoming">
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="upcoming">Upcoming</TabsTrigger>
@@ -372,4 +368,9 @@ export function MemberRideStatus() {
       </Tabs>
     </div>
   )
-} 
+})
+
+// Add display name
+MemberRideStatus.displayName = "MemberRideStatus";
+
+export { MemberRideStatus } 

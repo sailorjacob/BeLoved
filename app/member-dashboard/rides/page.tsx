@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/app/contexts/auth-context'
 import { MemberRideStatus } from '@/app/components/member-ride-status'
@@ -13,6 +13,7 @@ export default function MemberRidesPage() {
   const { isLoggedIn, isLoading: authLoading, role } = useAuth()
   const router = useRouter()
   const [isReady, setIsReady] = useState(false)
+  const memberRideStatusRef = useRef<{ fetchRides: () => Promise<void> }>(null);
 
   useEffect(() => {
     if (!authLoading) {
@@ -34,6 +35,14 @@ export default function MemberRidesPage() {
       setIsReady(true)
     }
   }, [isLoggedIn, role, router, authLoading])
+
+  const handleRefresh = () => {
+    if (memberRideStatusRef.current) {
+      memberRideStatusRef.current.fetchRides();
+    } else {
+      router.refresh();
+    }
+  };
 
   if (authLoading || !isReady) {
     return (
@@ -69,7 +78,7 @@ export default function MemberRidesPage() {
           ← Back to Dashboard
         </Button>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => router.refresh()}>
+          <Button variant="outline" onClick={handleRefresh}>
             Refresh
           </Button>
           <Button asChild className="bg-red-500 hover:bg-red-600">
@@ -79,7 +88,7 @@ export default function MemberRidesPage() {
       </div>
       
       <h2 className="text-2xl font-bold mb-4">My Rides</h2>
-      <MemberRideStatus />
+      <MemberRideStatus ref={memberRideStatusRef} />
     </main>
   )
 } 
