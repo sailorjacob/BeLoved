@@ -111,13 +111,15 @@ input::-webkit-validation-bubble-arrow-clipper {
   display: none;
 }
 
-/* Custom validation message style */
-input:invalid:not(:focus):not(:placeholder-shown) {
+/* Custom validation message style - only show red border after user interaction */
+input:invalid:not(:focus):not(:placeholder-shown).touched,
+input:invalid:not(:focus):not(:placeholder-shown)[data-submitted="true"] {
   border-color: var(--form-error);
 }
 
 /* Custom required field indicator */
-input:required:not(:focus):not(:placeholder-shown):invalid::after {
+input:required:not(:focus):not(:placeholder-shown):invalid.touched::after,
+input:required:not(:focus):not(:placeholder-shown):invalid[data-submitted="true"]::after {
   content: "Required";
   position: absolute;
   right: 0;
@@ -138,19 +140,27 @@ input:required:not(:focus):not(:placeholder-shown):invalid::after {
 }
 
 /* Style for all form controls */
-.form-control:invalid:not(:focus):not(:placeholder-shown) {
+.form-control:invalid:not(:focus):not(:placeholder-shown).touched,
+.form-control:invalid:not(:focus):not(:placeholder-shown)[data-submitted="true"] {
   border-color: var(--form-error);
 }
 
 /* Remove default focus outline on invalid fields and replace with custom one */
 .form-control:invalid:focus {
   outline: none;
+  border-color: var(--input);
+  box-shadow: 0 0 0 1px var(--input);
+}
+
+.form-control:invalid:focus.touched,
+.form-control:invalid:focus[data-submitted="true"] {
   border-color: var(--form-error);
   box-shadow: 0 0 0 1px var(--form-error);
 }
 
 /* Custom validation message for required fields */
-[aria-invalid="true"]::after {
+[aria-invalid="true"].touched::after,
+[aria-invalid="true"][data-submitted="true"]::after {
   content: "This field is required";
   color: var(--form-error);
   font-size: 0.875rem;

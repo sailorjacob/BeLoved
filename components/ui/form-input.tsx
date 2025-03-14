@@ -1,6 +1,6 @@
 'use client'
 
-import React from 'react'
+import React, { useState } from 'react'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { cn } from '@/lib/utils'
@@ -9,6 +9,9 @@ interface FormInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label: string
   error?: string
   containerClassName?: string
+  touched?: boolean
+  submitted?: boolean
+  onBlur?: React.FocusEventHandler<HTMLInputElement>
 }
 
 export function FormInput({
@@ -17,8 +20,20 @@ export function FormInput({
   id,
   containerClassName,
   className,
+  touched = false,
+  submitted = false,
+  onBlur,
   ...props
 }: FormInputProps) {
+  const [isTouched, setIsTouched] = useState(touched);
+  
+  const handleBlur = (e: React.FocusEvent<HTMLInputElement>) => {
+    setIsTouched(true);
+    if (onBlur) {
+      onBlur(e);
+    }
+  };
+
   return (
     <div className={cn('space-y-2', containerClassName)}>
       <Label htmlFor={id}>{label}</Label>
@@ -26,8 +41,11 @@ export function FormInput({
         id={id}
         className={cn(
           error && 'border-red-500 focus-visible:ring-red-500',
+          isTouched && 'touched',
           className
         )}
+        data-submitted={submitted ? 'true' : 'false'}
+        onBlur={handleBlur}
         {...props}
       />
       {error && (

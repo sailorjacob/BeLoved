@@ -18,7 +18,9 @@ export function useFormHandling<T extends Record<string, any>>({
 }: UseFormHandlingProps<T>) {
   const [values, setValues] = useState<T>(initialValues)
   const [errors, setErrors] = useState<FormErrors>({})
+  const [touchedFields, setTouchedFields] = useState<Record<string, boolean>>({})
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isSubmitted, setIsSubmitted] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
   const handleChange = (field: keyof T, value: any) => {
@@ -30,6 +32,22 @@ export function useFormHandling<T extends Record<string, any>>({
         delete newErrors[field as string]
         return newErrors
       })
+    }
+  }
+
+  const handleBlur = (field: keyof T) => {
+    // Mark field as touched when it loses focus
+    setTouchedFields(prev => ({ ...prev, [field as string]: true }))
+    
+    // Validate this specific field
+    if (validationRules[field]) {
+      const rule = validationRules[field as keyof T]
+      if (rule) {
+        const error = rule(values[field as keyof T], values)
+        if (error) {
+          setErrors(prev => ({ ...prev, [field as string]: error }))
+        }
+      }
     }
   }
 
@@ -53,6 +71,14 @@ export function useFormHandling<T extends Record<string, any>>({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitError(null)
+    setIsSubmitted(true)
+    
+    // Mark all fields as touched on submission
+    const allTouched: Record<string, boolean> = {}
+    Object.keys(validationRules).forEach(field => {
+      allTouched[field] = true
+    })
+    setTouchedFields(allTouched)
 
     if (!validateForm()) {
       return
@@ -77,18 +103,36 @@ export function useFormHandling<T extends Record<string, any>>({
   const resetForm = () => {
     setValues(initialValues)
     setErrors({})
+    setTouchedFields({})
+    setIsSubmitted(false)
     setSubmitError(null)
+  }
+
+  const getInputProps = (field: keyof T) => {
+    return {
+      id: field as string,
+      name: field as string,
+      value: values[field],
+      onChange: (e: React.ChangeEvent<HTMLInputElement>) => handleChange(field, e.target.value),
+      onBlur: () => handleBlur(field),
+      className: touchedFields[field as string] ? 'touched' : '',
+      'data-submitted': isSubmitted ? 'true' : 'false',
+    }
   }
 
   return {
     values,
     errors,
+    touchedFields,
     isSubmitting,
+    isSubmitted,
     submitError,
     handleChange,
+    handleBlur,
     handleSubmit,
     resetForm,
     setValues,
-    setSubmitError
+    setSubmitError,
+    getInputProps
   }
 } 
