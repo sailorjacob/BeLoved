@@ -74,7 +74,7 @@ export default function MemberRidesPage() {
       </div>
       
       <div className="flex justify-between items-center mb-6">
-        <Button variant="outline" onClick={() => router.push('/member-dashboard')}>
+        <Button variant="outline" onClick={() => router.push('/dashboard')}>
           ← Back to Dashboard
         </Button>
         <div className="flex gap-2">
