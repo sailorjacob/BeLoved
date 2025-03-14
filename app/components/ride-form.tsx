@@ -211,7 +211,9 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
             ? values.return_dropoff_address 
             : values.pickup_address,
           appointment_time: appointmentTime.toISOString(),
-          scheduled_pickup_time: returnPickupTime ? returnPickupTime.toISOString() : null,
+          scheduled_pickup_time: values.return_pickup_tba 
+            ? new Date(new Date(appointmentTime).setHours(appointmentTime.getHours() + 2)).toISOString() 
+            : returnPickupTime!.toISOString(),
           notes: values.notes + (values.return_pickup_tba ? " (Return pickup time TBA)" : ""),
           payment_method: values.payment_method,
           recurring: values.recurring,
