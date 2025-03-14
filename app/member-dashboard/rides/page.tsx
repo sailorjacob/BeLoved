@@ -7,6 +7,7 @@ import { MemberRideStatus } from '@/app/components/member-ride-status'
 import Image from 'next/image'
 import { UserNav } from '@/app/components/user-nav'
 import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 export default function MemberRidesPage() {
   const { isLoggedIn, isLoading: authLoading, role } = useAuth()
@@ -63,12 +64,21 @@ export default function MemberRidesPage() {
         <UserNav />
       </div>
       
-      <div className="mb-6">
+      <div className="flex justify-between items-center mb-6">
         <Button variant="outline" onClick={() => router.push('/member-dashboard')}>
           ← Back to Dashboard
         </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => router.refresh()}>
+            Refresh
+          </Button>
+          <Button asChild className="bg-red-500 hover:bg-red-600">
+            <Link href="/schedule-ride">Schedule New Ride</Link>
+          </Button>
+        </div>
       </div>
       
+      <h2 className="text-2xl font-bold mb-4">My Rides</h2>
       <MemberRideStatus />
     </main>
   )

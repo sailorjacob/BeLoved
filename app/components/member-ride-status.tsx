@@ -214,7 +214,7 @@ export function MemberRideStatus() {
               <CardContent className="py-8 text-center">
                 <p className="text-muted-foreground">No upcoming rides</p>
                 <Button variant="outline" className="mt-4" asChild>
-                  <Link href="/member-dashboard/schedule-ride">
+                  <Link href="/schedule-ride">
                     Schedule a Ride
                   </Link>
                 </Button>
