@@ -38,6 +38,7 @@ import {
   PieChart,
   Pie,
   Cell,
+  Area,
 } from 'recharts'
 import {
   Building2,
@@ -1056,50 +1057,131 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
 
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue & Earnings Trend</CardTitle>
-            <CardDescription>Last 30 days of financial activity</CardDescription>
+        <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+          <CardHeader className="border-b bg-slate-50/50">
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-800">Revenue & Earnings Trend</CardTitle>
+                <CardDescription className="text-slate-500">Last 30 days of financial activity</CardDescription>
+              </div>
+              <div className="flex items-center text-xs space-x-3">
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-purple-500 mr-1"></div>
+                  <span>Revenue</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-emerald-400 mr-1"></div>
+                  <span>Provider</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-amber-400 mr-1"></div>
+                  <span>Driver</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-blue-400 mr-1"></div>
+                  <span>Rides</span>
+                </div>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-6">
+            <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={revenueData}>
-                  <CartesianGrid strokeDasharray="3 3" />
+                <LineChart data={revenueData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorProvider" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorDriver" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#fbbf24" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorRides" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis 
                     dataKey="date" 
                     tickFormatter={(value) => format(new Date(value), 'MMM d')}
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickLine={{ stroke: '#e5e7eb' }}
                   />
-                  <YAxis yAxisId="left" />
-                  <YAxis yAxisId="right" orientation="right" />
-                  <Tooltip />
-                  <Line
+                  <YAxis 
+                    yAxisId="left" 
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickLine={{ stroke: '#e5e7eb' }}
+                    tickFormatter={(value) => `$${value}`}
+                  />
+                  <YAxis 
+                    yAxisId="right" 
+                    orientation="right" 
+                    tick={{ fontSize: 12, fill: '#6b7280' }}
+                    axisLine={{ stroke: '#e5e7eb' }}
+                    tickLine={{ stroke: '#e5e7eb' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    }}
+                    formatter={(value, name) => {
+                      if (name === 'Number of Rides') return [value, name];
+                      return [`$${typeof value === 'number' ? value.toFixed(2) : value}`, name];
+                    }}
+                    labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
+                  />
+                  <Area
                     yAxisId="left"
                     type="monotone"
                     dataKey="revenue"
-                    stroke="hsl(var(--chart-1))"
+                    stroke="#8884d8"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorRevenue)"
                     name="Total Revenue ($)"
+                    activeDot={{ r: 6, stroke: '#8884d8', strokeWidth: 2, fill: 'white' }}
                   />
-                  <Line
+                  <Area
                     yAxisId="left"
                     type="monotone"
                     dataKey="provider_revenue"
-                    stroke="#82ca9d"
+                    stroke="#4ade80"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorProvider)"
                     name="Provider Revenue ($)"
+                    activeDot={{ r: 6, stroke: '#4ade80', strokeWidth: 2, fill: 'white' }}
                   />
-                  <Line
+                  <Area
                     yAxisId="left"
                     type="monotone"
                     dataKey="driver_earnings"
-                    stroke="#ffc658"
+                    stroke="#fbbf24"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorDriver)"
                     name="Driver Earnings ($)"
+                    activeDot={{ r: 6, stroke: '#fbbf24', strokeWidth: 2, fill: 'white' }}
                   />
                   <Line
                     yAxisId="right"
                     type="monotone"
                     dataKey="rides"
-                    stroke="#ff7300"
+                    stroke="#60a5fa"
+                    strokeWidth={2}
                     name="Number of Rides"
+                    activeDot={{ r: 6, stroke: '#60a5fa', strokeWidth: 2, fill: 'white' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -1107,15 +1189,33 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Revenue Distribution</CardTitle>
-            <CardDescription>Breakdown of revenue allocation</CardDescription>
+        <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+          <CardHeader className="border-b bg-slate-50/50">
+            <div className="flex justify-between items-center">
+              <div>
+                <CardTitle className="text-lg font-bold text-slate-800">Revenue Distribution</CardTitle>
+                <CardDescription className="text-slate-500">Breakdown of revenue allocation</CardDescription>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-6">
+            <div className="h-[320px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
+                  <defs>
+                    <linearGradient id="colorPie1" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#8884d8" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#6366f1" stopOpacity={1}/>
+                    </linearGradient>
+                    <linearGradient id="colorPie2" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#4ade80" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#10b981" stopOpacity={1}/>
+                    </linearGradient>
+                    <linearGradient id="colorPie3" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#fbbf24" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={1}/>
+                    </linearGradient>
+                  </defs>
                   <Pie
                     data={[
                       {
@@ -1135,16 +1235,45 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    outerRadius={100}
-                    label
+                    innerRadius={80}
+                    outerRadius={120}
+                    paddingAngle={2}
+                    cornerRadius={6}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                    labelLine={false}
                   >
-                    {rideStatuses.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
+                    <Cell fill="url(#colorPie1)" />
+                    <Cell fill="url(#colorPie2)" />
+                    <Cell fill="url(#colorPie3)" />
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'white', 
+                      border: 'none', 
+                      borderRadius: '8px', 
+                      boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                    }}
+                    formatter={(value) => [
+                      `$${typeof value === 'number' ? value.toFixed(2) : value}`, 
+                      'Amount'
+                    ]}
+                  />
                 </PieChart>
               </ResponsiveContainer>
+              <div className="flex justify-center space-x-6 mt-4">
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-indigo-500 mr-2"></div>
+                  <span className="text-sm">Provider Revenue</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-emerald-500 mr-2"></div>
+                  <span className="text-sm">Driver Earnings</span>
+                </div>
+                <div className="flex items-center">
+                  <div className="h-3 w-3 rounded-full bg-amber-500 mr-2"></div>
+                  <span className="text-sm">Insurance Claims</span>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
