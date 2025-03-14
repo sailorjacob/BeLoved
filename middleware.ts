@@ -27,7 +27,7 @@ const roleCommonPaths = {
   ],
   admin: ['/profile', '/admin-dashboard'],
   driver: ['/profile', '/trips', '/driver-dashboard'],
-  member: ['/profile', '/my-rides', '/dashboard']
+  member: ['/profile', '/member-dashboard/rides', '/dashboard']
 }
 
 // Protected paths by role - these are paths exclusive to each role 

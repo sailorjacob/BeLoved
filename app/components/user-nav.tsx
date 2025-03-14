@@ -62,7 +62,7 @@ function getMenuItems(role: UserRole | null) {
         },
         {
           label: "My Rides",
-          href: "/my-rides",
+          href: "/member-dashboard/rides",
         },
         {
           label: "Profile",

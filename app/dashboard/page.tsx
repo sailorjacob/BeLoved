@@ -76,7 +76,7 @@ export default function DashboardPage() {
       .from('rides')
       .select(`
         *,
-        driver:profiles(id, full_name, phone)
+        driver:profiles!rides_driver_id_fkey(id, full_name, phone)
       `)
       .eq('member_id', profile.id)
       .gte('scheduled_pickup_time', new Date().toISOString())
@@ -94,7 +94,7 @@ export default function DashboardPage() {
       .from('rides')
       .select(`
         *,
-        driver:profiles(id, full_name, phone)
+        driver:profiles!rides_driver_id_fkey(id, full_name, phone)
       `)
       .eq('member_id', profile.id)
       .lt('scheduled_pickup_time', new Date().toISOString())

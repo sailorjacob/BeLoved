@@ -147,7 +147,7 @@ export function EditRideForm({ id }: EditRideFormProps) {
 
     if (error) throw error
 
-    router.push('/my-rides')
+    router.push('/member-dashboard/rides')
     router.refresh()
   }
 
