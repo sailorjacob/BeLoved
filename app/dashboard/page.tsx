@@ -273,7 +273,7 @@ export default function DashboardPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Link href={`/ride/${ride.id}`}>
+                          <Link href={`/member-dashboard/rides/${ride.id}`}>
                             <Button variant="outline" size="sm">View Details</Button>
                           </Link>
                         </TableCell>
@@ -339,7 +339,7 @@ export default function DashboardPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          <Link href={`/ride/${ride.id}`}>
+                          <Link href={`/member-dashboard/rides/${ride.id}`}>
                             <Button variant="outline" size="sm">View Details</Button>
                           </Link>
                         </TableCell>
