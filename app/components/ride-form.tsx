@@ -199,7 +199,7 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
           dropoff_address: useCustomReturnAddresses && values.return_dropoff_address 
             ? values.return_dropoff_address 
             : values.pickup_address,
-          appointment_time: appointmentTime.toISOString(), // Same as outbound appointment
+          appointment_time: appointmentTime.toISOString(),
           scheduled_pickup_time: returnPickupTime ? returnPickupTime.toISOString() : null,
           notes: values.notes + (values.return_pickup_tba ? " (Return pickup time TBA)" : ""),
           payment_method: values.payment_method,
