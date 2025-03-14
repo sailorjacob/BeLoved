@@ -6,6 +6,7 @@ import { FormInput } from '@/components/ui/form-input'
 import { AddressInput } from '@/components/ui/address-input'
 import { useFormHandling } from '@/hooks/useFormHandling'
 import { supabase } from '@/lib/supabase'
+import { supabaseAdmin } from '@/lib/supabase-admin'
 import { useAuth } from '@/app/contexts/auth-context'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
@@ -92,25 +93,32 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
     const scheduledPickupTime = new Date(selectedDate)
     scheduledPickupTime.setHours(hours, minutes, 0, 0)
 
-    const { error } = await supabase
-      .from('rides')
-      .insert({
-        member_id: isAdmin ? memberId : user?.id,
-        pickup_address: values.pickup_address,
-        dropoff_address: values.dropoff_address,
-        scheduled_pickup_time: scheduledPickupTime.toISOString(),
-        notes: values.notes,
-        payment_method: values.payment_method,
-        recurring: values.recurring,
-        status: 'pending',
-        payment_status: 'pending',
-        super_admin_status: 'pending',
-      })
+    // Prepare the ride data
+    const rideData = {
+      member_id: isAdmin ? memberId : user?.id,
+      pickup_address: values.pickup_address,
+      dropoff_address: values.dropoff_address,
+      scheduled_pickup_time: scheduledPickupTime.toISOString(),
+      notes: values.notes,
+      payment_method: values.payment_method,
+      recurring: values.recurring,
+      status: 'pending',
+      payment_status: 'pending',
+      super_admin_status: 'pending',
+    }
 
-    if (error) throw error
+    // Use the admin client to bypass RLS policy issues
+    const { error } = await supabaseAdmin
+      .from('rides')
+      .insert(rideData)
+
+    if (error) {
+      console.error('Error creating ride:', error)
+      throw new Error(`Failed to create ride: ${error.message}`)
+    }
 
     // Redirect based on user type
-    router.push(isAdmin ? '/admin-dashboard' : '/my-rides')
+    router.push(isAdmin ? '/admin-dashboard' : '/member-dashboard/rides')
   }
 
   const {

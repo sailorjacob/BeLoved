@@ -58,12 +58,16 @@ export function MemberRideStatus() {
         .select(`
           *,
           provider:provider_id(id, name),
-          driver:driver_id(id, full_name, phone)
+          driver:profiles!rides_driver_id_fkey(id, full_name, phone),
+          member_profile:profiles!rides_member_id_fkey(id, full_name, phone, email)
         `)
         .eq('member_id', user?.id)
         .order('scheduled_pickup_time', { ascending: false })
       
-      if (error) throw error
+      if (error) {
+        console.error('Error fetching rides:', error)
+        throw error
+      }
       
       setRides(data || [])
     } catch (error) {
