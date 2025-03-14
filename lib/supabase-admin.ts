@@ -19,16 +19,16 @@ const getSupabaseUrl = () => {
 // We're including it on the client temporarily to fix authentication issues
 export const supabaseAdmin = createClient<Database>(
   getSupabaseUrl(),
-  // First try the service role, then fall back to anon
-  process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '',
+  // Ensure we're using the service role key
+  process.env.SUPABASE_SERVICE_ROLE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR3ZWppa2pneGt6bXBob2NidnB0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTcwNzY3MDQ0NiwiZXhwIjoyMDIzMjQ2NDQ2fQ.TygzKc2PqrN-0VmHt12kSVgkjQdLfWYhm7A4j8MNzF8',
   {
     auth: {
-      autoRefreshToken: true,
-      persistSession: true,
+      autoRefreshToken: false,
+      persistSession: false
     },
     global: {
       headers: {
-        'x-client-info': 'admin-client',
+        'x-client-info': 'service-role-admin-client',
       }
     }
   }
