@@ -142,6 +142,11 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
     scheduledPickupTime.setHours(pickupHours, pickupMinutes, 0, 0)
 
     try {
+      // Generate a unique trip_id based on timestamp to avoid collisions
+      const timestamp = new Date().getTime();
+      const randomPart = Math.floor(Math.random() * 10000);
+      const uniqueTripId = `T${timestamp}${randomPart}`.substring(0, 7);
+      
       // Prepare the initial ride data
       const rideData = {
         member_id: isAdmin ? memberId : user?.id,
@@ -155,7 +160,8 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
         status: 'pending',
         payment_status: 'pending',
         super_admin_status: 'pending',
-        is_return_trip: false
+        is_return_trip: false,
+        trip_id: uniqueTripId
       }
 
       // Use supabase (not admin) first to try inserting
@@ -190,6 +196,11 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
           returnPickupTime.setHours(returnHours, returnMinutes, 0, 0)
         }
 
+        // Generate another unique trip_id for the return trip
+        const returnTimestamp = new Date().getTime();
+        const returnRandomPart = Math.floor(Math.random() * 10000);
+        const returnTripId = `R${returnTimestamp}${returnRandomPart}`.substring(0, 7);
+
         // Create return ride data
         const returnRideData = {
           member_id: isAdmin ? memberId : user?.id,
@@ -208,7 +219,8 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
           payment_status: 'pending',
           super_admin_status: 'pending',
           is_return_trip: true,
-          return_pickup_tba: values.return_pickup_tba
+          return_pickup_tba: values.return_pickup_tba,
+          trip_id: returnTripId
         }
 
         // Try with regular client first
