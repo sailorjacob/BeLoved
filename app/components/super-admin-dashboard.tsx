@@ -1199,7 +1199,7 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             </div>
           </CardHeader>
           <CardContent className="p-6">
-            <div className="h-[320px]">
+            <div className="h-[250px] mb-8">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <defs>
@@ -1235,8 +1235,8 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     nameKey="name"
                     cx="50%"
                     cy="50%"
-                    innerRadius={80}
-                    outerRadius={120}
+                    innerRadius={70}
+                    outerRadius={100}
                     paddingAngle={2}
                     cornerRadius={6}
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
@@ -1260,19 +1260,19 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                   />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex justify-center space-x-6 mt-4">
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-indigo-500 mr-2"></div>
-                  <span className="text-sm">Provider Revenue</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-emerald-500 mr-2"></div>
-                  <span className="text-sm">Driver Earnings</span>
-                </div>
-                <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-amber-500 mr-2"></div>
-                  <span className="text-sm">Insurance Claims</span>
-                </div>
+            </div>
+            <div className="flex justify-center space-x-6 pt-2 pb-2">
+              <div className="flex items-center">
+                <div className="h-3 w-3 rounded-full bg-indigo-500 mr-2"></div>
+                <span className="text-sm">Provider Revenue</span>
+              </div>
+              <div className="flex items-center">
+                <div className="h-3 w-3 rounded-full bg-emerald-500 mr-2"></div>
+                <span className="text-sm">Driver Earnings</span>
+              </div>
+              <div className="flex items-center">
+                <div className="h-3 w-3 rounded-full bg-amber-500 mr-2"></div>
+                <span className="text-sm">Insurance Claims</span>
               </div>
             </div>
           </CardContent>
