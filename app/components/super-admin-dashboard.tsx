@@ -699,7 +699,6 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold">BeLoved Super Admin Dashboard</h1>
             <p className="text-muted-foreground">System-wide analytics and management</p>
           </div>
         </div>
@@ -771,7 +770,6 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">BeLoved Super Admin Dashboard</h1>
           <p className="text-muted-foreground">System-wide analytics and management</p>
         </div>
         <div className="flex space-x-4">
