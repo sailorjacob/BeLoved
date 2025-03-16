@@ -710,15 +710,9 @@ export function ProviderManagement() {
                         {`${provider.address}, ${provider.city}, ${provider.state} ${provider.zip}`}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center space-x-2">
-                          <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
-                            {provider.status}
-                          </Badge>
-                          <Switch
-                            checked={provider.status === 'active'}
-                            onCheckedChange={() => handleStatusToggle(provider)}
-                          />
-                        </div>
+                        <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
+                          {provider.status}
+                        </Badge>
                       </TableCell>
                       <TableCell>{providerAdmins.length}</TableCell>
                       <TableCell>
@@ -732,6 +726,13 @@ export function ProviderManagement() {
                             }}
                           >
                             Edit
+                          </Button>
+                          <Button
+                            variant={provider.status === 'active' ? 'destructive' : 'default'}
+                            size="sm"
+                            onClick={() => handleStatusToggle(provider)}
+                          >
+                            {provider.status === 'active' ? 'Deactivate' : 'Activate'}
                           </Button>
                         </div>
                       </TableCell>
