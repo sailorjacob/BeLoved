@@ -835,11 +835,11 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                   <span>Revenue</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-gray-700 mr-1"></div>
+                  <div className="h-3 w-3 rounded-full bg-pink-400 mr-1"></div>
                   <span>Provider</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-gray-500 mr-1"></div>
+                  <div className="h-3 w-3 rounded-full bg-rose-300 mr-1"></div>
                   <span>Driver</span>
                 </div>
                 <div className="flex items-center">
@@ -922,21 +922,21 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     yAxisId="money"
                     type="monotone"
                     dataKey="provider_revenue"
-                    stroke="#374151"
+                    stroke="#f472b6"
                     strokeWidth={3}
                     name="Provider Revenue ($)"
                     dot={false}
-                    activeDot={{ r: 6, stroke: '#374151', strokeWidth: 2, fill: 'white' }}
+                    activeDot={{ r: 6, stroke: '#f472b6', strokeWidth: 2, fill: 'white' }}
                   />
                   <Line
                     yAxisId="money"
                     type="monotone"
                     dataKey="driver_earnings"
-                    stroke="#6b7280"
+                    stroke="#fda4af"
                     strokeWidth={3}
                     name="Driver Earnings ($)"
                     dot={false}
-                    activeDot={{ r: 6, stroke: '#6b7280', strokeWidth: 2, fill: 'white' }}
+                    activeDot={{ r: 6, stroke: '#fda4af', strokeWidth: 2, fill: 'white' }}
                   />
                   <Line
                     yAxisId="rides"
@@ -969,16 +969,16 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                 <PieChart>
                   <defs>
                     <linearGradient id="colorPie1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#374151" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#4b5563" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#f472b6" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#f9a8d4" stopOpacity={1}/>
                     </linearGradient>
                     <linearGradient id="colorPie2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#6b7280" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#9ca3af" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#fda4af" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#fecdd3" stopOpacity={1}/>
                     </linearGradient>
                     <linearGradient id="colorPie3" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#f87171" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#fca5a5" stopOpacity={1}/>
                     </linearGradient>
                   </defs>
                   <Pie
@@ -1028,11 +1028,11 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             </div>
             <div className="flex justify-center space-x-6 pt-2 pb-2">
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-gray-700 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-pink-400 mr-2"></div>
                 <span className="text-sm">Provider Revenue</span>
               </div>
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-gray-500 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-rose-300 mr-2"></div>
                 <span className="text-sm">Driver Earnings</span>
               </div>
               <div className="flex items-center">
