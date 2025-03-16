@@ -831,19 +831,19 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
               </div>
               <div className="flex items-center text-xs space-x-3">
                 <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-purple-500 mr-1"></div>
+                  <div className="h-3 w-3 rounded-full bg-red-500 mr-1"></div>
                   <span>Revenue</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-emerald-400 mr-1"></div>
+                  <div className="h-3 w-3 rounded-full bg-gray-700 mr-1"></div>
                   <span>Provider</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-amber-400 mr-1"></div>
+                  <div className="h-3 w-3 rounded-full bg-gray-500 mr-1"></div>
                   <span>Driver</span>
                 </div>
                 <div className="flex items-center">
-                  <div className="h-3 w-3 rounded-full bg-blue-400 mr-1"></div>
+                  <div className="h-3 w-3 rounded-full bg-red-300 mr-1"></div>
                   <span>Rides</span>
                 </div>
               </div>
@@ -912,41 +912,41 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     yAxisId="money"
                     type="monotone"
                     dataKey="revenue"
-                    stroke="#8884d8"
+                    stroke="#ef4444"
                     strokeWidth={3}
                     name="Total Revenue ($)"
                     dot={false}
-                    activeDot={{ r: 6, stroke: '#8884d8', strokeWidth: 2, fill: 'white' }}
+                    activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: 'white' }}
                   />
                   <Line
                     yAxisId="money"
                     type="monotone"
                     dataKey="provider_revenue"
-                    stroke="#4ade80"
+                    stroke="#374151"
                     strokeWidth={3}
                     name="Provider Revenue ($)"
                     dot={false}
-                    activeDot={{ r: 6, stroke: '#4ade80', strokeWidth: 2, fill: 'white' }}
+                    activeDot={{ r: 6, stroke: '#374151', strokeWidth: 2, fill: 'white' }}
                   />
                   <Line
                     yAxisId="money"
                     type="monotone"
                     dataKey="driver_earnings"
-                    stroke="#fbbf24"
+                    stroke="#6b7280"
                     strokeWidth={3}
                     name="Driver Earnings ($)"
                     dot={false}
-                    activeDot={{ r: 6, stroke: '#fbbf24', strokeWidth: 2, fill: 'white' }}
+                    activeDot={{ r: 6, stroke: '#6b7280', strokeWidth: 2, fill: 'white' }}
                   />
                   <Line
                     yAxisId="rides"
                     type="monotone"
                     dataKey="rides"
-                    stroke="#60a5fa"
+                    stroke="#fca5a5"
                     strokeWidth={3}
                     name="Number of Rides"
                     dot={false}
-                    activeDot={{ r: 6, stroke: '#60a5fa', strokeWidth: 2, fill: 'white' }}
+                    activeDot={{ r: 6, stroke: '#fca5a5', strokeWidth: 2, fill: 'white' }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -969,16 +969,16 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                 <PieChart>
                   <defs>
                     <linearGradient id="colorPie1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#8884d8" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#6366f1" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#374151" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#4b5563" stopOpacity={1}/>
                     </linearGradient>
                     <linearGradient id="colorPie2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#4ade80" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#10b981" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#6b7280" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#9ca3af" stopOpacity={1}/>
                     </linearGradient>
                     <linearGradient id="colorPie3" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#fbbf24" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#f59e0b" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#f87171" stopOpacity={1}/>
                     </linearGradient>
                   </defs>
                   <Pie
@@ -1005,7 +1005,7 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     paddingAngle={2}
                     cornerRadius={6}
                     label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                    labelLine={false}
+                    labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
                   >
                     <Cell fill="url(#colorPie1)" />
                     <Cell fill="url(#colorPie2)" />
@@ -1028,15 +1028,15 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             </div>
             <div className="flex justify-center space-x-6 pt-2 pb-2">
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-indigo-500 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-gray-700 mr-2"></div>
                 <span className="text-sm">Provider Revenue</span>
               </div>
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-emerald-500 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-gray-500 mr-2"></div>
                 <span className="text-sm">Driver Earnings</span>
               </div>
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-amber-500 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-red-500 mr-2"></div>
                 <span className="text-sm">Insurance Claims</span>
               </div>
             </div>
