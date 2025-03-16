@@ -1113,18 +1113,20 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     tickLine={{ stroke: '#e5e7eb' }}
                   />
                   <YAxis 
-                    yAxisId="left" 
+                    yAxisId="money" 
                     tick={{ fontSize: 12, fill: '#6b7280' }}
                     axisLine={{ stroke: '#e5e7eb' }}
                     tickLine={{ stroke: '#e5e7eb' }}
                     tickFormatter={(value) => `$${value}`}
+                    domain={[0, 'dataMax + 100']}
                   />
                   <YAxis 
-                    yAxisId="right" 
+                    yAxisId="rides" 
                     orientation="right" 
                     tick={{ fontSize: 12, fill: '#6b7280' }}
                     axisLine={{ stroke: '#e5e7eb' }}
                     tickLine={{ stroke: '#e5e7eb' }}
+                    domain={[0, 'dataMax + 5']}
                   />
                   <Tooltip 
                     contentStyle={{ 
@@ -1139,46 +1141,44 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                     }}
                     labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
                   />
-                  <Area
-                    yAxisId="left"
+                  <Line
+                    yAxisId="money"
                     type="monotone"
                     dataKey="revenue"
                     stroke="#8884d8"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorRevenue)"
+                    strokeWidth={3}
                     name="Total Revenue ($)"
+                    dot={false}
                     activeDot={{ r: 6, stroke: '#8884d8', strokeWidth: 2, fill: 'white' }}
                   />
-                  <Area
-                    yAxisId="left"
+                  <Line
+                    yAxisId="money"
                     type="monotone"
                     dataKey="provider_revenue"
                     stroke="#4ade80"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorProvider)"
+                    strokeWidth={3}
                     name="Provider Revenue ($)"
+                    dot={false}
                     activeDot={{ r: 6, stroke: '#4ade80', strokeWidth: 2, fill: 'white' }}
                   />
-                  <Area
-                    yAxisId="left"
+                  <Line
+                    yAxisId="money"
                     type="monotone"
                     dataKey="driver_earnings"
                     stroke="#fbbf24"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorDriver)"
+                    strokeWidth={3}
                     name="Driver Earnings ($)"
+                    dot={false}
                     activeDot={{ r: 6, stroke: '#fbbf24', strokeWidth: 2, fill: 'white' }}
                   />
                   <Line
-                    yAxisId="right"
+                    yAxisId="rides"
                     type="monotone"
                     dataKey="rides"
                     stroke="#60a5fa"
-                    strokeWidth={2}
+                    strokeWidth={3}
                     name="Number of Rides"
+                    dot={false}
                     activeDot={{ r: 6, stroke: '#60a5fa', strokeWidth: 2, fill: 'white' }}
                   />
                 </LineChart>
