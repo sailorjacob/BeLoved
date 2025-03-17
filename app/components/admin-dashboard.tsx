@@ -715,6 +715,10 @@ export function AdminDashboard() {
               <ClipboardList className="h-6 w-6 mb-2 text-primary" />
               <span className="text-xs text-center">Pickboard</span>
             </Link>
+            <Link href="/admin-dashboard/members" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
+              <Users className="h-6 w-6 mb-2 text-primary" />
+              <span className="text-xs text-center">Member Directory</span>
+            </Link>
             <Link href="/admin/manifest" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
               <Building2 className="h-6 w-6 mb-2 text-red-500" />
               <span className="text-sm">Manifest</span>
