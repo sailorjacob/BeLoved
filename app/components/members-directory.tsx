@@ -154,14 +154,7 @@ export function MembersDirectory() {
                     </TableRow>
                   ) : (
                     filteredMembers.map((member) => (
-                      <TableRow 
-                        key={member.id}
-                        className={
-                          member.user_role === 'admin' ? 'border-l-4 border-red-500' :
-                          member.user_role === 'driver' ? 'border-l-4 border-blue-500' :
-                          member.user_role === 'super_admin' ? 'border-l-4 border-purple-500' : ''
-                        }
-                      >
+                      <TableRow key={member.id}>
                         <TableCell className="font-mono">{member.member_id || '-'}</TableCell>
                         <TableCell className="font-bold">
                           <Link 
