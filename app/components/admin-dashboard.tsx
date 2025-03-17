@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { format, startOfWeek, endOfWeek } from "date-fns"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -35,7 +35,11 @@ import {
   Info,
   Calendar,
   CalendarCheck,
-  ClipboardList
+  ClipboardList,
+  UserPlus,
+  Users,
+  ChevronDown,
+  Search
 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/lib/supabase"
@@ -45,6 +49,23 @@ import { RideTrendsChart } from "./dashboard/ride-trends-chart"
 import { DriverDirectory as AdminDriverDirectory } from "./driver-directory"
 import { AdminMembersDirectory } from "./admin-members-directory"
 import { toast } from 'sonner'
+import { useFormHandling } from '@/hooks/useFormHandling'
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription, 
+  DialogFooter 
+} from "@/components/ui/dialog"
+import { FormInput } from '@/components/ui/form-input'
+import { Input } from "@/components/ui/input"
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
   member: Database['public']['Tables']['profiles']['Row']
@@ -60,6 +81,27 @@ interface DriverProfilePageProps {
   onBack: () => void
 }
 
+interface StaffFormData {
+  full_name: string
+  email: string
+  phone: string
+  username: string
+  password: string
+  provider_id: string
+  role: 'admin' | 'driver'
+}
+
+interface Member {
+  id: string
+  full_name: string
+  email: string
+  phone: string
+  username?: string
+  user_role: 'member' | 'driver' | 'admin' | 'super_admin'
+  status: 'active' | 'inactive'
+  provider_id?: string
+}
+
 export function AdminDashboard() {
   const [selectedView, setSelectedView] = useState<'overview' | 'driver' | 'ride'>('overview')
   const [selectedDriver, setSelectedDriver] = useState<Driver | null>(null)
@@ -72,6 +114,14 @@ export function AdminDashboard() {
   const [providerLoaded, setProviderLoaded] = useState(false)
   const [dashboardError, setDashboardError] = useState<string | null>(null)
   const router = useRouter()
+  const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false)
+  const [staffMode, setStaffMode] = useState<'create' | 'promote'>('create')
+  const [staffRole, setStaffRole] = useState<'admin' | 'driver'>('admin')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [searchResults, setSearchResults] = useState<Member[]>([])
+  const [selectedUser, setSelectedUser] = useState<Member | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const initializeDashboard = async () => {
@@ -282,21 +332,268 @@ export function AdminDashboard() {
     }
   }
 
+  // Add staff form handling
+  const staffForm = useFormHandling<StaffFormData>({
+    initialValues: {
+      full_name: '',
+      email: '',
+      phone: '',
+      username: '',
+      password: '',
+      provider_id: '',
+      role: 'admin'
+    },
+    validationRules: {
+      full_name: (value) => !value ? 'Full name is required' : undefined,
+      email: (value) => {
+        if (!value) return 'Email is required'
+        if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format'
+        return undefined
+      },
+      phone: (value) => {
+        if (!value) return 'Phone number is required'
+        if (!/^\+?[\d\s-]{10,}$/.test(value)) return 'Invalid phone format'
+        return undefined
+      },
+      username: (value) => !value ? 'Username is required' : undefined,
+      password: (value) => !value ? 'Password is required' : value.length < 6 ? 'Password must be at least 6 characters' : undefined,
+      provider_id: (value) => !value ? 'Provider is required' : undefined,
+      role: (value) => !value ? 'Role is required' : undefined
+    },
+    onSubmit: async (values) => {
+      try {
+        if (!provider) {
+          throw new Error('Provider not found')
+        }
+
+        // Show loading toast
+        toast.loading(`Creating ${values.role} account...`)
+
+        // 1. Create auth user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: values.email,
+          password: values.password,
+          options: {
+            data: {
+              full_name: values.full_name,
+              user_role: values.role
+            }
+          }
+        })
+
+        if (authError) {
+          console.error('Auth error creating user:', authError)
+          throw new Error(`Failed to create user account: ${authError.message}`)
+        }
+
+        if (!authData.user) throw new Error('No user returned from sign up')
+
+        // 2. Create profile record
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            full_name: values.full_name,
+            email: values.email,
+            phone: values.phone,
+            username: values.username,
+            user_role: values.role,
+            provider_id: values.provider_id,
+            organization_code: provider.organization_code,
+            status: 'active'
+          })
+
+        if (profileError) throw profileError
+
+        // 3. If creating a driver, add driver-specific data
+        if (values.role === 'driver') {
+          const { error: driverProfileError } = await supabase
+            .from('driver_profiles')
+            .insert({
+              id: authData.user.id,
+              status: 'active',
+              completed_rides: 0,
+              total_miles: 0
+            })
+
+          if (driverProfileError) throw driverProfileError
+        }
+
+        // Clear loading toast and show success
+        toast.dismiss()
+        toast.success(`${values.role.charAt(0).toUpperCase() + values.role.slice(1)} account created successfully!`, {
+          duration: 5000,
+          description: `${values.full_name} can now confirm their email and log in.`
+        })
+        
+        // Close dialog
+        setIsStaffDialogOpen(false)
+        
+        // Reset form
+        staffForm.resetForm()
+        
+        // Refresh drivers list if we added a driver
+        if (values.role === 'driver') {
+          fetchDrivers(provider.id)
+        }
+      } catch (error: any) {
+        // Clear loading toast and show error
+        toast.dismiss()
+        toast.error(`Failed to create ${values.role} account: ${error.message}`)
+      }
+    }
+  })
+
+  const handleSearchUsers = async (query: string) => {
+    if (query.length < 3) {
+      setSearchResults([])
+      return
+    }
+    
+    // Clear any existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    // Set a new timeout to debounce the search
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        setIsSearching(true)
+        
+        // Search for users by name or email
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+          .order('full_name', { ascending: true })
+          
+        if (error) throw error
+        
+        setSearchResults(data || [])
+      } catch (error) {
+        console.error('Error searching users:', error)
+        toast.error('Failed to search users')
+      } finally {
+        setIsSearching(false)
+      }
+    }, 500)
+  }
+
+  const handlePromoteUser = async () => {
+    if (!selectedUser || !provider) return
+    
+    try {
+      toast.loading(`Promoting user to ${staffRole}...`)
+      
+      // Update user profile with new role and provider association
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          user_role: staffRole,
+          provider_id: provider.id,
+          organization_code: provider.organization_code
+        })
+        .eq('id', selectedUser.id)
+        
+      if (error) throw error
+      
+      // If promoting to driver, also create driver profile
+      if (staffRole === 'driver') {
+        // Check if driver profile already exists
+        const { data: existingProfile } = await supabase
+          .from('driver_profiles')
+          .select('id')
+          .eq('id', selectedUser.id)
+          .single();
+          
+        if (existingProfile) {
+          // Update existing profile
+          const { error: updateError } = await supabase
+            .from('driver_profiles')
+            .update({
+              status: 'active',
+            })
+            .eq('id', selectedUser.id);
+            
+          if (updateError) throw updateError;
+        } else {
+          // Create new profile
+          const { error: insertError } = await supabase
+            .from('driver_profiles')
+            .insert({
+              id: selectedUser.id,
+              status: 'active',
+              completed_rides: 0,
+              total_miles: 0
+            });
+            
+          if (insertError) throw insertError;
+        }
+        
+        // Refresh drivers list
+        fetchDrivers(provider.id)
+      }
+      
+      toast.dismiss()
+      toast.success(`User promoted to ${staffRole} successfully!`)
+      
+      // Close dialog and reset state
+      setIsStaffDialogOpen(false)
+      setSelectedUser(null)
+      setSearchQuery('')
+      setSearchResults([])
+      
+    } catch (error: any) {
+      toast.dismiss()
+      toast.error(`Failed to promote user: ${error.message}`)
+    }
+  }
+
+  const openStaffDialog = (mode: 'create' | 'promote', role: 'admin' | 'driver') => {
+    setStaffMode(mode)
+    setStaffRole(role)
+    
+    if (mode === 'create') {
+      staffForm.handleChange('provider_id', provider?.id || '')
+      staffForm.handleChange('role', role)
+    } else {
+      setSelectedUser(null)
+      setSearchQuery('')
+      setSearchResults([])
+    }
+    
+    setIsStaffDialogOpen(true)
+  }
+
+  if (isLoading || !provider) {
+    return (
+      <div className="flex justify-center items-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500 mx-auto mb-4"></div>
+          <div className="text-lg font-semibold">Loading dashboard...</div>
+          {dashboardError && (
+            <div className="text-red-500 mt-2 max-w-md">{dashboardError}</div>
+          )}
+        </div>
+      </div>
+    )
+  }
+
   if (selectedView === 'driver' && selectedDriver) {
     return (
       <DriverProfilePage 
         driverId={selectedDriver.id} 
-        onBack={handleBackFromDriver} 
+        onBack={handleBackFromDriver}
       />
     )
   }
 
-  if (selectedRide) {
+  if (selectedView === 'ride' && selectedRide) {
     return (
       <RideDetailView
         ride={selectedRide}
-        onRideAction={handleRideAction}
         onBack={handleBackFromDetails}
+        onRideAction={handleRideAction}
         onMilesEdit={handleMilesEdit}
         onClose={handleBackFromDetails}
       />
@@ -304,22 +601,82 @@ export function AdminDashboard() {
   }
 
   return (
-    <div className="space-y-8">
-      {provider && (
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-3xl font-bold">{provider.name}</h1>
-            <p className="text-muted-foreground">
-              {provider.address}, {provider.city}, {provider.state} {provider.zip}
-            </p>
-          </div>
-          {provider.status && (
-            <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
-              {provider.status.toUpperCase()}
-            </Badge>
-          )}
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">{provider?.name || 'Your Organization'} Dashboard</h2>
+        <div className="flex gap-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button>
+                Staff Actions <ChevronDown className="ml-2 h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-[200px]">
+              <DropdownMenuItem 
+                onClick={() => openStaffDialog('create', 'admin')}
+                className="cursor-pointer"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add New Admin
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => openStaffDialog('create', 'driver')}
+                className="cursor-pointer"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                Add New Driver
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => openStaffDialog('promote', 'admin')}
+                className="cursor-pointer"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Promote to Admin
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => openStaffDialog('promote', 'driver')}
+                className="cursor-pointer"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                Promote to Driver
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
-      )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active Rides</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {rides.filter(r => ['assigned', 'in_progress', 'started', 'picked_up'].includes(r.status)).length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Completed Rides</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {rides.filter(r => r.status === 'completed').length}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {drivers.filter(d => d.driver_profile?.status === 'active').length} / {drivers.length}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       <Card>
         <CardHeader>
@@ -611,6 +968,164 @@ export function AdminDashboard() {
           )}
         </div>
       </div>
+
+      {/* Staff Management Dialog */}
+      <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {staffMode === 'create' 
+                ? `Add New ${staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}` 
+                : `Promote User to ${staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}`}
+            </DialogTitle>
+            <DialogDescription>
+              {staffMode === 'create' 
+                ? `Create a new ${staffRole} account for ${provider?.name || 'the provider'}.`
+                : `Assign an existing user as a ${staffRole} for ${provider?.name || 'the provider'}.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {staffMode === 'create' ? (
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              staffForm.handleSubmit(e)
+            }} className="space-y-4">
+              <FormInput
+                label="Full Name"
+                name="full_name"
+                value={staffForm.values.full_name}
+                error={staffForm.errors.full_name}
+                onChange={(e) => staffForm.handleChange('full_name', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Username"
+                name="username"
+                value={staffForm.values.username}
+                error={staffForm.errors.username}
+                onChange={(e) => staffForm.handleChange('username', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Email"
+                name="email"
+                type="email"
+                value={staffForm.values.email}
+                error={staffForm.errors.email}
+                onChange={(e) => staffForm.handleChange('email', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Phone Number"
+                name="phone"
+                value={staffForm.values.phone}
+                error={staffForm.errors.phone}
+                onChange={(e) => staffForm.handleChange('phone', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Password"
+                name="password"
+                type="password"
+                value={staffForm.values.password}
+                error={staffForm.errors.password}
+                onChange={(e) => staffForm.handleChange('password', e.target.value)}
+                required
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsStaffDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Create {staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Search for User</label>
+                <div className="relative mt-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      handleSearchUsers(e.target.value)
+                    }}
+                  />
+                </div>
+                {isSearching && (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                    <span className="ml-2 text-sm text-gray-500">Searching...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                {searchResults.length > 0 ? (
+                  <div className="divide-y">
+                    {searchResults.map((user) => (
+                      <div 
+                        key={user.id} 
+                        className={`p-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer ${
+                          selectedUser?.id === user.id ? 'bg-gray-100' : ''
+                        }`}
+                        onClick={() => setSelectedUser(user)}
+                      >
+                        <div>
+                          <div className="font-medium">{user.full_name}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="flex items-center mt-1">
+                            <Badge variant="outline" className="text-xs mr-2">
+                              {user.user_role}
+                            </Badge>
+                            <Badge 
+                              variant={user.status === 'active' ? 'success' : 'destructive'}
+                              className="text-xs"
+                            >
+                              {user.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          {selectedUser?.id === user.id && (
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchQuery.length >= 3 ? (
+                  <div className="p-4 text-center">
+                    <p className="text-gray-500">No users found</p>
+                  </div>
+                ) : (
+                  <div className="p-4 text-center">
+                    <p className="text-gray-500">Type at least 3 characters to search</p>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsStaffDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handlePromoteUser}
+                  disabled={!selectedUser}
+                >
+                  Promote to {staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
