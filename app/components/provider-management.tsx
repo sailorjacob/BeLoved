@@ -49,8 +49,9 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
-import { Filter, MapPin, ArrowUpDown, Info, ChevronDown, Copy, ExternalLink } from "lucide-react"
+import { Filter, MapPin, ArrowUpDown, Info, ChevronDown, Copy, ExternalLink, UserPlus, Plus, Users, Pencil, Power, CheckCircle } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   Pagination,
@@ -99,6 +100,17 @@ interface Admin {
   user_role: 'admin' | 'super_admin'
 }
 
+interface Member {
+  id: string
+  full_name: string
+  email: string
+  phone: string
+  username?: string
+  user_role: 'member' | 'driver' | 'admin' | 'super_admin'
+  status: 'active' | 'inactive'
+  provider_id?: string
+}
+
 interface ProviderFormData {
   name: string
   organization_code: string
@@ -122,11 +134,27 @@ interface ActivityLog {
   id: string
   provider_id: string
   provider_name: string
-  action: 'created' | 'updated' | 'deleted' | 'status_changed'
+  action: 'created' | 'updated' | 'deleted' | 'status_changed' | 'admin_created' | 'driver_created' | 'user_promoted_to_admin' | 'user_promoted_to_driver'
   details: string
   created_at: string
   created_by: string
   created_by_id: string
+}
+
+interface StaffFormData {
+  full_name: string
+  email: string
+  phone: string
+  username: string
+  password: string
+  provider_id: string
+  role: 'admin' | 'driver'
+}
+
+interface PromoteUserData {
+  user_id: string
+  provider_id: string
+  role: 'admin' | 'driver'
 }
 
 const providerValidationRules = {
@@ -194,25 +222,6 @@ const adminValidationRules = {
   }
 }
 
-// Add organization code for drivers too
-// For example:
-//
-// interface Driver {
-//   id: string
-//   full_name: string
-//   email: string
-//   phone: string
-//   provider_id?: string
-//   organization_code?: string  // Add organization code from provider
-//   status: 'active' | 'inactive'
-//   member_id?: string
-//   // ... other driver fields
-// }
-//
-// When creating or updating drivers, make sure to store the organization_code
-// from their associated provider, similar to how admins are handled.
-// This will ensure consistent organization across the application.
-
 export function ProviderManagement() {
   const router = useRouter()
   const [providers, setProviders] = useState<Provider[]>([])
@@ -243,20 +252,13 @@ export function ProviderManagement() {
   const [selectedProviders, setSelectedProviders] = useState<string[]>([])
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
   const [showActivityLog, setShowActivityLog] = useState(false)
-
-  // One-time check of providers table
-  useEffect(() => {
-    const checkProviders = async () => {
-      console.log('[DEBUG] Checking providers table...')
-      const { data, error } = await supabase
-        .from('transportation_providers')
-        .select('*')
-      
-      console.log('[DEBUG] All providers in database:', data)
-      console.log('[DEBUG] Any errors:', error)
-    }
-    checkProviders()
-  }, [])
+  const [isStaffDialogOpen, setIsStaffDialogOpen] = useState(false)
+  const [staffMode, setStaffMode] = useState<'create' | 'promote'>('create')
+  const [staffRole, setStaffRole] = useState<'admin' | 'driver'>('admin')
+  const [searchResults, setSearchResults] = useState<Member[]>([])
+  const [selectedUser, setSelectedUser] = useState<Member | null>(null)
+  const [isSearching, setIsSearching] = useState(false)
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     fetchData()
@@ -943,7 +945,7 @@ export function ProviderManagement() {
     providerId: string,
     providerName: string,
     action: ActivityLog['action'],
-    details: string
+    details: string | object
   ) => {
     try {
       const { data: { user } } = await supabase.auth.getUser()
@@ -961,6 +963,268 @@ export function ProviderManagement() {
     } catch (error) {
       console.error('[ProviderManagement] Error logging activity:', error)
     }
+  }
+
+  const staffForm = useFormHandling<StaffFormData>({
+    initialValues: {
+      full_name: '',
+      email: '',
+      phone: '',
+      username: '',
+      password: '',
+      provider_id: '',
+      role: 'admin'
+    },
+    validationRules: {
+      full_name: (value) => !value ? 'Full name is required' : undefined,
+      email: (value) => {
+        if (!value) return 'Email is required'
+        if (!/\S+@\S+\.\S+/.test(value)) return 'Invalid email format'
+        return undefined
+      },
+      phone: (value) => {
+        if (!value) return 'Phone number is required'
+        if (!/^\+?[\d\s-]{10,}$/.test(value)) return 'Invalid phone format'
+        return undefined
+      },
+      username: (value) => !value ? 'Username is required' : undefined,
+      password: (value) => !value ? 'Password is required' : value.length < 6 ? 'Password must be at least 6 characters' : undefined,
+      provider_id: (value) => !value ? 'Provider is required' : undefined,
+      role: (value) => !value ? 'Role is required' : undefined
+    },
+    onSubmit: async (values) => {
+      try {
+        // Find the provider to get its organization code
+        const provider = providers.find(p => p.id === values.provider_id)
+        if (!provider) {
+          throw new Error('Provider not found')
+        }
+
+        // Show loading toast
+        toast.loading(`Creating ${values.role} account...`)
+
+        // 1. Create auth user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email: values.email,
+          password: values.password,
+          options: {
+            data: {
+              full_name: values.full_name,
+              user_role: values.role
+            }
+          }
+        })
+
+        if (authError) throw authError
+        if (!authData.user) throw new Error('No user returned from sign up')
+
+        // 2. Create profile record
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            full_name: values.full_name,
+            email: values.email,
+            phone: values.phone,
+            username: values.username,
+            user_role: values.role,
+            provider_id: values.provider_id,
+            organization_code: provider.organization_code,
+            status: 'active'
+          })
+
+        if (profileError) throw profileError
+
+        // 3. If creating a driver, add driver-specific data
+        if (values.role === 'driver') {
+          const { error: driverProfileError } = await supabase
+            .from('driver_profiles')
+            .insert({
+              id: authData.user.id,
+              status: 'active',
+              completed_rides: 0,
+              total_miles: 0
+            })
+
+          if (driverProfileError) throw driverProfileError
+        }
+
+        // 4. Log the activity
+        await logActivity(values.provider_id, provider.name, 
+          `${values.role}_created`, 
+          { user: values.full_name, email: values.email }
+        )
+
+        // Clear loading toast and show success
+        toast.dismiss()
+        toast.success(`${values.role.charAt(0).toUpperCase() + values.role.slice(1)} account created successfully!`, {
+          duration: 5000,
+          description: `${values.full_name} can now confirm their email and log in.`
+        })
+        
+        // Close dialog
+        setTimeout(() => {
+          setIsStaffDialogOpen(false)
+          staffForm.resetForm()
+          fetchData()
+        }, 1000)
+      } catch (error) {
+        toast.dismiss()
+        console.error(`Error creating ${values.role}:`, error)
+        toast.error(error instanceof Error ? error.message : `Failed to create ${values.role} account`, {
+          duration: 5000
+        })
+      }
+    }
+  })
+
+  // Add the search and promote functionality
+  const handleSearchUsers = async (query: string) => {
+    if (query.length < 3) {
+      setSearchResults([])
+      return
+    }
+
+    setIsSearching(true)
+    
+    // Clear previous timeout if it exists
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current)
+    }
+    
+    // Set a new timeout to delay the search
+    searchTimeoutRef.current = setTimeout(async () => {
+      try {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('*')
+          .or(`full_name.ilike.%${query}%,email.ilike.%${query}%`)
+          .in('user_role', ['member', 'driver', 'admin'])  // Only search for users who can be promoted
+          .order('full_name', { ascending: true })
+          .limit(10)
+
+        if (error) throw error
+        setSearchResults(data || [])
+      } catch (error) {
+        console.error('Error searching users:', error)
+        toast.error('Failed to search users')
+        setSearchResults([])
+      } finally {
+        setIsSearching(false)
+      }
+    }, 500)  // 500ms delay to avoid too many requests
+  }
+
+  const handlePromoteUser = async () => {
+    if (!selectedUser || !selectedProvider) {
+      toast.error('Please select a user and provider')
+      return
+    }
+
+    try {
+      // Show loading toast
+      toast.loading(`Updating user role...`)
+
+      // Find the provider to get its organization code
+      const provider = providers.find(p => p.id === selectedProvider.id)
+      if (!provider) {
+        throw new Error('Provider not found')
+      }
+
+      // Update the user's profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          user_role: staffRole,
+          provider_id: selectedProvider.id,
+          organization_code: provider.organization_code
+        })
+        .eq('id', selectedUser.id)
+
+      if (updateError) throw updateError
+
+      // If promoting to driver, create driver_profile if it doesn't exist
+      if (staffRole === 'driver') {
+        // First check if driver profile exists
+        const { data: existingProfile } = await supabase
+          .from('driver_profiles')
+          .select('id')
+          .eq('id', selectedUser.id)
+          .single()
+
+        if (!existingProfile) {
+          const { error: driverProfileError } = await supabase
+            .from('driver_profiles')
+            .insert({
+              id: selectedUser.id,
+              status: 'active',
+              completed_rides: 0,
+              total_miles: 0
+            })
+
+          if (driverProfileError) throw driverProfileError
+        }
+      }
+
+      // Update the auth metadata
+      const { error: authUpdateError } = await supabase.auth.admin.updateUserById(
+        selectedUser.id,
+        { user_metadata: { user_role: staffRole } }
+      )
+
+      if (authUpdateError) throw authUpdateError
+
+      // Log the activity
+      await logActivity(
+        selectedProvider.id,
+        selectedProvider.name,
+        `user_promoted_to_${staffRole}`,
+        { 
+          user: selectedUser.full_name, 
+          email: selectedUser.email,
+          previous_role: selectedUser.user_role
+        }
+      )
+
+      // Clear loading toast and show success
+      toast.dismiss()
+      toast.success(`User successfully assigned as ${staffRole}`, {
+        duration: 5000,
+        description: `${selectedUser.full_name} is now a ${staffRole} for ${provider.name}.`
+      })
+      
+      // Close dialog
+      setTimeout(() => {
+        setIsStaffDialogOpen(false)
+        setSelectedUser(null)
+        setSearchQuery('')
+        setSearchResults([])
+        fetchData()
+      }, 1000)
+    } catch (error) {
+      toast.dismiss()
+      console.error(`Error promoting user:`, error)
+      toast.error(error instanceof Error ? error.message : `Failed to update user role`, {
+        duration: 5000
+      })
+    }
+  }
+
+  const openStaffDialog = (provider: Provider, mode: 'create' | 'promote', role: 'admin' | 'driver') => {
+    setSelectedProvider(provider)
+    setStaffMode(mode)
+    setStaffRole(role)
+    
+    if (mode === 'create') {
+      staffForm.handleChange('provider_id', provider.id)
+      staffForm.handleChange('role', role)
+    } else {
+      setSelectedUser(null)
+      setSearchQuery('')
+      setSearchResults([])
+    }
+    
+    setIsStaffDialogOpen(true)
   }
 
   if (isLoading) {
@@ -1263,33 +1527,59 @@ export function ProviderManagement() {
                                 Actions <ChevronDown className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  setProviderToEdit(provider)
-                                  setIsEditProviderDialogOpen(true)
-                                }}
-                              >
-                                Edit Provider
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/provider/${provider.id}/details`}>
-                                  <ExternalLink className="h-3.5 w-3.5 mr-2" /> View Details
+                            <DropdownMenuContent align="end" className="w-[200px]">
+                              <DropdownMenuItem onSelect={() => setSelectedProvider(provider)}>
+                                <Link href={`/provider/${provider.id}/details`} className="flex items-center w-full">
+                                  <ExternalLink className="mr-2 h-4 w-4" />
+                                  View Details
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => {
-                                  // Create a new provider as a copy
-                                  const newProvider = { 
-                                    ...provider,
-                                    id: undefined, // Set id to undefined instead of deleting it
-                                    name: `${provider.name} (Copy)`
-                                  };
-                                  // Open dialog with this data pre-filled
-                                  // TODO: Add cloning functionality
-                                }}
-                              >
-                                <Copy className="h-3.5 w-3.5 mr-2" /> Clone Provider
+                              <DropdownMenuItem onSelect={() => handleEditProvider(provider)}>
+                                <Pencil className="mr-2 h-4 w-4" />
+                                Edit Provider
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onSelect={() => handleStatusToggle(provider)}>
+                                <Power className="mr-2 h-4 w-4" />
+                                {provider.status === 'active' ? 'Deactivate' : 'Activate'}
+                              </DropdownMenuItem>
+                              
+                              {/* Add new menu divider and staff management options */}
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem asChild>
+                                <button 
+                                  className="flex items-center w-full cursor-pointer" 
+                                  onClick={() => openStaffDialog(provider, 'create', 'admin')}
+                                >
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                  Add New Admin
+                                </button>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <button 
+                                  className="flex items-center w-full cursor-pointer" 
+                                  onClick={() => openStaffDialog(provider, 'create', 'driver')}
+                                >
+                                  <UserPlus className="mr-2 h-4 w-4" />
+                                  Add New Driver
+                                </button>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <button 
+                                  className="flex items-center w-full cursor-pointer" 
+                                  onClick={() => openStaffDialog(provider, 'promote', 'admin')}
+                                >
+                                  <Users className="mr-2 h-4 w-4" />
+                                  Promote to Admin
+                                </button>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <button 
+                                  className="flex items-center w-full cursor-pointer" 
+                                  onClick={() => openStaffDialog(provider, 'promote', 'driver')}
+                                >
+                                  <Users className="mr-2 h-4 w-4" />
+                                  Promote to Driver
+                                </button>
                               </DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
@@ -1870,9 +2160,13 @@ export function ProviderManagement() {
                         log.action === 'created' ? 'success' :
                         log.action === 'updated' ? 'default' :
                         log.action === 'deleted' ? 'destructive' :
+                        log.action === 'status_changed' ? 'secondary' :
+                        log.action === 'admin_created' ? 'outline' :
+                        log.action === 'driver_created' ? 'success' :
+                        log.action === 'user_promoted_to_admin' ? 'success' :
                         'outline'
                       }>
-                        {log.action.replace('_', ' ')}
+                        {log.action.toUpperCase().replace('_', ' ')}
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground">{log.details}</p>
@@ -1889,6 +2183,164 @@ export function ProviderManagement() {
           <DialogFooter>
             <Button onClick={() => fetchActivityLogs()}>Refresh</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Staff Management Dialog */}
+      <Dialog open={isStaffDialogOpen} onOpenChange={setIsStaffDialogOpen}>
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle>
+              {staffMode === 'create' 
+                ? `Add New ${staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}` 
+                : `Promote User to ${staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}`}
+            </DialogTitle>
+            <DialogDescription>
+              {staffMode === 'create' 
+                ? `Create a new ${staffRole} account for ${selectedProvider?.name || 'the selected provider'}.`
+                : `Assign an existing user as a ${staffRole} for ${selectedProvider?.name || 'the selected provider'}.`}
+            </DialogDescription>
+          </DialogHeader>
+
+          {staffMode === 'create' ? (
+            <form onSubmit={(e) => {
+              e.preventDefault()
+              staffForm.handleSubmit(e)
+            }} className="space-y-4">
+              <FormInput
+                label="Full Name"
+                name="full_name"
+                value={staffForm.values.full_name}
+                error={staffForm.errors.full_name}
+                onChange={(e) => staffForm.handleChange('full_name', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Username"
+                name="username"
+                value={staffForm.values.username}
+                error={staffForm.errors.username}
+                onChange={(e) => staffForm.handleChange('username', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Email"
+                name="email"
+                type="email"
+                value={staffForm.values.email}
+                error={staffForm.errors.email}
+                onChange={(e) => staffForm.handleChange('email', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Phone Number"
+                name="phone"
+                value={staffForm.values.phone}
+                error={staffForm.errors.phone}
+                onChange={(e) => staffForm.handleChange('phone', e.target.value)}
+                required
+              />
+              <FormInput
+                label="Password"
+                name="password"
+                type="password"
+                value={staffForm.values.password}
+                error={staffForm.errors.password}
+                onChange={(e) => staffForm.handleChange('password', e.target.value)}
+                required
+              />
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsStaffDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Create {staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <div>
+                <label className="text-sm font-medium">Search for User</label>
+                <div className="relative mt-1">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by name or email..."
+                    className="pl-8"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value)
+                      handleSearchUsers(e.target.value)
+                    }}
+                  />
+                </div>
+                {isSearching && (
+                  <div className="flex items-center justify-center py-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-900"></div>
+                    <span className="ml-2 text-sm text-gray-500">Searching...</span>
+                  </div>
+                )}
+              </div>
+
+              <div className="max-h-[300px] overflow-y-auto border rounded-md">
+                {searchResults.length > 0 ? (
+                  <div className="divide-y">
+                    {searchResults.map((user) => (
+                      <div 
+                        key={user.id} 
+                        className={`p-3 flex items-center justify-between hover:bg-gray-50 cursor-pointer ${
+                          selectedUser?.id === user.id ? 'bg-gray-100' : ''
+                        }`}
+                        onClick={() => setSelectedUser(user)}
+                      >
+                        <div>
+                          <div className="font-medium">{user.full_name}</div>
+                          <div className="text-sm text-gray-500">{user.email}</div>
+                          <div className="flex items-center mt-1">
+                            <Badge variant="outline" className="text-xs mr-2">
+                              {user.user_role}
+                            </Badge>
+                            <Badge 
+                              variant={user.status === 'active' ? 'success' : 'destructive'}
+                              className="text-xs"
+                            >
+                              {user.status}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div>
+                          {selectedUser?.id === user.id && (
+                            <CheckCircle className="h-5 w-5 text-green-500" />
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : searchQuery.length >= 3 ? (
+                  <div className="p-4 text-center">
+                    <p className="text-gray-500">No users found</p>
+                  </div>
+                ) : (
+                  <div className="p-4 text-center">
+                    <p className="text-gray-500">Type at least 3 characters to search</p>
+                  </div>
+                )}
+              </div>
+
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsStaffDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button 
+                  type="button" 
+                  onClick={handlePromoteUser}
+                  disabled={!selectedUser}
+                >
+                  Promote to {staffRole.charAt(0).toUpperCase() + staffRole.slice(1)}
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
