@@ -1534,7 +1534,10 @@ export function ProviderManagement() {
                                   View Details
                                 </Link>
                               </DropdownMenuItem>
-                              <DropdownMenuItem onSelect={() => handleEditProvider(provider)}>
+                              <DropdownMenuItem onSelect={() => {
+                                setProviderToEdit(provider)
+                                setIsEditProviderDialogOpen(true)
+                              }}>
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit Provider
                               </DropdownMenuItem>
