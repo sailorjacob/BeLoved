@@ -614,8 +614,7 @@ export function ProviderManagement() {
 
       // Check if this provider has any admins
       const providerAdmins = admins.filter(admin => 
-        admin.provider_id === providerToEdit.id && 
-        admin.user_role === 'admin'
+        admin.provider_id === providerToEdit.id
       )
       
       if (providerAdmins.length > 0) {
@@ -698,8 +697,7 @@ export function ProviderManagement() {
               {providers.length > 0 ? (
                 providers.map((provider) => {
                   const providerAdmins = admins.filter(admin => 
-                    admin.provider_id === provider.id && 
-                    admin.user_role === 'admin'
+                    admin.provider_id === provider.id
                   )
                   return (
                     <TableRow key={provider.id}>
