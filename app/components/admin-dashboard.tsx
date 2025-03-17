@@ -747,13 +747,9 @@ export function AdminDashboard() {
               <User className="h-6 w-6 mb-2 text-red-500" />
               <span className="text-sm">Driver Info</span>
             </Link>
-            <Link href="/admin/vehicles" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
-              <Car className="h-6 w-6 mb-2 text-red-500" />
-              <span className="text-sm">Vehicles</span>
-            </Link>
             <Link href="/admin-dashboard/vehicles" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent border-primary">
               <Car className="h-6 w-6 mb-2 text-primary" />
-              <span className="text-xs text-center font-semibold">Fleet Management</span>
+              <span className="text-sm">Vehicles</span>
             </Link>
             <Link href="/admin/compliance" className="flex flex-col items-center justify-center p-4 border rounded-lg hover:bg-accent">
               <CheckSquare className="h-6 w-6 mb-2 text-red-500" />
