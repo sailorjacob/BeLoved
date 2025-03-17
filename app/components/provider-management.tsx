@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import { NavigationManager } from "@/app/contexts/auth-context"
 import {
@@ -44,6 +44,22 @@ import { AlertDialog, AlertDialogContent, AlertDialogDescription, AlertDialogFoo
 import Link from "next/link"
 import { Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { Filter, MapPin, ArrowUpDown, Info, ChevronDown, Copy, ExternalLink } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination"
 
 interface Provider {
   id: string
@@ -194,6 +210,14 @@ export function ProviderManagement() {
   const [deletePassword, setDeletePassword] = useState('')
   const [isDeleting, setIsDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all')
+  const [sorting, setSorting] = useState<{ column: string; direction: 'asc' | 'desc' }>({
+    column: 'name',
+    direction: 'asc'
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const itemsPerPage = 10
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([])
 
   // One-time check of providers table
   useEffect(() => {
@@ -643,10 +667,176 @@ export function ProviderManagement() {
     }
   }
 
+  // Filtered and sorted providers
+  const filteredProviders = useMemo(() => {
+    return providers
+      .filter(provider => {
+        // Status filter
+        if (statusFilter !== 'all' && provider.status !== statusFilter) {
+          return false
+        }
+        
+        // Search query filter
+        if (searchQuery) {
+          const query = searchQuery.toLowerCase()
+          return (
+            provider.name.toLowerCase().includes(query) ||
+            provider.organization_code.toLowerCase().includes(query) ||
+            provider.address.toLowerCase().includes(query) ||
+            provider.city.toLowerCase().includes(query) ||
+            provider.state.toLowerCase().includes(query) ||
+            provider.zip.toLowerCase().includes(query)
+          )
+        }
+        
+        return true
+      })
+      .sort((a, b) => {
+        // Handle sorting
+        const { column, direction } = sorting
+        
+        if (column === 'adminCount') {
+          const aAdmins = admins.filter(admin => admin.provider_id === a.id).length
+          const bAdmins = admins.filter(admin => admin.provider_id === b.id).length
+          
+          return direction === 'asc'
+            ? aAdmins - bAdmins
+            : bAdmins - aAdmins
+        }
+        
+        if (column === 'status') {
+          return direction === 'asc'
+            ? a.status.localeCompare(b.status)
+            : b.status.localeCompare(a.status)
+        }
+        
+        // Default sorting for name, organization_code, address
+        const aValue = a[column as keyof typeof a] || ''
+        const bValue = b[column as keyof typeof b] || ''
+        
+        return direction === 'asc'
+          ? String(aValue).localeCompare(String(bValue))
+          : String(bValue).localeCompare(String(aValue))
+      })
+  }, [providers, admins, statusFilter, searchQuery, sorting])
+  
+  // Pagination
+  const paginatedProviders = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage
+    return filteredProviders.slice(startIndex, startIndex + itemsPerPage)
+  }, [filteredProviders, currentPage])
+  
+  const pageCount = Math.ceil(filteredProviders.length / itemsPerPage)
+  
+  // Toggle sort direction or set new sort column
+  const handleSort = (column: string) => {
+    setSorting(prev => ({
+      column,
+      direction: prev.column === column && prev.direction === 'asc' ? 'desc' : 'asc'
+    }))
+  }
+
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [statusFilter, searchQuery])
+
+  // Add this back after the filteredProviders useMemo
   const filteredAdmins = admins.filter(admin =>
     admin.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     admin.id.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Add this function to handle checkbox selections
+  const toggleProviderSelection = (providerId: string) => {
+    setSelectedProviders(prev => 
+      prev.includes(providerId)
+        ? prev.filter(id => id !== providerId)
+        : [...prev, providerId]
+    )
+  }
+  
+  // Add this function to handle bulk selection
+  const toggleAllProviders = () => {
+    if (selectedProviders.length === paginatedProviders.length) {
+      setSelectedProviders([])
+    } else {
+      setSelectedProviders(paginatedProviders.map(p => p.id))
+    }
+  }
+  
+  // Add this function to handle bulk status changes
+  const bulkUpdateStatus = async (status: 'active' | 'inactive') => {
+    if (selectedProviders.length === 0) return
+    
+    try {
+      // Update each selected provider
+      for (const providerId of selectedProviders) {
+        await supabase
+          .from('transportation_providers')
+          .update({ status })
+          .eq('id', providerId)
+          
+        // Also update associated admin accounts
+        await supabase
+          .from('profiles')
+          .update({ status })
+          .eq('provider_id', providerId)
+          .eq('user_role', 'admin')
+      }
+      
+      toast.success(`${selectedProviders.length} providers ${status === 'active' ? 'activated' : 'deactivated'}`)
+      setSelectedProviders([])
+      fetchData()
+    } catch (error) {
+      console.error(`[ProviderManagement] Error bulk updating status:`, error)
+      toast.error('Failed to update providers')
+    }
+  }
+  
+  // Add this function to export selected providers
+  const exportProviders = () => {
+    if (selectedProviders.length === 0) return
+    
+    const selectedData = providers
+      .filter(p => selectedProviders.includes(p.id))
+      .map(p => ({
+        name: p.name,
+        organization_code: p.organization_code,
+        address: p.address,
+        city: p.city,
+        state: p.state,
+        zip: p.zip,
+        phone: p.phone,
+        status: p.status,
+        admin_count: admins.filter(a => a.provider_id === p.id).length
+      }))
+    
+    const csv = [
+      // Header row
+      Object.keys(selectedData[0]).join(','),
+      // Data rows
+      ...selectedData.map(item => Object.values(item).join(','))
+    ].join('\n')
+    
+    // Create download link
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'providers-export.csv'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+    
+    toast.success(`${selectedProviders.length} providers exported to CSV`)
+  }
+  
+  // Clear selections when filters or pagination changes
+  useEffect(() => {
+    setSelectedProviders([])
+  }, [statusFilter, searchQuery, currentPage])
 
   if (isLoading) {
     return (
@@ -682,78 +872,268 @@ export function ProviderManagement() {
           </Button>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Organization Code</TableHead>
-                <TableHead>Address</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Admin Count</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {providers.length > 0 ? (
-                providers.map((provider) => {
-                  const providerAdmins = admins.filter(admin => 
-                    admin.provider_id === provider.id
-                  )
-                  return (
-                    <TableRow key={provider.id}>
-                      <TableCell className="font-medium">
-                        <Link 
-                          href={`/provider/${provider.id}/details`}
-                          className="text-foreground font-bold hover:underline transition-colors"
-                        >
-                          {provider.name}
-                        </Link>
-                      </TableCell>
-                      <TableCell>{provider.organization_code}</TableCell>
-                      <TableCell>
-                        {`${provider.address}, ${provider.city}, ${provider.state} ${provider.zip}`}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
-                          {provider.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{providerAdmins.length}</TableCell>
-                      <TableCell>
-                        <div className="flex space-x-2">
+          {/* Search and Filter Controls */}
+          <div className="flex flex-col sm:flex-row gap-4 mb-6 items-start sm:items-center justify-between">
+            <div className="flex gap-2 items-center">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-8 gap-1">
+                    <Filter className="h-3.5 w-3.5" />
+                    <span>Status: {statusFilter === 'all' ? 'All' : statusFilter}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start">
+                  <DropdownMenuItem onClick={() => setStatusFilter('all')}>
+                    All
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('active')}>
+                    Active
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setStatusFilter('inactive')}>
+                    Inactive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              
+              {selectedProviders.length > 0 && (
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" size="sm" className="h-8 gap-1">
+                      Bulk Actions ({selectedProviders.length})
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem onClick={() => bulkUpdateStatus('active')}>
+                      Activate Providers
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => bulkUpdateStatus('inactive')}>
+                      Deactivate Providers
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={exportProviders}>
+                      Export to CSV
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              
+              <div className="text-sm text-muted-foreground">
+                {filteredProviders.length} providers found
+              </div>
+            </div>
+            
+            <div className="relative w-full sm:w-auto max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search providers..."
+                className="pl-8 h-8 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+          
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-10">
+                    <input
+                      type="checkbox"
+                      className="h-4 w-4 rounded border-gray-300"
+                      checked={paginatedProviders.length > 0 && selectedProviders.length === paginatedProviders.length}
+                      onChange={toggleAllProviders}
+                    />
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('name')}>
+                    <div className="flex items-center gap-1">
+                      Name
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                      {sorting.column === 'name' && (
+                        <span className="text-xs">{sorting.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('organization_code')}>
+                    <div className="flex items-center gap-1">
+                      Organization Code
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                      {sorting.column === 'organization_code' && (
+                        <span className="text-xs">{sorting.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead>Address</TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('status')}>
+                    <div className="flex items-center gap-1">
+                      Status
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                      {sorting.column === 'status' && (
+                        <span className="text-xs">{sorting.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead className="cursor-pointer" onClick={() => handleSort('adminCount')}>
+                    <div className="flex items-center gap-1">
+                      Admin Count
+                      <ArrowUpDown className="h-3.5 w-3.5" />
+                      {sorting.column === 'adminCount' && (
+                        <span className="text-xs">{sorting.direction === 'asc' ? '↑' : '↓'}</span>
+                      )}
+                    </div>
+                  </TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedProviders.length > 0 ? (
+                  paginatedProviders.map((provider) => {
+                    const providerAdmins = admins.filter(admin => 
+                      admin.provider_id === provider.id
+                    )
+                    return (
+                      <TableRow key={provider.id}>
+                        <TableCell>
+                          <input
+                            type="checkbox"
+                            className="h-4 w-4 rounded border-gray-300"
+                            checked={selectedProviders.includes(provider.id)}
+                            onChange={() => toggleProviderSelection(provider.id)}
+                          />
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          <Link 
+                            href={`/provider/${provider.id}/details`}
+                            className="text-foreground font-bold hover:underline transition-colors"
+                          >
+                            {provider.name}
+                          </Link>
+                        </TableCell>
+                        <TableCell>{provider.organization_code}</TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1">
+                            <MapPin className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span>{`${provider.address}, ${provider.city}, ${provider.state} ${provider.zip}`}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger>
+                                <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
+                                  {provider.status}
+                                </Badge>
+                              </TooltipTrigger>
+                              <TooltipContent side="bottom">
+                                {provider.status === 'active' 
+                                  ? 'Provider is active and can access the system'
+                                  : 'Provider is inactive and cannot access the system'}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                        <TableCell>{providerAdmins.length}</TableCell>
+                        <TableCell>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1"
+                              >
+                                Actions <ChevronDown className="h-3.5 w-3.5" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  setProviderToEdit(provider)
+                                  setIsEditProviderDialogOpen(true)
+                                }}
+                              >
+                                Edit Provider
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/provider/${provider.id}/details`}>
+                                  <ExternalLink className="h-3.5 w-3.5 mr-2" /> View Details
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => {
+                                  // Create a new provider as a copy
+                                  const newProvider = { 
+                                    ...provider,
+                                    id: undefined, // Set id to undefined instead of deleting it
+                                    name: `${provider.name} (Copy)`
+                                  };
+                                  // Open dialog with this data pre-filled
+                                  // TODO: Add cloning functionality
+                                }}
+                              >
+                                <Copy className="h-3.5 w-3.5 mr-2" /> Clone Provider
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8">
+                      <div className="flex flex-col items-center justify-center space-y-3">
+                        <p className="text-muted-foreground">
+                          {searchQuery || statusFilter !== 'all' 
+                            ? 'No providers match your search criteria' 
+                            : 'No providers found'}
+                        </p>
+                        {!searchQuery && statusFilter === 'all' && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setProviderToEdit(provider)
-                              setIsEditProviderDialogOpen(true)
-                            }}
+                            onClick={() => setIsProviderDialogOpen(true)}
                           >
-                            Edit
+                            Add Your First Provider
                           </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
-                    <div className="flex flex-col items-center justify-center space-y-3">
-                      <p className="text-muted-foreground">No providers found</p>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setIsProviderDialogOpen(true)}
-                      >
-                        Add Your First Provider
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+          
+          {/* Pagination */}
+          {pageCount > 1 && (
+            <Pagination className="mt-4">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious 
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    className={currentPage === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+                
+                {Array.from({ length: pageCount }).map((_, i) => (
+                  <PaginationItem key={i}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(i + 1)}
+                      isActive={currentPage === i + 1}
+                    >
+                      {i + 1}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                
+                <PaginationItem>
+                  <PaginationNext 
+                    onClick={() => setCurrentPage(p => Math.min(pageCount, p + 1))}
+                    className={currentPage === pageCount ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          )}
         </CardContent>
       </Card>
 
