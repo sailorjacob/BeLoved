@@ -24,7 +24,7 @@ import { toast } from 'sonner'
 import { supabase } from '@/lib/supabase'
 import { format } from 'date-fns'
 import Link from "next/link"
-import { MapPin } from 'lucide-react'
+import { MapPin, ExternalLink } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 
 interface Provider {
@@ -518,12 +518,12 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setSelectedProfile(admin)
-                              setIsProfileDialogOpen(true)
-                            }}
+                            asChild
                           >
-                            View Profile
+                            <Link href={`/super-admin-dashboard/members/${admin.id}`}>
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              View Profile
+                            </Link>
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -637,12 +637,12 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => {
-                              setSelectedProfile(driver)
-                              setIsProfileDialogOpen(true)
-                            }}
+                            asChild
                           >
-                            View Profile
+                            <Link href={`/super-admin-dashboard/members/${driver.id}`}>
+                              <ExternalLink className="h-4 w-4 mr-1" />
+                              View Profile
+                            </Link>
                           </Button>
                         </TableCell>
                       </TableRow>
@@ -705,38 +705,6 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
           </Card>
         </TabsContent>
       </Tabs>
-
-      {/* Profile Dialog */}
-      <Dialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Profile Details</DialogTitle>
-          </DialogHeader>
-          {selectedProfile && (
-            <div className="space-y-4">
-              <div>
-                <h3 className="font-semibold">Personal Information</h3>
-                <p className="text-sm">Name: {selectedProfile.full_name}</p>
-                <p className="text-sm">Email: {selectedProfile.email}</p>
-                <p className="text-sm">Phone: {selectedProfile.phone}</p>
-              </div>
-              {'license_number' in selectedProfile && (
-                <div>
-                  <h3 className="font-semibold">License Information</h3>
-                  <p className="text-sm">License Number: {selectedProfile.license_number}</p>
-                  <p className="text-sm">Expiry: {selectedProfile.license_expiry ? safeFormatDate(selectedProfile.license_expiry) : 'N/A'}</p>
-                </div>
-              )}
-              <div>
-                <h3 className="font-semibold">Account Status</h3>
-                <Badge variant={selectedProfile.status === 'active' ? 'success' : 'secondary'}>
-                  {selectedProfile.status}
-                </Badge>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   )
 } 
