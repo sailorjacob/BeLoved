@@ -827,25 +827,8 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
         <TabsContent value="admins">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Administrator Accounts</CardTitle>
-              <div className="flex gap-2">
-                <Button 
-                  size="sm"
-                  onClick={() => openStaffDialog('create', 'admin')}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add Admin
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => openStaffDialog('promote', 'admin')}
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Promote User
-                </Button>
-              </div>
             </CardHeader>
             <CardContent>
               {admins.length > 0 ? (
@@ -955,25 +938,8 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
 
         <TabsContent value="drivers">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Drivers</CardTitle>
-              <div className="flex gap-2">
-                <Button 
-                  size="sm"
-                  onClick={() => openStaffDialog('create', 'driver')}
-                >
-                  <UserPlus className="mr-2 h-4 w-4" />
-                  Add Driver
-                </Button>
-                <Button 
-                  size="sm" 
-                  variant="outline"
-                  onClick={() => openStaffDialog('promote', 'driver')}
-                >
-                  <Users className="mr-2 h-4 w-4" />
-                  Promote User
-                </Button>
-              </div>
             </CardHeader>
             <CardContent>
               {drivers.length > 0 ? (
