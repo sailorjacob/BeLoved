@@ -60,6 +60,18 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import {
+  LineChart,
+  Line,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  Tooltip as RechartTooltip,
+  ResponsiveContainer,
+  Legend
+} from 'recharts'
 
 interface Provider {
   id: string
@@ -838,6 +850,42 @@ export function ProviderManagement() {
     setSelectedProviders([])
   }, [statusFilter, searchQuery, currentPage])
 
+  // Add provider statistics calculation
+  const providerStats = useMemo(() => {
+    const activeCount = providers.filter(p => p.status === 'active').length
+    const inactiveCount = providers.length - activeCount
+    
+    const providersByCityMap = providers.reduce((acc, provider) => {
+      const city = provider.city
+      if (!acc[city]) acc[city] = 0
+      acc[city]++
+      return acc
+    }, {} as Record<string, number>)
+    
+    const providersByCity = Object.entries(providersByCityMap)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 5) // Top 5 cities
+    
+    // Calculate admin distribution
+    const providersWithAdmins = providers.map(provider => {
+      const adminCount = admins.filter(admin => admin.provider_id === provider.id).length
+      return {
+        name: provider.name,
+        adminCount
+      }
+    }).sort((a, b) => b.adminCount - a.adminCount).slice(0, 5) // Top 5 providers by admin count
+    
+    return {
+      total: providers.length,
+      active: activeCount,
+      inactive: inactiveCount,
+      activePercentage: providers.length > 0 ? (activeCount / providers.length) * 100 : 0,
+      providersByCity,
+      providersWithAdmins
+    }
+  }, [providers, admins])
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center min-h-[200px]">
@@ -856,6 +904,101 @@ export function ProviderManagement() {
             Showing demo data. In production, this page will display and allow management of actual transportation providers.
           </p>
         </div>
+      )}
+
+      {/* Provider Statistics Dashboard */}
+      {providers.length > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle>Provider Statistics</CardTitle>
+            <CardDescription>
+              Overview of your transportation provider network
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Provider Status Distribution */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Provider Status</h3>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <PieChart>
+                      <Pie
+                        data={[
+                          { name: 'Active', value: providerStats.active },
+                          { name: 'Inactive', value: providerStats.inactive }
+                        ]}
+                        cx="50%"
+                        cy="50%"
+                        innerRadius={30}
+                        outerRadius={60}
+                        fill="#8884d8"
+                        paddingAngle={5}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                      >
+                        <Cell key="active" fill="#10b981" />
+                        <Cell key="inactive" fill="#6b7280" />
+                      </Pie>
+                      <RechartTooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="flex justify-between text-sm text-muted-foreground">
+                  <div>Total Providers: {providerStats.total}</div>
+                  <div>Active: {providerStats.active}</div>
+                </div>
+              </div>
+              
+              {/* Top Cities */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Top Provider Locations</h3>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={providerStats.providersByCity}
+                      margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                    >
+                      <RechartTooltip />
+                      <Bar dataKey="value" fill="#ef4444" radius={[4, 4, 0, 0]}>
+                        {providerStats.providersByCity.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#ef4444' : '#f87171'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Cities with most providers
+                </div>
+              </div>
+              
+              {/* Providers with Most Admins */}
+              <div className="space-y-2">
+                <h3 className="text-sm font-medium">Admin Distribution</h3>
+                <div className="h-40">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart
+                      data={providerStats.providersWithAdmins}
+                      margin={{ top: 5, right: 30, left: 0, bottom: 5 }}
+                      layout="vertical"
+                    >
+                      <RechartTooltip />
+                      <Bar dataKey="adminCount" fill="#8884d8" radius={[0, 4, 4, 0]}>
+                        {providerStats.providersWithAdmins.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={index % 2 === 0 ? '#8884d8' : '#a78bfa'} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Providers with most admin accounts
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       {/* Providers Section */}
