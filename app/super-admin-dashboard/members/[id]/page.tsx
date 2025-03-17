@@ -30,6 +30,7 @@ import {
   AlertCircle, 
   CheckCircle 
 } from 'lucide-react'
+import { MemberNotes } from '@/app/components/member-note'
 
 interface Member {
   id: string
@@ -506,20 +507,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
             </Card>
           </TabsContent>
           <TabsContent value="notes">
-            <Card>
-              <CardHeader>
-                <CardTitle>Member Notes</CardTitle>
-                <CardDescription>
-                  Administrative notes about this member
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>No notes available for this member.</p>
-                  <Button variant="outline" className="mt-4">Add Note</Button>
-                </div>
-              </CardContent>
-            </Card>
+            <MemberNotes memberId={params.id} providerId={member?.provider_id} />
           </TabsContent>
           <TabsContent value="support">
             <Card>

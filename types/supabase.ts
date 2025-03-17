@@ -304,7 +304,7 @@ export interface Database {
         Row: {
           id: string
           action: 'create' | 'update' | 'delete' | 'status_change' | 'login' | 'password_change' | 'assignment'
-          entity_type: 'provider' | 'admin' | 'driver' | 'ride' | 'vehicle'
+          entity_type: 'provider' | 'admin' | 'driver' | 'ride' | 'vehicle' | 'member_note'
           entity_id: string
           changed_by?: string
           changes: Json
@@ -315,7 +315,7 @@ export interface Database {
         Insert: {
           id?: string
           action: 'create' | 'update' | 'delete' | 'status_change' | 'login' | 'password_change' | 'assignment'
-          entity_type: 'provider' | 'admin' | 'driver' | 'ride' | 'vehicle'
+          entity_type: 'provider' | 'admin' | 'driver' | 'ride' | 'vehicle' | 'member_note'
           entity_id: string
           changed_by?: string
           changes?: Json
@@ -325,6 +325,30 @@ export interface Database {
         }
         Update: Partial<{
           changes: Json
+        }>
+      }
+      member_notes: {
+        Row: {
+          id: string
+          member_id: string
+          author_id: string
+          content: string
+          provider_id?: string
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          member_id: string
+          author_id: string
+          content: string
+          provider_id?: string
+          created_at?: string
+          updated_at?: string
+        }
+        Update: Partial<{
+          content: string
+          updated_at: string
         }>
       }
     }
