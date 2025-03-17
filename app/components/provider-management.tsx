@@ -1127,22 +1127,25 @@ export function ProviderManagement() {
               />
 
               <div className="border-t pt-6 mt-6">
-                <h3 className="text-base font-medium mb-4">Provider Status Management</h3>
-                <div className="flex items-center space-x-4 mb-4">
-                  <Badge variant={providerToEdit.status === 'active' ? 'success' : 'secondary'} className="text-sm px-3 py-1">
-                    Currently {providerToEdit.status}
+                <h3 className="text-base font-medium mb-3">Provider Status Management</h3>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge 
+                    variant={providerToEdit.status === 'active' ? 'success' : 'secondary'} 
+                    className="text-xs px-2 py-0 h-5"
+                  >
+                    {providerToEdit.status}
                   </Badge>
                   <Button 
                     type="button"
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={() => handleStatusToggle(providerToEdit)}
-                    className={providerToEdit.status === 'active' ? 'text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50' : ''}
+                    className={`h-7 px-2 text-xs font-normal ${providerToEdit.status === 'active' ? 'text-red-500 hover:text-red-600 hover:bg-red-50' : 'text-green-600 hover:text-green-700 hover:bg-green-50'}`}
                   >
-                    {providerToEdit.status === 'active' ? 'Deactivate Provider' : 'Activate Provider'}
+                    {providerToEdit.status === 'active' ? 'Deactivate' : 'Activate'}
                   </Button>
                 </div>
-                <p className="text-sm text-muted-foreground mb-6">
+                <p className="text-xs text-muted-foreground mb-4">
                   {providerToEdit.status === 'active' 
                     ? 'Deactivating will prevent this provider and its admins from accessing the system.' 
                     : 'Activating will restore access for this provider and its admins.'}
@@ -1156,9 +1159,9 @@ export function ProviderManagement() {
                     variant="ghost" 
                     size="sm"
                     onClick={() => setIsDeleteDialogOpen(true)}
-                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                    className="h-7 px-2 text-xs font-normal text-red-500 hover:text-red-600 hover:bg-red-50"
                   >
-                    Delete Provider
+                    Delete
                   </Button>
                 </div>
                 <div className="flex space-x-2">
