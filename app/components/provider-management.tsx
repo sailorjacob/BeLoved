@@ -1134,9 +1134,10 @@ export function ProviderManagement() {
                   </Badge>
                   <Button 
                     type="button"
-                    variant={providerToEdit.status === 'active' ? 'destructive' : 'default'}
+                    variant="outline"
                     size="sm"
                     onClick={() => handleStatusToggle(providerToEdit)}
+                    className={providerToEdit.status === 'active' ? 'text-red-500 hover:text-red-600 border-red-200 hover:border-red-300 hover:bg-red-50' : ''}
                   >
                     {providerToEdit.status === 'active' ? 'Deactivate Provider' : 'Activate Provider'}
                   </Button>
@@ -1148,14 +1149,18 @@ export function ProviderManagement() {
                 </p>
               </div>
 
-              <DialogFooter className="flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between pt-6">
-                <Button 
-                  type="button" 
-                  variant="destructive" 
-                  onClick={() => setIsDeleteDialogOpen(true)}
-                >
-                  Delete Provider
-                </Button>
+              <DialogFooter className="flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between pt-6 border-t">
+                <div className="flex space-x-2 items-center">
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => setIsDeleteDialogOpen(true)}
+                    className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                  >
+                    Delete Provider
+                  </Button>
+                </div>
                 <div className="flex space-x-2">
                   <Button type="button" variant="outline" onClick={() => setIsEditProviderDialogOpen(false)}>
                     Cancel
