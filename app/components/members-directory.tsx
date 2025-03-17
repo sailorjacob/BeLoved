@@ -154,7 +154,14 @@ export function MembersDirectory() {
                     </TableRow>
                   ) : (
                     filteredMembers.map((member) => (
-                      <TableRow key={member.id}>
+                      <TableRow 
+                        key={member.id}
+                        className={
+                          member.user_role === 'admin' ? 'border-l-4 border-red-500' :
+                          member.user_role === 'driver' ? 'border-l-4 border-blue-500' :
+                          member.user_role === 'super_admin' ? 'border-l-4 border-purple-500' : ''
+                        }
+                      >
                         <TableCell className="font-mono">{member.member_id || '-'}</TableCell>
                         <TableCell className="font-bold">
                           <Link 
@@ -166,9 +173,12 @@ export function MembersDirectory() {
                         </TableCell>
                         <TableCell>
                           <Badge variant={
-                            member.user_role === 'driver' ? 'secondary' :
-                            member.user_role === 'admin' ? 'outline' :
+                            member.user_role === 'driver' ? 'default' :
+                            member.user_role === 'admin' ? 'destructive' :
                             member.user_role === 'super_admin' ? 'purple' : 'outline'
+                          }
+                          className={
+                            member.user_role === 'driver' ? 'bg-blue-500 hover:bg-blue-600' : ''
                           }>
                             {member.user_role === 'driver' ? 'Driver' : 
                              member.user_role === 'admin' ? 'Admin' :
