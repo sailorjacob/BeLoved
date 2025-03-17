@@ -118,6 +118,17 @@ interface AdminFormData {
   provider_id?: string
 }
 
+interface ActivityLog {
+  id: string
+  provider_id: string
+  provider_name: string
+  action: 'created' | 'updated' | 'deleted' | 'status_changed'
+  details: string
+  created_at: string
+  created_by: string
+  created_by_id: string
+}
+
 const providerValidationRules = {
   name: (value: string) => {
     if (!value) return 'Provider name is required'
@@ -230,6 +241,8 @@ export function ProviderManagement() {
   const [currentPage, setCurrentPage] = useState(1)
   const itemsPerPage = 10
   const [selectedProviders, setSelectedProviders] = useState<string[]>([])
+  const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([])
+  const [showActivityLog, setShowActivityLog] = useState(false)
 
   // One-time check of providers table
   useEffect(() => {
@@ -247,6 +260,7 @@ export function ProviderManagement() {
 
   useEffect(() => {
     fetchData()
+    fetchActivityLogs()
   }, [])
 
   const fetchData = async () => {
@@ -581,10 +595,19 @@ export function ProviderManagement() {
 
       if (adminError) throw adminError
 
+      // Log the activity
+      await logActivity(
+        providerToUpdate.id,
+        providerToUpdate.name,
+        'status_changed',
+        `Provider status changed from ${providerToUpdate.status} to ${newStatus}`
+      )
+
       toast.success(`Provider ${newStatus === 'active' ? 'activated' : 'deactivated'} successfully`)
       setIsStatusUpdateDialogOpen(false)
       setProviderToUpdate(null)
       fetchData()
+      fetchActivityLogs() // Refresh activity logs
     } catch (error) {
       console.error('Error updating provider status:', error)
       toast.error('Failed to update provider status')
@@ -614,11 +637,20 @@ export function ProviderManagement() {
         throw error
       }
 
+      // Log the activity
+      await logActivity(
+        providerToEdit.id,
+        values.name,
+        'updated',
+        `Updated provider details: ${values.name} (${values.organization_code})`
+      )
+
       toast.success('Transportation provider updated successfully')
       setIsEditProviderDialogOpen(false)
       // Reset the fetch attempt flag so we can fetch again
       fetchAttemptedRef.current = false
       fetchData()
+      fetchActivityLogs() // Refresh activity logs
     } catch (error) {
       console.error('[ProviderManagement] Error updating provider:', error)
       toast.error('Failed to update provider')
@@ -885,6 +917,51 @@ export function ProviderManagement() {
       providersWithAdmins
     }
   }, [providers, admins])
+
+  // Add function to fetch activity logs
+  const fetchActivityLogs = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('provider_activity_logs')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(50)
+        
+      if (error) throw error
+      
+      if (data) {
+        setActivityLogs(data as ActivityLog[])
+      }
+    } catch (error) {
+      console.error('[ProviderManagement] Error fetching activity logs:', error)
+      toast.error('Failed to load activity logs')
+    }
+  }
+  
+  // Add function to log activity
+  const logActivity = async (
+    providerId: string,
+    providerName: string,
+    action: ActivityLog['action'],
+    details: string
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      
+      if (!user) return
+      
+      await supabase.from('provider_activity_logs').insert({
+        provider_id: providerId,
+        provider_name: providerName,
+        action,
+        details,
+        created_by: user.email,
+        created_by_id: user.id
+      })
+    } catch (error) {
+      console.error('[ProviderManagement] Error logging activity:', error)
+    }
+  }
 
   if (isLoading) {
     return (
@@ -1751,6 +1828,66 @@ export function ProviderManagement() {
                 "Delete Provider"
               )}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add a floating button to show/hide activity log */}
+      <div className="fixed bottom-6 right-6 z-10">
+        <Button
+          onClick={() => setShowActivityLog(prev => !prev)}
+          className="rounded-full w-14 h-14 shadow-lg"
+          variant={showActivityLog ? "secondary" : "default"}
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="w-6 h-6">
+            <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </Button>
+      </div>
+      
+      {/* Activity Log Dialog */}
+      <Dialog open={showActivityLog} onOpenChange={setShowActivityLog}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Provider Activity Log</DialogTitle>
+            <DialogDescription>
+              Recent changes to providers and their statuses
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {activityLogs.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                No activity logs found
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {activityLogs.map((log) => (
+                  <div key={log.id} className="border rounded-lg p-3 space-y-1">
+                    <div className="flex justify-between">
+                      <span className="font-medium">{log.provider_name}</span>
+                      <Badge variant={
+                        log.action === 'created' ? 'success' :
+                        log.action === 'updated' ? 'default' :
+                        log.action === 'deleted' ? 'destructive' :
+                        'outline'
+                      }>
+                        {log.action.replace('_', ' ')}
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground">{log.details}</p>
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>By: {log.created_by}</span>
+                      <span>{new Date(log.created_at).toLocaleString()}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter>
+            <Button onClick={() => fetchActivityLogs()}>Refresh</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
