@@ -254,6 +254,45 @@ class AuthService {
         }
       }
       
+      // Check user status - don't allow login if inactive
+      if (profile.status === 'inactive') {
+        console.log('[AuthService] User account is inactive:', profile.id)
+        return {
+          user: session.user,
+          session,
+          profile,
+          isLoggedIn: false,
+          role: userRole
+        }
+      }
+      
+      // For admin users, also check if their provider is active
+      if (userRole === 'admin' && profile.provider_id) {
+        try {
+          console.log('[AuthService] Checking provider status for admin:', profile.id)
+          const { data: provider, error: providerError } = await supabase
+            .from('transportation_providers')
+            .select('status')
+            .eq('id', profile.provider_id)
+            .single()
+          
+          if (providerError) {
+            console.error('[AuthService] Error checking provider status:', providerError)
+          } else if (provider && provider.status === 'inactive') {
+            console.log('[AuthService] Provider is inactive for admin:', profile.id)
+            return {
+              user: session.user,
+              session,
+              profile,
+              isLoggedIn: false,
+              role: userRole
+            }
+          }
+        } catch (error) {
+          console.error('[AuthService] Exception checking provider status:', error)
+        }
+      }
+      
       console.log('[AuthService] Valid role found:', userRole)
       return {
         user: session.user,
