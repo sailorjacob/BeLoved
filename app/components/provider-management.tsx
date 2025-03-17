@@ -613,7 +613,10 @@ export function ProviderManagement() {
       }
 
       // Check if this provider has any admins
-      const providerAdmins = admins.filter(admin => admin.provider_id === providerToEdit.id)
+      const providerAdmins = admins.filter(admin => 
+        admin.provider_id === providerToEdit.id && 
+        admin.user_role === 'admin'
+      )
       
       if (providerAdmins.length > 0) {
         throw new Error("Cannot delete provider with active admins. Please reassign or delete the admin accounts first.")
@@ -694,7 +697,10 @@ export function ProviderManagement() {
             <TableBody>
               {providers.length > 0 ? (
                 providers.map((provider) => {
-                  const providerAdmins = admins.filter(admin => admin.provider_id === provider.id)
+                  const providerAdmins = admins.filter(admin => 
+                    admin.provider_id === provider.id && 
+                    admin.user_role === 'admin'
+                  )
                   return (
                     <TableRow key={provider.id}>
                       <TableCell className="font-medium">
@@ -726,13 +732,6 @@ export function ProviderManagement() {
                             }}
                           >
                             Edit
-                          </Button>
-                          <Button
-                            variant={provider.status === 'active' ? 'destructive' : 'default'}
-                            size="sm"
-                            onClick={() => handleStatusToggle(provider)}
-                          >
-                            {provider.status === 'active' ? 'Deactivate' : 'Activate'}
                           </Button>
                         </div>
                       </TableCell>
@@ -1056,7 +1055,7 @@ export function ProviderManagement() {
 
       {/* Edit Provider Dialog */}
       <Dialog open={isEditProviderDialogOpen} onOpenChange={setIsEditProviderDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Edit Transportation Provider</DialogTitle>
             <DialogDescription>
@@ -1079,7 +1078,7 @@ export function ProviderManagement() {
                 }
                 handleEditProvider(formData)
               }} 
-              className="space-y-4"
+              className="space-y-6"
             >
               <FormInput
                 label="Provider Name"
@@ -1100,31 +1099,56 @@ export function ProviderManagement() {
                 defaultValue={providerToEdit.address}
                 required
               />
-              <FormInput
-                label="City"
-                name="city"
-                defaultValue={providerToEdit.city}
-                required
-              />
-              <FormInput
-                label="State"
-                name="state"
-                defaultValue={providerToEdit.state}
-                required
-              />
-              <FormInput
-                label="ZIP Code"
-                name="zip"
-                defaultValue={providerToEdit.zip}
-                required
-              />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <FormInput
+                  label="City"
+                  name="city"
+                  defaultValue={providerToEdit.city}
+                  required
+                />
+                <FormInput
+                  label="State"
+                  name="state"
+                  defaultValue={providerToEdit.state}
+                  required
+                />
+                <FormInput
+                  label="ZIP Code"
+                  name="zip"
+                  defaultValue={providerToEdit.zip}
+                  required
+                />
+              </div>
               <FormInput
                 label="Phone Number"
                 name="phone"
                 defaultValue={providerToEdit.phone}
                 required
               />
-              <DialogFooter className="flex-col space-y-2 sm:space-y-0 sm:flex-row sm:justify-between">
+
+              <div className="border-t pt-6 mt-6">
+                <h3 className="text-base font-medium mb-4">Provider Status Management</h3>
+                <div className="flex items-center space-x-4 mb-4">
+                  <Badge variant={providerToEdit.status === 'active' ? 'success' : 'secondary'} className="text-sm px-3 py-1">
+                    Currently {providerToEdit.status}
+                  </Badge>
+                  <Button 
+                    type="button"
+                    variant={providerToEdit.status === 'active' ? 'destructive' : 'default'}
+                    size="sm"
+                    onClick={() => handleStatusToggle(providerToEdit)}
+                  >
+                    {providerToEdit.status === 'active' ? 'Deactivate Provider' : 'Activate Provider'}
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground mb-6">
+                  {providerToEdit.status === 'active' 
+                    ? 'Deactivating will prevent this provider and its admins from accessing the system.' 
+                    : 'Activating will restore access for this provider and its admins.'}
+                </p>
+              </div>
+
+              <DialogFooter className="flex-col space-y-4 sm:space-y-0 sm:flex-row sm:justify-between pt-6">
                 <Button 
                   type="button" 
                   variant="destructive" 
