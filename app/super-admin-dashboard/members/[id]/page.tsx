@@ -31,6 +31,7 @@ import {
   CheckCircle 
 } from 'lucide-react'
 import { MemberNotes } from '@/app/components/member-note'
+import { MemberEditForm } from '@/app/components/member-edit-form'
 
 interface Member {
   id: string
@@ -74,6 +75,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
   const [rides, setRides] = useState<Ride[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isEditFormOpen, setIsEditFormOpen] = useState(false)
 
   useEffect(() => {
     // Check authentication
@@ -366,7 +368,11 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
             </div>
           </CardContent>
           <CardFooter className="border-t px-6 py-4">
-            <Button variant="outline" className="ml-auto">
+            <Button 
+              variant="outline" 
+              className="ml-auto"
+              onClick={() => setIsEditFormOpen(true)}
+            >
               Edit Profile
             </Button>
           </CardFooter>
@@ -526,6 +532,17 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
           </TabsContent>
         </Tabs>
       </div>
+      
+      {/* Edit Profile Form */}
+      <MemberEditForm 
+        isOpen={isEditFormOpen}
+        onClose={() => setIsEditFormOpen(false)}
+        memberId={params.id}
+        onSuccess={() => {
+          // Refresh member data after successful edit
+          fetchMemberData(params.id)
+        }}
+      />
     </main>
   )
 } 
