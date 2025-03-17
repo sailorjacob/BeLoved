@@ -603,8 +603,19 @@ export function AdminDashboard() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">{provider?.name || 'Your Organization'} Dashboard</h2>
-        <div className="flex gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">{provider?.name || 'BeLoved'}</h1>
+          <p className="text-muted-foreground">
+            {provider?.address}, {provider?.city}, {provider?.state} {provider?.zip}
+          </p>
+          <p className="text-sm text-muted-foreground">Organization Code: {provider?.organization_code}</p>
+        </div>
+        <div className="flex items-center gap-4">
+          {provider?.status && (
+            <Badge variant={provider.status === 'active' ? 'success' : 'secondary'}>
+              {provider.status.toUpperCase()}
+            </Badge>
+          )}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button>
