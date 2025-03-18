@@ -53,6 +53,7 @@ interface Vehicle {
   insurance_expiry: string | null;
   created_at: string;
   updated_at: string;
+  mileage?: number;
 }
 
 interface VehicleDocument {
@@ -82,6 +83,8 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
   const photoInputRef = useRef<HTMLInputElement>(null);
   const insuranceInputRef = useRef<HTMLInputElement>(null);
   const maintenanceInputRef = useRef<HTMLInputElement>(null);
+  const [isAnimating, setIsAnimating] = useState(true);
+  const [animationCompleted, setAnimationCompleted] = useState(false);
 
   useEffect(() => {
     // Only run the check once auth is no longer loading
@@ -163,6 +166,20 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
       getProviderIdAndVehicle();
     }
   }, [isLoggedIn, isAdmin, authLoading, params.id, router]);
+
+  // Add useEffect to control the vector animation when the page loads
+  useEffect(() => {
+    // Start animation when component mounts
+    setIsAnimating(true);
+    
+    // After animation completes (3 seconds), stop the animation
+    const timer = setTimeout(() => {
+      setIsAnimating(false);
+      setAnimationCompleted(true);
+    }, 3000);
+    
+    return () => clearTimeout(timer);
+  }, []);
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not set';
@@ -358,28 +375,76 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
           <CardContent className="flex flex-col items-center">
             <div 
               className="w-48 h-48 bg-white mb-6 rounded-full flex items-center justify-center overflow-hidden"
-              onMouseEnter={() => setIsHovering(true)}
-              onMouseLeave={() => setIsHovering(false)}
             >
-              <div 
-                className={`w-40 h-40 border-2 border-gray-300 rounded-full p-4 transition-transform duration-1000 ${isHovering ? 'animate-spin-slow' : ''}`}
-                style={{ transformStyle: 'preserve-3d' }}
-              >
+              <div className="w-40 h-40 relative">
+                {/* New SVG Vector Car with Animation */}
                 <svg 
-                  viewBox="0 0 24 24" 
+                  viewBox="0 0 1000 600" 
                   xmlns="http://www.w3.org/2000/svg" 
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="1" 
-                  strokeLinecap="round" 
-                  strokeLinejoin="round" 
                   className="w-full h-full text-gray-400"
                 >
-                  <path d="M7 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
-                  <path d="M17 17m-2 0a2 2 0 1 0 4 0a2 2 0 1 0 -4 0" />
-                  <path d="M5 17h-2v-6l2 -5h9l4 5h1a2 2 0 0 1 2 2v4h-2m-4 0h-6m-6 -6h15m-6 0v-5" />
-                  <path d="M3 17l0 1" />
-                  <path d="M21 17l0 1" />
+                  <path 
+                    d="M167,444 Q187,375 228,353 L311,344 L373,275 Q426,216 530,215 Q634,216 686,275 L746,344 L826,353 Q867,375 886,444 L167,444 Z" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="6"
+                    strokeDasharray="2000"
+                    strokeDashoffset={isAnimating ? "2000" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 2.5s ease-in-out",
+                    }}
+                  />
+                  {/* Windows */}
+                  <path 
+                    d="M394,275 L409,344 L592,344 L607,275" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="6"
+                    strokeDasharray="500"
+                    strokeDashoffset={isAnimating ? "500" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 2.5s ease-in-out 0.3s",
+                    }}
+                  />
+                  {/* Door line */}
+                  <path 
+                    d="M500,275 L500,344" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="6"
+                    strokeDasharray="100"
+                    strokeDashoffset={isAnimating ? "100" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 2s ease-in-out 0.5s",
+                    }}
+                  />
+                  {/* Wheels */}
+                  <circle 
+                    cx="280" 
+                    cy="444" 
+                    r="60" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="6"
+                    strokeDasharray="400"
+                    strokeDashoffset={isAnimating ? "400" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1s",
+                    }}
+                  />
+                  <circle 
+                    cx="720" 
+                    cy="444" 
+                    r="60" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="6"
+                    strokeDasharray="400"
+                    strokeDashoffset={isAnimating ? "400" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1s",
+                    }}
+                  />
                 </svg>
               </div>
             </div>
@@ -389,6 +454,10 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
             <div className="mt-2">{getStatusBadge(vehicle.status)}</div>
             
             <div className="w-full mt-6 space-y-3">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Mileage:</span>
+                <span className="font-medium">{vehicle.mileage?.toLocaleString() || 'Not recorded'} miles</span>
+              </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">License Plate:</span>
                 <span className="font-medium">{vehicle.license_plate}</span>
@@ -472,6 +541,10 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-muted-foreground">Status</p>
                       <p>{getStatusBadge(vehicle.status)}</p>
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium text-muted-foreground">Current Mileage</p>
+                      <p>{vehicle.mileage?.toLocaleString() || 'Not recorded'} miles</p>
                     </div>
                   </div>
                   
