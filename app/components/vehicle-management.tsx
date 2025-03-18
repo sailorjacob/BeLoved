@@ -25,7 +25,8 @@ import {
   DialogContent, 
   DialogHeader, 
   DialogTitle, 
-  DialogFooter 
+  DialogFooter,
+  DialogDescription
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { 
@@ -477,6 +478,9 @@ export function VehicleManagement({ providerId }: VehicleManagementProps) {
             <DialogTitle>
               {selectedVehicle ? "Edit Vehicle" : "Add New Vehicle"}
             </DialogTitle>
+            <DialogDescription>
+              {selectedVehicle ? "Update the vehicle details below." : "Fill in the details to add a new vehicle."}
+            </DialogDescription>
           </DialogHeader>
           <form onSubmit={(e) => {
             e.preventDefault()
@@ -617,6 +621,9 @@ export function VehicleManagement({ providerId }: VehicleManagementProps) {
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Confirm Deletion</DialogTitle>
+            <DialogDescription>
+              This action cannot be undone. The vehicle will be permanently deleted.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p>Are you sure you want to delete this vehicle?</p>
@@ -630,9 +637,6 @@ export function VehicleManagement({ providerId }: VehicleManagementProps) {
                 </p>
               </div>
             )}
-            <p className="text-sm text-muted-foreground">
-              This action cannot be undone. The vehicle will be permanently removed from the system.
-            </p>
           </div>
           <DialogFooter>
             <Button
