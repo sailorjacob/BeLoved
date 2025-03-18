@@ -39,6 +39,7 @@ import {
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'sonner';
+import UpdateMileage from './update-mileage';
 
 interface Vehicle {
   id: string;
@@ -314,6 +315,17 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
     setIsDialogOpen(true);
   };
 
+  // Add a handler for when mileage is updated
+  const handleMileageUpdated = (newMileage: number) => {
+    // Update the vehicle in state
+    if (vehicle) {
+      setVehicle({
+        ...vehicle,
+        mileage: newMileage
+      });
+    }
+  };
+
   // If still loading auth or vehicle data, show loading spinner
   if (authLoading || isLoading) {
     return (
@@ -377,72 +389,186 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               className="w-48 h-48 bg-white mb-6 rounded-full flex items-center justify-center overflow-hidden"
             >
               <div className="w-40 h-40 relative">
-                {/* New SVG Vector Car with Animation */}
+                {/* Tesla-like SVG Vector Car with Animation */}
                 <svg 
                   viewBox="0 0 1000 600" 
                   xmlns="http://www.w3.org/2000/svg" 
                   className="w-full h-full text-gray-400"
                 >
+                  {/* Car body/silhouette - more curved and Tesla-like */}
                   <path 
-                    d="M167,444 Q187,375 228,353 L311,344 L373,275 Q426,216 530,215 Q634,216 686,275 L746,344 L826,353 Q867,375 886,444 L167,444 Z" 
+                    d="M190,430 Q210,375 230,350 L280,330 Q290,320 310,315 L400,300 L430,250 Q480,210 530,200 Q580,200 630,220 Q680,240 720,300 L750,315 L820,330 Q840,345 860,370 Q880,400 880,430 L190,430 Z" 
                     fill="none" 
                     stroke="currentColor" 
-                    strokeWidth="6"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     strokeDasharray="2000"
                     strokeDashoffset={isAnimating ? "2000" : "0"}
                     style={{
                       transition: "stroke-dashoffset 2.5s ease-in-out",
                     }}
                   />
-                  {/* Windows */}
+                  
+                  {/* Front windshield - more angled for Tesla look */}
                   <path 
-                    d="M394,275 L409,344 L592,344 L607,275" 
+                    d="M430,250 Q480,210 530,200 Q580,200 630,220 L650,280" 
                     fill="none" 
                     stroke="currentColor" 
                     strokeWidth="6"
+                    strokeLinecap="round"
                     strokeDasharray="500"
                     strokeDashoffset={isAnimating ? "500" : "0"}
                     style={{
                       transition: "stroke-dashoffset 2.5s ease-in-out 0.3s",
                     }}
                   />
-                  {/* Door line */}
+                  
+                  {/* Side windows */}
                   <path 
-                    d="M500,275 L500,344" 
+                    d="M430,250 L450,300 L680,300 L720,250" 
                     fill="none" 
                     stroke="currentColor" 
                     strokeWidth="6"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeDasharray="600"
+                    strokeDashoffset={isAnimating ? "600" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 2.5s ease-in-out 0.4s",
+                    }}
+                  />
+                  
+                  {/* Door lines - for Tesla Model 3/S look */}
+                  <path 
+                    d="M520,300 L520,370" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="5"
+                    strokeLinecap="round"
                     strokeDasharray="100"
                     strokeDashoffset={isAnimating ? "100" : "0"}
                     style={{
-                      transition: "stroke-dashoffset 2s ease-in-out 0.5s",
+                      transition: "stroke-dashoffset 2s ease-in-out 0.6s",
                     }}
                   />
-                  {/* Wheels */}
+                  
+                  <path 
+                    d="M620,300 L620,370" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray="100"
+                    strokeDashoffset={isAnimating ? "100" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 2s ease-in-out 0.7s",
+                    }}
+                  />
+                  
+                  {/* Front wheel with 3D effect */}
                   <circle 
-                    cx="280" 
-                    cy="444" 
+                    cx="310" 
+                    cy="430" 
                     r="60" 
                     fill="none" 
                     stroke="currentColor" 
-                    strokeWidth="6"
+                    strokeWidth="8"
+                    strokeLinecap="round"
                     strokeDasharray="400"
                     strokeDashoffset={isAnimating ? "400" : "0"}
                     style={{
                       transition: "stroke-dashoffset 1.5s ease-in-out 1s",
                     }}
                   />
+                  
+                  {/* Wheel detail for 3D effect */}
                   <circle 
-                    cx="720" 
-                    cy="444" 
+                    cx="310" 
+                    cy="430" 
+                    r="50" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="350"
+                    strokeDashoffset={isAnimating ? "350" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1.2s",
+                    }}
+                  />
+                  
+                  {/* Rear wheel with 3D effect */}
+                  <circle 
+                    cx="760" 
+                    cy="430" 
                     r="60" 
                     fill="none" 
                     stroke="currentColor" 
-                    strokeWidth="6"
+                    strokeWidth="8"
+                    strokeLinecap="round"
                     strokeDasharray="400"
                     strokeDashoffset={isAnimating ? "400" : "0"}
                     style={{
                       transition: "stroke-dashoffset 1.5s ease-in-out 1s",
+                    }}
+                  />
+                  
+                  {/* Wheel detail for 3D effect */}
+                  <circle 
+                    cx="760" 
+                    cy="430" 
+                    r="50" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="350"
+                    strokeDashoffset={isAnimating ? "350" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1.2s",
+                    }}
+                  />
+                  
+                  {/* Headlight - for Tesla signature look */}
+                  <path 
+                    d="M240,350 Q250,340 270,340 Q290,340 300,350" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray="100"
+                    strokeDashoffset={isAnimating ? "100" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1.5s",
+                    }}
+                  />
+                  
+                  {/* Taillight - for Tesla signature look */}
+                  <path 
+                    d="M800,350 Q810,340 830,340 Q850,340 860,350" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray="100"
+                    strokeDashoffset={isAnimating ? "100" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1.7s",
+                    }}
+                  />
+
+                  {/* Bottom trim for 3D effect */}
+                  <path 
+                    d="M320,430 L730,430" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="450"
+                    strokeDashoffset={isAnimating ? "450" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1.8s",
                     }}
                   />
                 </svg>
@@ -454,9 +580,16 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
             <div className="mt-2">{getStatusBadge(vehicle.status)}</div>
             
             <div className="w-full mt-6 space-y-3">
-              <div className="flex justify-between">
+              <div className="flex justify-between items-center">
                 <span className="text-muted-foreground">Mileage:</span>
-                <span className="font-medium">{vehicle.mileage?.toLocaleString() || 'Not recorded'} miles</span>
+                <div className="flex items-center">
+                  <span className="font-medium">{vehicle.mileage?.toLocaleString() || 'Not recorded'} miles</span>
+                  <UpdateMileage 
+                    vehicleId={vehicle.id} 
+                    currentMileage={vehicle.mileage} 
+                    onMileageUpdated={handleMileageUpdated}
+                  />
+                </div>
               </div>
               <div className="flex justify-between">
                 <span className="text-muted-foreground">License Plate:</span>
@@ -544,7 +677,14 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                     </div>
                     <div className="space-y-1">
                       <p className="text-sm font-medium text-muted-foreground">Current Mileage</p>
-                      <p>{vehicle.mileage?.toLocaleString() || 'Not recorded'} miles</p>
+                      <div className="flex items-center">
+                        <p>{vehicle.mileage?.toLocaleString() || 'Not recorded'} miles</p>
+                        <UpdateMileage 
+                          vehicleId={vehicle.id} 
+                          currentMileage={vehicle.mileage} 
+                          onMileageUpdated={handleMileageUpdated}
+                        />
+                      </div>
                     </div>
                   </div>
                   
