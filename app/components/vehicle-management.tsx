@@ -65,12 +65,14 @@ interface Vehicle {
   insurance_expiry: string | null
   created_at: string
   updated_at: string
+  mileage?: number
 }
 
 type VehicleForm = Omit<Vehicle, 'id' | 'created_at' | 'updated_at'> & { 
   id?: string;
   last_inspection_date: string | null;
   insurance_expiry: string | null;
+  mileage?: number;
 };
 
 interface VehicleManagementProps {
@@ -98,7 +100,8 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
       vin: '',
       status: 'active',
       last_inspection_date: null,
-      insurance_expiry: null
+      insurance_expiry: null,
+      mileage: undefined
     },
     validationRules: {
       make: (value) => !value ? 'Make is required' : undefined,
@@ -125,6 +128,12 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
       insurance_expiry: (value) => {
         if (value && !isValid(parseISO(value))) return 'Invalid date format'
         return undefined
+      },
+      mileage: (value) => {
+        if (value !== undefined && value !== null && (isNaN(Number(value)) || Number(value) < 0)) {
+          return 'Mileage must be a positive number';
+        }
+        return undefined;
       }
     },
     onSubmit: async (values) => {
@@ -144,6 +153,7 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
               status: values.status,
               last_inspection_date: values.last_inspection_date,
               insurance_expiry: values.insurance_expiry,
+              mileage: values.mileage,
               updated_at: new Date().toISOString()
             })
             .eq('id', selectedVehicle.id)
@@ -164,7 +174,8 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
               vin: values.vin,
               status: values.status,
               last_inspection_date: values.last_inspection_date,
-              insurance_expiry: values.insurance_expiry
+              insurance_expiry: values.insurance_expiry,
+              mileage: values.mileage
             })
             
           if (error) throw error
@@ -236,7 +247,8 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
       vin: '',
       status: 'active',
       last_inspection_date: null,
-      insurance_expiry: null
+      insurance_expiry: null,
+      mileage: undefined
     })
     setIsFormDialogOpen(true)
   }
@@ -253,7 +265,8 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
       vin: vehicle.vin,
       status: vehicle.status,
       last_inspection_date: vehicle.last_inspection_date,
-      insurance_expiry: vehicle.insurance_expiry
+      insurance_expiry: vehicle.insurance_expiry,
+      mileage: vehicle.mileage
     })
     setIsFormDialogOpen(true)
   }
@@ -568,7 +581,7 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
               )}
             </div>
             
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="status">Status</Label>
                 <Select
@@ -588,6 +601,23 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
                   <p className="text-sm text-destructive">{vehicleForm.errors.status}</p>
                 )}
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="mileage">Current Mileage (miles)</Label>
+                <Input
+                  id="mileage"
+                  type="number"
+                  min="0"
+                  placeholder="e.g., 45000"
+                  value={vehicleForm.values.mileage?.toString() || ''}
+                  onChange={(e) => vehicleForm.handleChange('mileage', e.target.value ? parseInt(e.target.value) : undefined)}
+                />
+                {vehicleForm.errors.mileage && (
+                  <p className="text-sm text-destructive">{vehicleForm.errors.mileage}</p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="last_inspection_date">Last Inspection Date</Label>
                 <Input
