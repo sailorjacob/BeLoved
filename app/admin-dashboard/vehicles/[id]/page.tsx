@@ -188,16 +188,6 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
     try {
       setIsUploading(true);
       
-      // This would be replaced with actual file upload logic
-      // For now, we'll just simulate a delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      toast.success(`${type} document uploaded successfully`);
-      
-      // Refresh documents
-      // This would be replaced with actual document fetching
-      
-      // Change to:
       const file = files[0];
       const fileExt = file.name.split('.').pop();
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;

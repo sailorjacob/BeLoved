@@ -918,7 +918,11 @@ export function ProviderDetails({ providerId }: ProviderDetailsProps) {
                         <TableCell>{vehicle.last_inspection_date ? safeFormatDate(vehicle.last_inspection_date) : 'N/A'}</TableCell>
                         <TableCell>{vehicle.insurance_expiry ? safeFormatDate(vehicle.insurance_expiry) : 'N/A'}</TableCell>
                         <TableCell>
-                          <Button variant="outline" size="sm">View Details</Button>
+                          <Button variant="outline" size="sm" asChild>
+                            <Link href={`/admin-dashboard/vehicles/${vehicle.id}`}>
+                              View Details
+                            </Link>
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
