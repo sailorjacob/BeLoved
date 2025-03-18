@@ -442,7 +442,7 @@ export function VehicleManagement({ providerId, editVehicleId }: VehicleManageme
                     <TableRow key={vehicle.id}>
                       <TableCell>
                         <Link href={`/admin-dashboard/vehicles/${vehicle.id}`} className="group">
-                          <div className="font-medium text-primary hover:text-primary/80 transition-colors">
+                          <div className="font-medium hover:underline">
                             {vehicle.make} {vehicle.model}
                           </div>
                           <div className="text-sm text-muted-foreground">{vehicle.year}</div>
