@@ -389,251 +389,50 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               className="w-48 h-48 bg-white mb-6 rounded-full flex items-center justify-center overflow-hidden"
             >
               <div className="w-40 h-40 relative">
-                {/* 3D Angled Car Vector with Animation - matching the provided image */}
+                {/* Simple clean car outline matching the reference image */}
                 <svg 
-                  viewBox="0 0 1000 600" 
+                  viewBox="0 0 400 250" 
                   xmlns="http://www.w3.org/2000/svg" 
                   className="w-full h-full text-gray-400"
                 >
-                  {/* Main car body - angled perspective */}
-                  <path 
-                    d="M280,400 L300,350 Q320,320 350,310 L380,300 Q400,285 440,275 L530,260 Q570,250 610,255 Q650,265 680,290 L730,320 Q750,335 770,360 Q790,385 795,400 L280,400 Z" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="7"
+                  {/* Main car body outline - simple clean lines */}
+                  <g
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeDasharray="2000"
-                    strokeDashoffset={isAnimating ? "2000" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 2.5s ease-in-out",
-                    }}
-                  />
-                  
-                  {/* Roof with perspective */}
-                  <path 
-                    d="M440,275 L475,230 Q510,210 555,205 Q600,205 630,220 L680,260 L680,290" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="500"
-                    strokeDashoffset={isAnimating ? "500" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 2.2s ease-in-out 0.3s",
-                    }}
-                  />
-                  
-                  {/* Front windshield - angled */}
-                  <path 
-                    d="M440,275 L475,230" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray="200"
-                    strokeDashoffset={isAnimating ? "200" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 0.6s",
-                    }}
-                  />
-                  
-                  {/* Side windows with 3D perspective */}
-                  <path 
-                    d="M475,230 L495,260 L650,260 L680,230" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="600"
-                    strokeDashoffset={isAnimating ? "600" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 2s ease-in-out 0.7s",
-                    }}
-                  />
-                  
-                  {/* Center line/door divider - with perspective */}
-                  <path 
-                    d="M560,260 L560,330" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray="100"
-                    strokeDashoffset={isAnimating ? "100" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1s",
-                    }}
-                  />
-                  
-                  {/* Front detail/light */}
-                  <path 
-                    d="M330,340 C340,330 360,330 375,340" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray="100"
-                    strokeDashoffset={isAnimating ? "100" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.2s ease-in-out 1.1s",
-                    }}
-                  />
-                  
-                  {/* Front bumper detail */}
-                  <path 
-                    d="M350,370 C370,365 400,360 420,365" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray="100"
-                    strokeDashoffset={isAnimating ? "100" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.2s ease-in-out 1.2s",
-                    }}
-                  />
-                  
-                  {/* Rear light detail */}
-                  <path 
-                    d="M725,345 C735,335 750,335 760,345" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="4"
-                    strokeLinecap="round"
-                    strokeDasharray="100"
-                    strokeDashoffset={isAnimating ? "100" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.2s ease-in-out 1.3s",
-                    }}
-                  />
-                  
-                  {/* Side mirror */}
-                  <path 
-                    d="M460,260 Q450,250 460,240" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray="50"
-                    strokeDashoffset={isAnimating ? "50" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1s ease-in-out 1.4s",
-                    }}
-                  />
-                  
-                  {/* Front wheel with perspective - elliptical shape */}
-                  <ellipse 
-                    cx="385" 
-                    cy="400" 
-                    rx="50" 
-                    ry="35" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="7"
-                    strokeLinecap="round"
-                    strokeDasharray="400"
-                    strokeDashoffset={isAnimating ? "400" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.8s ease-in-out 1.5s",
-                    }}
-                  />
-                  
-                  {/* Front wheel detail */}
-                  <ellipse 
-                    cx="385" 
-                    cy="400" 
-                    rx="40" 
-                    ry="25" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray="350"
-                    strokeDashoffset={isAnimating ? "350" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1.7s",
-                    }}
-                  />
-                  
-                  {/* Rear wheel with perspective - elliptical shape */}
-                  <ellipse 
-                    cx="675" 
-                    cy="400" 
-                    rx="50" 
-                    ry="35" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="7"
-                    strokeLinecap="round"
-                    strokeDasharray="400"
-                    strokeDashoffset={isAnimating ? "400" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.8s ease-in-out 1.5s",
-                    }}
-                  />
-                  
-                  {/* Rear wheel detail */}
-                  <ellipse 
-                    cx="675" 
-                    cy="400" 
-                    rx="40" 
-                    ry="25" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray="350"
-                    strokeDashoffset={isAnimating ? "350" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1.7s",
-                    }}
-                  />
-                  
-                  {/* Hood line giving 3D perspective */}
-                  <path 
-                    d="M410,275 L380,300" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    strokeDasharray="50"
-                    strokeDashoffset={isAnimating ? "50" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1s ease-in-out 1.9s",
-                    }}
-                  />
-                  
-                  {/* Trunk line giving 3D perspective */}
-                  <path 
-                    d="M680,260 L730,320" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3.5"
-                    strokeLinecap="round"
-                    strokeDasharray="80"
-                    strokeDashoffset={isAnimating ? "80" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1s ease-in-out 2s",
-                    }}
-                  />
-                  
-                  {/* Bottom shadow line for 3D effect */}
-                  <path 
-                    d="M420,400 L650,400" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3"
-                    strokeOpacity="0.7"
-                    strokeLinecap="round"
-                    strokeDasharray="250"
-                    strokeDashoffset={isAnimating ? "250" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1s ease-in-out 2.1s",
-                    }}
-                  />
+                    strokeDasharray="1000"
+                    strokeDashoffset={isAnimating ? "1000" : "0"}
+                    style={{ transition: "stroke-dashoffset 2s ease-in-out" }}
+                  >
+                    {/* Main body outline */}
+                    <path d="M50,180 C60,180 65,140 85,140 L105,105 C115,95 140,85 170,85 L230,85 C260,85 270,95 290,110 L310,140 C325,140 340,170 345,180 L50,180 Z" />
+                    
+                    {/* Windows and roof */}
+                    <path d="M115,105 L130,60 C140,50 170,45 220,50 C250,55 275,75 290,110" />
+                    
+                    {/* Door line */}
+                    <path d="M190,85 L190,140" />
+                    
+                    {/* Front headlight */}
+                    <path d="M85,140 C90,130 100,130 110,140" />
+                    
+                    {/* Rear taillight */}
+                    <path d="M290,140 C295,130 305,130 310,140" />
+                    
+                    {/* Side mirror */}
+                    <path d="M130,85 C125,75 130,70 135,75" />
+                    
+                    {/* Front wheel */}
+                    <ellipse cx="115" cy="180" rx="30" ry="30" />
+                    
+                    {/* Rear wheel */}
+                    <ellipse cx="275" cy="180" rx="30" ry="30" />
+                    
+                    {/* Front bumper detail */}
+                    <path d="M60,165 C70,160 80,160 90,165" />
+                  </g>
                 </svg>
               </div>
             </div>
