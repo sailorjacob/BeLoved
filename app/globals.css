@@ -10,6 +10,20 @@ body {
   .text-balance {
     text-wrap: balance;
   }
+  
+  /* Animation for rotating car outline */
+  .animate-spin-slow {
+    animation: spin 5s linear infinite;
+  }
+
+  @keyframes spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
 }
 
 @layer base {

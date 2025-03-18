@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { 
   Card, 
   CardContent, 
@@ -73,9 +75,10 @@ type VehicleForm = Omit<Vehicle, 'id' | 'created_at' | 'updated_at'> & {
 
 interface VehicleManagementProps {
   providerId: string;
+  editVehicleId?: string | null;
 }
 
-export function VehicleManagement({ providerId }: VehicleManagementProps) {
+export function VehicleManagement({ providerId, editVehicleId }: VehicleManagementProps) {
   const [vehicles, setVehicles] = useState<Vehicle[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -182,9 +185,17 @@ export function VehicleManagement({ providerId }: VehicleManagementProps) {
 
   useEffect(() => {
     if (providerId) {
-      fetchVehicles()
+      fetchVehicles().then(() => {
+        // Handle edit vehicle from URL parameter
+        if (editVehicleId && vehicles.length > 0) {
+          const vehicleToEdit = vehicles.find(v => v.id === editVehicleId);
+          if (vehicleToEdit) {
+            handleEditVehicle(vehicleToEdit);
+          }
+        }
+      });
     }
-  }, [providerId])
+  }, [providerId, editVehicleId, vehicles.length]);
 
   const fetchVehicles = async () => {
     try {
@@ -430,8 +441,12 @@ export function VehicleManagement({ providerId }: VehicleManagementProps) {
                   filteredVehicles.map((vehicle) => (
                     <TableRow key={vehicle.id}>
                       <TableCell>
-                        <div className="font-medium">{vehicle.make} {vehicle.model}</div>
-                        <div className="text-sm text-muted-foreground">{vehicle.year}</div>
+                        <Link href={`/admin-dashboard/vehicles/${vehicle.id}`} className="group">
+                          <div className="font-medium text-primary hover:text-primary/80 transition-colors">
+                            {vehicle.make} {vehicle.model}
+                          </div>
+                          <div className="text-sm text-muted-foreground">{vehicle.year}</div>
+                        </Link>
                       </TableCell>
                       <TableCell>{vehicle.license_plate}</TableCell>
                       <TableCell>

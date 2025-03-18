@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useAuth } from '@/app/contexts/auth-context'
@@ -14,6 +14,8 @@ import { supabase } from '@/lib/supabase'
 export default function AdminVehiclesPage() {
   const { isLoggedIn, isLoading: authLoading, isAdmin } = useAuth()
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const editVehicleId = searchParams.get('edit')
   const [isReady, setIsReady] = useState(false)
   const [hasCheckedAuth, setHasCheckedAuth] = useState(false)
   const [providerId, setProviderId] = useState<string | null>(null)
@@ -115,7 +117,7 @@ export default function AdminVehiclesPage() {
       </div>
       
       <div>
-        <VehicleManagement providerId={providerId} />
+        <VehicleManagement providerId={providerId} editVehicleId={editVehicleId} />
       </div>
     </main>
   )
