@@ -55,6 +55,9 @@ interface VehicleDocument {
   type: 'photo' | 'insurance' | 'maintenance';
   url: string;
   created_at: string;
+  file_path: string;
+  file_size: number;
+  mime_type: string;
 }
 
 export default function VehicleDetailPage({ params }: { params: { id: string } }) {
@@ -123,11 +126,19 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
           
           setVehicle(vehicleData);
           
-          // Fetch vehicle documents (would be implemented when the documents table exists)
-          // For now, we'll use dummy data
-          setDocuments([
-            // This would be replaced with actual data from the database
-          ]);
+          // Fetch vehicle documents
+          const { data: documentData, error: documentError } = await supabase
+            .from('vehicle_documents')
+            .select('*')
+            .eq('vehicle_id', params.id)
+            .order('created_at', { ascending: false });
+            
+          if (documentError) {
+            console.error('Error fetching documents:', documentError);
+            // Don't throw here, just log the error and continue with empty documents
+          } else {
+            setDocuments(documentData || []);
+          }
           
           setIsLoading(false);
         } catch (error: any) {
@@ -185,10 +196,97 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
       
       // Refresh documents
       // This would be replaced with actual document fetching
+      
+      // Change to:
+      const file = files[0];
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+      const filePath = `vehicles/${vehicle.id}/${type}/${fileName}`;
+      
+      // Upload file to Supabase Storage
+      const { error: uploadError } = await supabase.storage
+        .from('vehicle-documents')
+        .upload(filePath, file);
+        
+      if (uploadError) throw uploadError;
+      
+      // Get the public URL for the uploaded file
+      const { data: publicUrlData } = supabase.storage
+        .from('vehicle-documents')
+        .getPublicUrl(filePath);
+        
+      const publicUrl = publicUrlData.publicUrl;
+      
+      // Save document metadata to vehicle_documents table
+      const { error: insertError } = await supabase
+        .from('vehicle_documents')
+        .insert({
+          vehicle_id: vehicle.id,
+          name: file.name,
+          type: type,
+          file_path: filePath,
+          file_size: file.size,
+          mime_type: file.type,
+          url: publicUrl
+        });
+        
+      if (insertError) throw insertError;
+      
+      toast.success(`${type} document uploaded successfully`);
+      
+      // Refresh documents
+      const { data: refreshedDocs, error: refreshError } = await supabase
+        .from('vehicle_documents')
+        .select('*')
+        .eq('vehicle_id', vehicle.id)
+        .order('created_at', { ascending: false });
+        
+      if (refreshError) throw refreshError;
+      
+      setDocuments(refreshedDocs || []);
     } catch (error: any) {
       toast.error(error.message || 'Failed to upload document');
     } finally {
       setIsUploading(false);
+    }
+  };
+  
+  const handleDeleteDocument = async (docId: string) => {
+    if (!confirm('Are you sure you want to delete this document?')) {
+      return;
+    }
+    
+    try {
+      // Get document details first to get the file path
+      const { data: docData, error: fetchError } = await supabase
+        .from('vehicle_documents')
+        .select('file_path')
+        .eq('id', docId)
+        .single();
+        
+      if (fetchError) throw fetchError;
+      
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('vehicle-documents')
+        .remove([docData.file_path]);
+        
+      if (storageError) throw storageError;
+      
+      // Delete from database
+      const { error: deleteError } = await supabase
+        .from('vehicle_documents')
+        .delete()
+        .eq('id', docId);
+        
+      if (deleteError) throw deleteError;
+      
+      // Update state
+      setDocuments(documents.filter(doc => doc.id !== docId));
+      
+      toast.success('Document deleted successfully');
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete document');
     }
   };
 
@@ -446,7 +544,13 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                               className="object-cover"
                             />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Button variant="destructive" size="sm">Remove</Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleDeleteDocument(doc.id)}
+                              >
+                                Remove
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -504,8 +608,20 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm">View</Button>
-                              <Button variant="destructive" size="sm">Delete</Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => window.open(doc.url, '_blank')}
+                              >
+                                View
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleDeleteDocument(doc.id)}
+                              >
+                                Delete
+                              </Button>
                             </div>
                           </div>
                         ))}
@@ -563,8 +679,20 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                               </div>
                             </div>
                             <div className="flex items-center gap-2">
-                              <Button variant="outline" size="sm">View</Button>
-                              <Button variant="destructive" size="sm">Delete</Button>
+                              <Button 
+                                variant="outline" 
+                                size="sm"
+                                onClick={() => window.open(doc.url, '_blank')}
+                              >
+                                View
+                              </Button>
+                              <Button 
+                                variant="destructive" 
+                                size="sm"
+                                onClick={() => handleDeleteDocument(doc.id)}
+                              >
+                                Delete
+                              </Button>
                             </div>
                           </div>
                         ))}
