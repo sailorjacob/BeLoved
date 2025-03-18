@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -70,6 +70,9 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
   const [isUploading, setIsUploading] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [providerId, setProviderId] = useState<string | null>(null);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+  const insuranceInputRef = useRef<HTMLInputElement>(null);
+  const maintenanceInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     // Only run the check once auth is no longer loading
@@ -506,19 +509,22 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4">
-                    <label className="block w-full">
-                      <Button className="w-full flex items-center justify-center gap-2" disabled={isUploading}>
-                        <UploadIcon className="h-4 w-4" />
-                        {isUploading ? 'Uploading...' : 'Upload Photo'}
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          accept="image/*"
-                          onChange={(e) => handleFileUpload('photo', e)}
-                          disabled={isUploading}
-                        />
-                      </Button>
-                    </label>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      ref={photoInputRef}
+                      accept="image/*"
+                      onChange={(e) => handleFileUpload('photo', e)}
+                      disabled={isUploading}
+                    />
+                    <Button 
+                      className="w-full flex items-center justify-center gap-2" 
+                      disabled={isUploading}
+                      onClick={() => photoInputRef.current?.click()}
+                    >
+                      <UploadIcon className="h-4 w-4" />
+                      {isUploading ? 'Uploading...' : 'Upload Photo'}
+                    </Button>
                   </div>
                   
                   {documents.filter(doc => doc.type === 'photo').length > 0 ? (
@@ -567,19 +573,22 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4">
-                    <label className="block w-full">
-                      <Button className="w-full flex items-center justify-center gap-2" disabled={isUploading}>
-                        <UploadIcon className="h-4 w-4" />
-                        {isUploading ? 'Uploading...' : 'Upload Insurance Document'}
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                          onChange={(e) => handleFileUpload('insurance', e)}
-                          disabled={isUploading}
-                        />
-                      </Button>
-                    </label>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      ref={insuranceInputRef}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileUpload('insurance', e)}
+                      disabled={isUploading}
+                    />
+                    <Button 
+                      className="w-full flex items-center justify-center gap-2" 
+                      disabled={isUploading}
+                      onClick={() => insuranceInputRef.current?.click()}
+                    >
+                      <UploadIcon className="h-4 w-4" />
+                      {isUploading ? 'Uploading...' : 'Upload Insurance Document'}
+                    </Button>
                   </div>
                   
                   {documents.filter(doc => doc.type === 'insurance').length > 0 ? (
@@ -638,19 +647,22 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                 </CardHeader>
                 <CardContent>
                   <div className="mb-4">
-                    <label className="block w-full">
-                      <Button className="w-full flex items-center justify-center gap-2" disabled={isUploading}>
-                        <UploadIcon className="h-4 w-4" />
-                        {isUploading ? 'Uploading...' : 'Upload Maintenance Record'}
-                        <input 
-                          type="file" 
-                          className="hidden" 
-                          accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
-                          onChange={(e) => handleFileUpload('maintenance', e)}
-                          disabled={isUploading}
-                        />
-                      </Button>
-                    </label>
+                    <input 
+                      type="file" 
+                      className="hidden" 
+                      ref={maintenanceInputRef}
+                      accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                      onChange={(e) => handleFileUpload('maintenance', e)}
+                      disabled={isUploading}
+                    />
+                    <Button 
+                      className="w-full flex items-center justify-center gap-2" 
+                      disabled={isUploading}
+                      onClick={() => maintenanceInputRef.current?.click()}
+                    >
+                      <UploadIcon className="h-4 w-4" />
+                      {isUploading ? 'Uploading...' : 'Upload Maintenance Record'}
+                    </Button>
                   </div>
                   
                   {documents.filter(doc => doc.type === 'maintenance').length > 0 ? (
