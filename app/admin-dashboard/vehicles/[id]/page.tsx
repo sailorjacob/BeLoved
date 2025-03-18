@@ -389,18 +389,18 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
               className="w-48 h-48 bg-white mb-6 rounded-full flex items-center justify-center overflow-hidden"
             >
               <div className="w-40 h-40 relative">
-                {/* Tesla-like SVG Vector Car with Animation */}
+                {/* 3D Angled Car Vector with Animation - matching the provided image */}
                 <svg 
                   viewBox="0 0 1000 600" 
                   xmlns="http://www.w3.org/2000/svg" 
                   className="w-full h-full text-gray-400"
                 >
-                  {/* Car body/silhouette - more curved and Tesla-like */}
+                  {/* Main car body - angled perspective */}
                   <path 
-                    d="M190,430 Q210,375 230,350 L280,330 Q290,320 310,315 L400,300 L430,250 Q480,210 530,200 Q580,200 630,220 Q680,240 720,300 L750,315 L820,330 Q840,345 860,370 Q880,400 880,430 L190,430 Z" 
+                    d="M280,400 L300,350 Q320,320 350,310 L380,300 Q400,285 440,275 L530,260 Q570,250 610,255 Q650,265 680,290 L730,320 Q750,335 770,360 Q790,385 795,400 L280,400 Z" 
                     fill="none" 
                     stroke="currentColor" 
-                    strokeWidth="8"
+                    strokeWidth="7"
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeDasharray="2000"
@@ -410,129 +410,53 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                     }}
                   />
                   
-                  {/* Front windshield - more angled for Tesla look */}
+                  {/* Roof with perspective */}
                   <path 
-                    d="M430,250 Q480,210 530,200 Q580,200 630,220 L650,280" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="6"
-                    strokeLinecap="round"
-                    strokeDasharray="500"
-                    strokeDashoffset={isAnimating ? "500" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 2.5s ease-in-out 0.3s",
-                    }}
-                  />
-                  
-                  {/* Side windows */}
-                  <path 
-                    d="M430,250 L450,300 L680,300 L720,250" 
+                    d="M440,275 L475,230 Q510,210 555,205 Q600,205 630,220 L680,260 L680,290" 
                     fill="none" 
                     stroke="currentColor" 
                     strokeWidth="6"
                     strokeLinecap="round"
                     strokeLinejoin="round"
+                    strokeDasharray="500"
+                    strokeDashoffset={isAnimating ? "500" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 2.2s ease-in-out 0.3s",
+                    }}
+                  />
+                  
+                  {/* Front windshield - angled */}
+                  <path 
+                    d="M440,275 L475,230" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray="200"
+                    strokeDashoffset={isAnimating ? "200" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.5s ease-in-out 0.6s",
+                    }}
+                  />
+                  
+                  {/* Side windows with 3D perspective */}
+                  <path 
+                    d="M475,230 L495,260 L650,260 L680,230" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
                     strokeDasharray="600"
                     strokeDashoffset={isAnimating ? "600" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 2.5s ease-in-out 0.4s",
-                    }}
-                  />
-                  
-                  {/* Door lines - for Tesla Model 3/S look */}
-                  <path 
-                    d="M520,300 L520,370" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray="100"
-                    strokeDashoffset={isAnimating ? "100" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 2s ease-in-out 0.6s",
-                    }}
-                  />
-                  
-                  <path 
-                    d="M620,300 L620,370" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="5"
-                    strokeLinecap="round"
-                    strokeDasharray="100"
-                    strokeDashoffset={isAnimating ? "100" : "0"}
                     style={{
                       transition: "stroke-dashoffset 2s ease-in-out 0.7s",
                     }}
                   />
                   
-                  {/* Front wheel with 3D effect */}
-                  <circle 
-                    cx="310" 
-                    cy="430" 
-                    r="60" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray="400"
-                    strokeDashoffset={isAnimating ? "400" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1s",
-                    }}
-                  />
-                  
-                  {/* Wheel detail for 3D effect */}
-                  <circle 
-                    cx="310" 
-                    cy="430" 
-                    r="50" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray="350"
-                    strokeDashoffset={isAnimating ? "350" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1.2s",
-                    }}
-                  />
-                  
-                  {/* Rear wheel with 3D effect */}
-                  <circle 
-                    cx="760" 
-                    cy="430" 
-                    r="60" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="8"
-                    strokeLinecap="round"
-                    strokeDasharray="400"
-                    strokeDashoffset={isAnimating ? "400" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1s",
-                    }}
-                  />
-                  
-                  {/* Wheel detail for 3D effect */}
-                  <circle 
-                    cx="760" 
-                    cy="430" 
-                    r="50" 
-                    fill="none" 
-                    stroke="currentColor" 
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                    strokeDasharray="350"
-                    strokeDashoffset={isAnimating ? "350" : "0"}
-                    style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1.2s",
-                    }}
-                  />
-                  
-                  {/* Headlight - for Tesla signature look */}
+                  {/* Center line/door divider - with perspective */}
                   <path 
-                    d="M240,350 Q250,340 270,340 Q290,340 300,350" 
+                    d="M560,260 L560,330" 
                     fill="none" 
                     stroke="currentColor" 
                     strokeWidth="4"
@@ -540,35 +464,174 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                     strokeDasharray="100"
                     strokeDashoffset={isAnimating ? "100" : "0"}
                     style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1.5s",
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1s",
                     }}
                   />
                   
-                  {/* Taillight - for Tesla signature look */}
+                  {/* Front detail/light */}
                   <path 
-                    d="M800,350 Q810,340 830,340 Q850,340 860,350" 
+                    d="M330,340 C340,330 360,330 375,340" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="5"
+                    strokeLinecap="round"
+                    strokeDasharray="100"
+                    strokeDashoffset={isAnimating ? "100" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.2s ease-in-out 1.1s",
+                    }}
+                  />
+                  
+                  {/* Front bumper detail */}
+                  <path 
+                    d="M350,370 C370,365 400,360 420,365" 
                     fill="none" 
                     stroke="currentColor" 
                     strokeWidth="4"
                     strokeLinecap="round"
                     strokeDasharray="100"
                     strokeDashoffset={isAnimating ? "100" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.2s ease-in-out 1.2s",
+                    }}
+                  />
+                  
+                  {/* Rear light detail */}
+                  <path 
+                    d="M725,345 C735,335 750,335 760,345" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="4"
+                    strokeLinecap="round"
+                    strokeDasharray="100"
+                    strokeDashoffset={isAnimating ? "100" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.2s ease-in-out 1.3s",
+                    }}
+                  />
+                  
+                  {/* Side mirror */}
+                  <path 
+                    d="M460,260 Q450,250 460,240" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="50"
+                    strokeDashoffset={isAnimating ? "50" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1s ease-in-out 1.4s",
+                    }}
+                  />
+                  
+                  {/* Front wheel with perspective - elliptical shape */}
+                  <ellipse 
+                    cx="385" 
+                    cy="400" 
+                    rx="50" 
+                    ry="35" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                    strokeDasharray="400"
+                    strokeDashoffset={isAnimating ? "400" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.8s ease-in-out 1.5s",
+                    }}
+                  />
+                  
+                  {/* Front wheel detail */}
+                  <ellipse 
+                    cx="385" 
+                    cy="400" 
+                    rx="40" 
+                    ry="25" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                    strokeDasharray="350"
+                    strokeDashoffset={isAnimating ? "350" : "0"}
                     style={{
                       transition: "stroke-dashoffset 1.5s ease-in-out 1.7s",
                     }}
                   />
-
-                  {/* Bottom trim for 3D effect */}
-                  <path 
-                    d="M320,430 L730,430" 
+                  
+                  {/* Rear wheel with perspective - elliptical shape */}
+                  <ellipse 
+                    cx="675" 
+                    cy="400" 
+                    rx="50" 
+                    ry="35" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="7"
+                    strokeLinecap="round"
+                    strokeDasharray="400"
+                    strokeDashoffset={isAnimating ? "400" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1.8s ease-in-out 1.5s",
+                    }}
+                  />
+                  
+                  {/* Rear wheel detail */}
+                  <ellipse 
+                    cx="675" 
+                    cy="400" 
+                    rx="40" 
+                    ry="25" 
                     fill="none" 
                     stroke="currentColor" 
                     strokeWidth="3"
                     strokeLinecap="round"
-                    strokeDasharray="450"
-                    strokeDashoffset={isAnimating ? "450" : "0"}
+                    strokeDasharray="350"
+                    strokeDashoffset={isAnimating ? "350" : "0"}
                     style={{
-                      transition: "stroke-dashoffset 1.5s ease-in-out 1.8s",
+                      transition: "stroke-dashoffset 1.5s ease-in-out 1.7s",
+                    }}
+                  />
+                  
+                  {/* Hood line giving 3D perspective */}
+                  <path 
+                    d="M410,275 L380,300" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeDasharray="50"
+                    strokeDashoffset={isAnimating ? "50" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1s ease-in-out 1.9s",
+                    }}
+                  />
+                  
+                  {/* Trunk line giving 3D perspective */}
+                  <path 
+                    d="M680,260 L730,320" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    strokeDasharray="80"
+                    strokeDashoffset={isAnimating ? "80" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1s ease-in-out 2s",
+                    }}
+                  />
+                  
+                  {/* Bottom shadow line for 3D effect */}
+                  <path 
+                    d="M420,400 L650,400" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="3"
+                    strokeOpacity="0.7"
+                    strokeLinecap="round"
+                    strokeDasharray="250"
+                    strokeDashoffset={isAnimating ? "250" : "0"}
+                    style={{
+                      transition: "stroke-dashoffset 1s ease-in-out 2.1s",
                     }}
                   />
                 </svg>
