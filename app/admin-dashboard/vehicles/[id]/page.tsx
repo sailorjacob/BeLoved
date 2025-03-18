@@ -17,6 +17,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { 
+  Dialog,
+  DialogContent,
+  DialogClose
+} from "@/components/ui/dialog";
 import { UserNav } from '@/app/components/user-nav';
 import {
   CarIcon,
@@ -29,6 +34,8 @@ import {
   Calendar,
   Clock,
   User,
+  X as CloseIcon,
+  Download,
 } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { toast } from 'sonner';
@@ -70,6 +77,8 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
   const [isUploading, setIsUploading] = useState(false);
   const [isHovering, setIsHovering] = useState(false);
   const [providerId, setProviderId] = useState<string | null>(null);
+  const [viewingDocument, setViewingDocument] = useState<VehicleDocument | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const photoInputRef = useRef<HTMLInputElement>(null);
   const insuranceInputRef = useRef<HTMLInputElement>(null);
   const maintenanceInputRef = useRef<HTMLInputElement>(null);
@@ -281,6 +290,11 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete document');
     }
+  };
+
+  const handleOpenDocument = (doc: VehicleDocument) => {
+    setViewingDocument(doc);
+    setIsDialogOpen(true);
   };
 
   // If still loading auth or vehicle data, show loading spinner
@@ -532,7 +546,11 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                       {documents
                         .filter(doc => doc.type === 'photo')
                         .map(doc => (
-                          <div key={doc.id} className="relative group aspect-square rounded-md overflow-hidden bg-gray-100">
+                          <div 
+                            key={doc.id} 
+                            className="relative group aspect-square rounded-md overflow-hidden bg-gray-100 cursor-pointer"
+                            onClick={() => handleOpenDocument(doc)}
+                          >
                             <Image 
                               src={doc.url} 
                               alt={doc.name} 
@@ -540,13 +558,28 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                               className="object-cover"
                             />
                             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                              <Button 
-                                variant="destructive" 
-                                size="sm"
-                                onClick={() => handleDeleteDocument(doc.id)}
-                              >
-                                Remove
-                              </Button>
+                              <div className="flex gap-2">
+                                <Button 
+                                  variant="secondary" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenDocument(doc);
+                                  }}
+                                >
+                                  View
+                                </Button>
+                                <Button 
+                                  variant="destructive" 
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleDeleteDocument(doc.id);
+                                  }}
+                                >
+                                  Remove
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         ))}
@@ -596,7 +629,11 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                       {documents
                         .filter(doc => doc.type === 'insurance')
                         .map(doc => (
-                          <div key={doc.id} className="flex items-center justify-between p-3 border rounded-md">
+                          <div 
+                            key={doc.id} 
+                            className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                            onClick={() => handleOpenDocument(doc)}
+                          >
                             <div className="flex items-center gap-3">
                               <FileTextIcon className="h-6 w-6 text-muted-foreground" />
                               <div>
@@ -610,14 +647,20 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => window.open(doc.url, '_blank')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDocument(doc);
+                                }}
                               >
                                 View
                               </Button>
                               <Button 
                                 variant="destructive" 
                                 size="sm"
-                                onClick={() => handleDeleteDocument(doc.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDocument(doc.id);
+                                }}
                               >
                                 Delete
                               </Button>
@@ -670,7 +713,11 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                       {documents
                         .filter(doc => doc.type === 'maintenance')
                         .map(doc => (
-                          <div key={doc.id} className="flex items-center justify-between p-3 border rounded-md">
+                          <div 
+                            key={doc.id} 
+                            className="flex items-center justify-between p-3 border rounded-md cursor-pointer hover:bg-gray-50"
+                            onClick={() => handleOpenDocument(doc)}
+                          >
                             <div className="flex items-center gap-3">
                               <FileTextIcon className="h-6 w-6 text-muted-foreground" />
                               <div>
@@ -684,14 +731,20 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
                               <Button 
                                 variant="outline" 
                                 size="sm"
-                                onClick={() => window.open(doc.url, '_blank')}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenDocument(doc);
+                                }}
                               >
                                 View
                               </Button>
                               <Button 
                                 variant="destructive" 
                                 size="sm"
-                                onClick={() => handleDeleteDocument(doc.id)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteDocument(doc.id);
+                                }}
                               >
                                 Delete
                               </Button>
@@ -712,6 +765,54 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
           </Tabs>
         </div>
       </div>
+
+      {/* Document Viewer Modal */}
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+        <DialogContent className="max-w-4xl w-full p-0 overflow-hidden">
+          <div className="relative">
+            <DialogClose className="absolute top-2 right-2 z-10">
+              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full bg-black/20 hover:bg-black/40">
+                <CloseIcon className="h-4 w-4 text-white" />
+              </Button>
+            </DialogClose>
+            
+            {viewingDocument && (
+              <>
+                {viewingDocument.type === 'photo' ? (
+                  <div className="relative w-full h-[80vh]">
+                    <Image
+                      src={viewingDocument.url}
+                      alt={viewingDocument.name}
+                      fill
+                      className="object-contain"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-8 h-[50vh]">
+                    <div className="mb-4">
+                      <FileTextIcon className="h-16 w-16 text-primary mb-2" />
+                      <h3 className="text-xl font-semibold text-center">{viewingDocument.name}</h3>
+                    </div>
+                    
+                    <div className="flex gap-4 mt-4">
+                      <Button onClick={() => window.open(viewingDocument.url, '_blank')} className="flex items-center gap-2">
+                        <ImageIcon className="h-4 w-4" />
+                        Open in New Tab
+                      </Button>
+                      <Button variant="outline" asChild className="flex items-center gap-2">
+                        <a href={viewingDocument.url} download={viewingDocument.name}>
+                          <Download className="h-4 w-4" />
+                          Download
+                        </a>
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </main>
   );
 } 
