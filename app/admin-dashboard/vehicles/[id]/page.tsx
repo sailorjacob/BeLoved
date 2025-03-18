@@ -86,6 +86,8 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
   const maintenanceInputRef = useRef<HTMLInputElement>(null);
   const [isAnimating, setIsAnimating] = useState(true);
   const [animationCompleted, setAnimationCompleted] = useState(false);
+  const [wheelRotation, setWheelRotation] = useState(0);
+  const wheelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Only run the check once auth is no longer loading
@@ -181,6 +183,32 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
     
     return () => clearTimeout(timer);
   }, []);
+
+  // Add mouse move handler for wheel rotation
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!wheelRef.current) return;
+    
+    const wheelRect = wheelRef.current.getBoundingClientRect();
+    const wheelCenterX = wheelRect.left + wheelRect.width / 2;
+    const wheelCenterY = wheelRect.top + wheelRect.height / 2;
+    
+    // Calculate angle between mouse and center
+    const mouseX = e.clientX - wheelCenterX;
+    const mouseY = e.clientY - wheelCenterY;
+    
+    // Calculate rotation based on mouse position relative to center
+    // We'll use a subtle effect - just enough to feel responsive
+    // Dividing by 10 to make the rotation more subtle
+    const rotationFactor = -0.15; // Negative for opposite direction
+    const newRotation = (mouseX + mouseY) * rotationFactor;
+    
+    setWheelRotation(newRotation);
+  };
+
+  const handleMouseLeave = () => {
+    // Reset rotation when mouse leaves
+    setWheelRotation(0);
+  };
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return 'Not set';
@@ -387,52 +415,116 @@ export default function VehicleDetailPage({ params }: { params: { id: string } }
           <CardContent className="flex flex-col items-center">
             <div 
               className="w-48 h-48 bg-white mb-6 rounded-full flex items-center justify-center overflow-hidden"
+              onMouseMove={handleMouseMove}
+              onMouseLeave={handleMouseLeave}
+              ref={wheelRef}
             >
-              <div className="w-40 h-40 relative">
-                {/* Simple clean car outline matching the reference image */}
+              <div 
+                className="w-40 h-40 relative"
+                style={{
+                  transform: `rotate(${wheelRotation}deg)`,
+                  transition: 'transform 0.3s ease-out'
+                }}
+              >
+                {/* Modern Steering Wheel Design */}
                 <svg 
-                  viewBox="0 0 400 250" 
+                  viewBox="0 0 200 200" 
                   xmlns="http://www.w3.org/2000/svg" 
                   className="w-full h-full text-gray-400"
                 >
-                  {/* Main car body outline - simple clean lines */}
-                  <g
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
+                  {/* Outer ring */}
+                  <circle 
+                    cx="100" 
+                    cy="100" 
+                    r="80" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="15"
                     strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeDasharray="1000"
-                    strokeDashoffset={isAnimating ? "1000" : "0"}
-                    style={{ transition: "stroke-dashoffset 2s ease-in-out" }}
-                  >
-                    {/* Main body outline */}
-                    <path d="M50,180 C60,180 65,140 85,140 L105,105 C115,95 140,85 170,85 L230,85 C260,85 270,95 290,110 L310,140 C325,140 340,170 345,180 L50,180 Z" />
-                    
-                    {/* Windows and roof */}
-                    <path d="M115,105 L130,60 C140,50 170,45 220,50 C250,55 275,75 290,110" />
-                    
-                    {/* Door line */}
-                    <path d="M190,85 L190,140" />
-                    
-                    {/* Front headlight */}
-                    <path d="M85,140 C90,130 100,130 110,140" />
-                    
-                    {/* Rear taillight */}
-                    <path d="M290,140 C295,130 305,130 310,140" />
-                    
-                    {/* Side mirror */}
-                    <path d="M130,85 C125,75 130,70 135,75" />
-                    
-                    {/* Front wheel */}
-                    <ellipse cx="115" cy="180" rx="30" ry="30" />
-                    
-                    {/* Rear wheel */}
-                    <ellipse cx="275" cy="180" rx="30" ry="30" />
-                    
-                    {/* Front bumper detail */}
-                    <path d="M60,165 C70,160 80,160 90,165" />
-                  </g>
+                    strokeDasharray={isAnimating ? "502" : "0"}
+                    strokeDashoffset={isAnimating ? "502" : "0"}
+                    style={{ transition: "stroke-dashoffset 1.5s ease-in-out" }}
+                  />
+                  
+                  {/* Inner details - spokes */}
+                  <path 
+                    d="M100,40 L100,70" 
+                    stroke="currentColor" 
+                    strokeWidth="10" 
+                    strokeLinecap="round"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 1.5s" }}
+                  />
+                  <path 
+                    d="M100,130 L100,160" 
+                    stroke="currentColor" 
+                    strokeWidth="10" 
+                    strokeLinecap="round"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 1.5s" }}
+                  />
+                  <path 
+                    d="M40,100 L70,100" 
+                    stroke="currentColor" 
+                    strokeWidth="10" 
+                    strokeLinecap="round" 
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 1.5s" }}
+                  />
+                  <path 
+                    d="M130,100 L160,100" 
+                    stroke="currentColor" 
+                    strokeWidth="10" 
+                    strokeLinecap="round"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 1.5s" }}
+                  />
+                  
+                  {/* Center hub */}
+                  <circle 
+                    cx="100" 
+                    cy="100" 
+                    r="20" 
+                    fill="none" 
+                    stroke="currentColor" 
+                    strokeWidth="6"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 1.8s" }}
+                  />
+                  
+                  {/* Grip details on the wheel */}
+                  <path 
+                    d="M160,70 A 70,70 0 0,0 130,40" 
+                    stroke="currentColor" 
+                    strokeWidth="4" 
+                    strokeLinecap="round"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 2.0s" }}
+                  />
+                  <path 
+                    d="M40,70 A 70,70 0 0,1 70,40" 
+                    stroke="currentColor" 
+                    strokeWidth="4" 
+                    strokeLinecap="round"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 2.0s" }}
+                  />
+                  <path 
+                    d="M160,130 A 70,70 0 0,1 130,160" 
+                    stroke="currentColor" 
+                    strokeWidth="4" 
+                    strokeLinecap="round"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 2.0s" }}
+                  />
+                  <path 
+                    d="M40,130 A 70,70 0 0,0 70,160" 
+                    stroke="currentColor" 
+                    strokeWidth="4" 
+                    strokeLinecap="round"
+                    opacity={isAnimating ? 0 : 1}
+                    style={{ transition: "opacity 0.5s ease-in-out 2.0s" }}
+                  />
                 </svg>
               </div>
             </div>
