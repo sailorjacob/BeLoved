@@ -4,6 +4,8 @@ import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { AuthProvider } from '@/app/contexts/auth-context'
 import { Layout } from './layout'
+import { usePathname } from 'next/navigation'
+import { ErrorBoundaryWrapper } from './error-boundary'
 
 interface ClientLayoutProps {
   children: React.ReactNode
@@ -11,10 +13,11 @@ interface ClientLayoutProps {
 
 function LayoutContent({ children }: { children: React.ReactNode }) {
   const [isMounted, setIsMounted] = useState(false)
+  const pathname = usePathname()
 
   useEffect(() => {
     setIsMounted(true)
-  }, [])
+  }, [pathname])
 
   if (!isMounted) {
     return (
@@ -32,7 +35,11 @@ function LayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       )}
       
-      <Layout>{children}</Layout>
+      <Layout>
+        <ErrorBoundaryWrapper>
+          {children}
+        </ErrorBoundaryWrapper>
+      </Layout>
     </div>
   )
 }

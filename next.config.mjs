@@ -16,6 +16,7 @@ const nextConfig = {
   images: {
     unoptimized: true,
   },
+  // output: 'export', // Temporarily comment out static export while we solve the dynamic routes issue
   experimental: {
     webpackBuildWorker: true,
     parallelServerBuildTraces: true,

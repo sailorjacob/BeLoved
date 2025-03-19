@@ -28,6 +28,18 @@ export default function RootLayout({
     <html lang="en">
       <head>
         {devCsp}
+        <meta 
+          name="viewport" 
+          content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no"
+        />
+        <meta 
+          name="keyboard-appearance" 
+          content="light"
+        />
+        <meta
+          name="apple-mobile-web-app-capable"
+          content="yes"
+        />
       </head>
       <body className={inter.className}>
         <ClientLayout>{children}</ClientLayout>
