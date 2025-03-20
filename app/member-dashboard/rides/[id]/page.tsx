@@ -110,34 +110,49 @@ function getStatusColor(status: string): string {
 }
 
 export default function RideDetailsPage({ params }: { params: { id: string } }) {
-  const { isLoggedIn, isLoading: authLoading, role, profile } = useAuth()
+  const { isLoggedIn, isLoading: authLoading, role, profile, isInitialized } = useAuth()
   const router = useRouter()
   const [ride, setRide] = useState<Ride | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
   useEffect(() => {
-    if (!authLoading) {
-      if (!isLoggedIn) {
-        router.push('/')
-        return
-      }
-      
-      if (role !== 'member') {
-        const dashboardPath = role === 'super_admin' 
-          ? '/super-admin-dashboard'
-          : role === 'admin'
-            ? '/admin-dashboard'
-            : '/driver-dashboard'
-        router.push(dashboardPath)
-        return
-      }
-      
+    console.log('[RideDetailsPage] Auth state:', { isLoggedIn, authLoading, role, profileId: profile?.id })
+    
+    // Wait for auth to be initialized
+    if (!isInitialized) {
+      console.log('[RideDetailsPage] Auth not initialized yet')
+      return
+    }
+
+    // Handle not logged in state
+    if (!authLoading && !isLoggedIn) {
+      console.log('[RideDetailsPage] User not logged in, redirecting')
+      router.push('/')
+      return
+    }
+
+    // Handle wrong role
+    if (!authLoading && role !== 'member') {
+      console.log('[RideDetailsPage] User not a member, redirecting')
+      const dashboardPath = role === 'super_admin' 
+        ? '/super-admin-dashboard'
+        : role === 'admin'
+          ? '/admin-dashboard'
+          : '/driver-dashboard'
+      router.push(dashboardPath)
+      return
+    }
+
+    // Only fetch ride details if we have the profile ID
+    if (!authLoading && isLoggedIn && profile?.id) {
+      console.log('[RideDetailsPage] Starting to fetch ride details')
       fetchRideDetails()
     }
-  }, [isLoggedIn, role, router, authLoading, params.id])
+  }, [isInitialized, isLoggedIn, role, router, authLoading, params.id, profile?.id])
   
   const fetchRideDetails = async () => {
+    console.log('[RideDetailsPage] Fetching ride details for ID:', params.id)
     setIsLoading(true)
     setError(null)
     
@@ -153,12 +168,20 @@ export default function RideDetailsPage({ params }: { params: { id: string } }) 
         .single()
       
       if (error) {
+        console.error('[RideDetailsPage] Error fetching ride:', error)
         throw error
       }
       
       if (data) {
+        console.log('[RideDetailsPage] Ride data received:', {
+          rideId: data.id,
+          memberId: data.member_id,
+          profileId: profile?.id
+        })
+        
         // Verify the ride belongs to the logged-in member
         if (data.member_id !== profile?.id) {
+          console.error('[RideDetailsPage] Ride does not belong to current user')
           setError('You do not have permission to view this ride')
           setIsLoading(false)
           return
@@ -166,10 +189,11 @@ export default function RideDetailsPage({ params }: { params: { id: string } }) 
         
         setRide(data as Ride)
       } else {
+        console.error('[RideDetailsPage] No ride data found')
         setError('Ride not found')
       }
     } catch (err: any) {
-      console.error('Error fetching ride details:', err)
+      console.error('[RideDetailsPage] Error:', err)
       setError(err.message || 'An error occurred while fetching ride details')
     } finally {
       setIsLoading(false)

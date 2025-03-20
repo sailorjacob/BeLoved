@@ -120,6 +120,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Refs for state management
   const mountedRef = useRef(true);
   const checkingRef = useRef(false);
+  const initializationAttempted = useRef(false);
   
   // Log instance creation
   useEffect(() => {
@@ -182,6 +183,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       logWithTime('AuthProvider', 'Starting auth check');
       setIsLoading(true);
       
+      // Get current session first
+      const currentSession = await authService.getSession();
+      
+      // If no session, clear auth state
+      if (!currentSession) {
+        logWithTime('AuthProvider', 'No session found, clearing auth state');
+        setUser(null);
+        setSession(null);
+        setProfile(null);
+        setRole(null);
+        setIsLoggedIn(false);
+        return;
+      }
+      
+      // Set session state
+      setSession(currentSession);
+      setUser(currentSession.user);
+      
+      // Get user profile
       const authUser = await authService.getCurrentUser();
       
       // Skip if component unmounted
@@ -194,14 +214,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       
       // Update state with auth check results
-      setUser(authUser.user);
-      setSession(authUser.session);
       setProfile(authUser.profile);
       setRole(authUser.role);
       setIsLoggedIn(authUser.isLoggedIn);
       
-      // DISABLED: Automatic redirects
-      // No automatic redirects will be performed
     } catch (error) {
       logWithTime('AuthProvider', 'Error checking auth:', error);
       
@@ -220,6 +236,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setIsInitialized(true);
       }
       checkingRef.current = false;
+      initializationAttempted.current = true;
     }
   }, []);
   
@@ -228,7 +245,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     logWithTime('AuthProvider', 'Initializing auth');
     
     // Initial auth check
-    checkAuth();
+    if (!initializationAttempted.current) {
+      checkAuth();
+    }
     
     // Subscribe to auth state changes
     const { data: { subscription } } = authService.onAuthStateChange(async (event, session) => {
@@ -249,6 +268,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } else if (event === 'USER_UPDATED') {
         logWithTime('AuthProvider', 'User updated, refreshing state');
         await checkAuth(true); // Check auth without redirection
+      } else if (event === 'INITIAL_SESSION') {
+        logWithTime('AuthProvider', 'Initial session received');
+        if (session) {
+          await checkAuth(true);
+        } else {
+          setIsInitialized(true);
+          setIsLoading(false);
+        }
       }
     });
     
