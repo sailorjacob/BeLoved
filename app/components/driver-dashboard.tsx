@@ -28,6 +28,9 @@ interface Address {
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
   member: Database['public']['Tables']['profiles']['Row']
+  is_return_trip?: boolean
+  return_pickup_tba?: boolean
+  trip_id?: string
 }
 
 interface DriverStats {
@@ -100,13 +103,25 @@ export function DriverDashboard() {
       // First verify the user exists in the rides table
       const { data: countCheck, error: countError } = await supabase
         .from('rides')
-        .select('id', { count: 'exact' })
+        .select('id, is_return_trip, status', { count: 'exact' })
         .eq('driver_id', user.id)
       
       if (countError) {
         console.error('[DriverDashboard] Error checking ride count:', countError)
       } else {
         console.log(`[DriverDashboard] Found ${countCheck.length} rides for driver in database`)
+        
+        // Log the breakdown of return trips vs regular trips
+        const returnTrips = countCheck.filter(r => r.is_return_trip === true).length
+        const regularTrips = countCheck.filter(r => r.is_return_trip !== true).length
+        console.log(`[DriverDashboard] Return trips: ${returnTrips}, Regular trips: ${regularTrips}`)
+        
+        // Log status breakdown
+        const statusCounts = countCheck.reduce((acc, ride) => {
+          acc[ride.status] = (acc[ride.status] || 0) + 1
+          return acc
+        }, {} as Record<string, number>)
+        console.log('[DriverDashboard] Status breakdown:', statusCounts)
       }
       
       const { data, error } = await supabase
@@ -138,6 +153,8 @@ export function DriverDashboard() {
           member_id: data[0].member_id,
           status: data[0].status,
           scheduled_time: data[0].scheduled_pickup_time,
+          is_return_trip: data[0].is_return_trip,
+          trip_id: data[0].trip_id,
           has_member_data: !!data[0].member
         })
         
@@ -222,20 +239,22 @@ export function DriverDashboard() {
         id: rides[0].id,
         status: rides[0].status,
         pickup_time: rides[0].scheduled_pickup_time,
+        is_return_trip: rides[0].is_return_trip,
         member: rides[0].member?.full_name || 'Unknown member'
       })
     }
     
     // Active rides are those that are started, picked_up, or any in_progress status
+    // Include both regular and return trip statuses
     const active = rides.filter(ride => 
       ['started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up'].includes(ride.status)
     )
     console.log('[DriverDashboard] Active rides count:', active.length)
     
     // Upcoming rides are pending or assigned, regardless of time
-    // This is a change to ensure we don't lose sight of pending rides
+    // Both regular rides and return trips
     const upcoming = rides.filter(ride => 
-      ['pending', 'assigned'].includes(ride.status)
+      ['pending', 'assigned', 'return_pending'].includes(ride.status)
     )
     console.log('[DriverDashboard] Upcoming rides count:', upcoming.length)
     
@@ -245,8 +264,13 @@ export function DriverDashboard() {
     )
     console.log('[DriverDashboard] Completed rides count:', completed.length)
     
-    // Today's rides - this needs special handling to ensure we're comparing dates properly
+    // Today's rides - match the date regardless of whether it's a return trip or not
     const todayRides = rides.filter(ride => {
+      if (!ride.scheduled_pickup_time) {
+        console.warn('[DriverDashboard] Ride missing scheduled_pickup_time:', ride.id)
+        return false
+      }
+      
       const rideDate = new Date(ride.scheduled_pickup_time)
       const sameDay = (
         rideDate.getFullYear() === selectedDate.getFullYear() &&
@@ -258,7 +282,8 @@ export function DriverDashboard() {
         console.log('[DriverDashboard] Found ride for selected date:', 
           format(selectedDate, 'yyyy-MM-dd'), 
           'ride date:', 
-          format(rideDate, 'yyyy-MM-dd')
+          format(rideDate, 'yyyy-MM-dd'),
+          'is_return_trip:', ride.is_return_trip || false
         )
       }
       
@@ -279,7 +304,8 @@ export function DriverDashboard() {
       console.log('[DriverDashboard] Uncategorized ride details:', uncategorized.map(r => ({
         id: r.id,
         status: r.status,
-        pickup_time: r.scheduled_pickup_time
+        pickup_time: r.scheduled_pickup_time,
+        is_return_trip: r.is_return_trip
       })))
     }
     
@@ -429,8 +455,13 @@ export function DriverDashboard() {
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <div>
-              <CardTitle className="text-lg">
+              <CardTitle className="text-lg flex items-center">
                 {rideTime}
+                {ride.is_return_trip && (
+                  <Badge variant="outline" className="ml-2 bg-pink-100 text-pink-800 text-xs">
+                    Return Trip
+                  </Badge>
+                )}
               </CardTitle>
               <CardDescription>
                 {memberName}
@@ -453,6 +484,11 @@ export function DriverDashboard() {
               <div className="flex gap-2">
                 <span className="font-medium">Notes:</span>
                 <span className="flex-1">{ride.notes}</span>
+              </div>
+            )}
+            {ride.trip_id && (
+              <div className="text-xs text-muted-foreground">
+                Trip ID: {ride.trip_id}
               </div>
             )}
           </div>
