@@ -26,15 +26,15 @@ interface Address {
   zip: string
 }
 
-type Ride = Database['public']['Tables']['rides']['Row'] & {
-  member: {
+type Ride = Database['public']['Tables']['rides']['Row']
+
+// Extended ride type with member info for driver dashboard (similar to MemberRide in dashboard/page.tsx)
+interface DriverRide extends Ride {
+  member?: {
     id: string
     full_name: string
-    phone: string
+    phone?: string
     email?: string
-    user_type?: string
-    created_at?: string
-    updated_at?: string
   }
   is_return_trip?: boolean
   return_pickup_tba?: boolean
@@ -48,16 +48,16 @@ interface DriverStats {
 
 export function DriverDashboard() {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-  const [rides, setRides] = useState<Ride[]>([])
-  const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
+  const [rides, setRides] = useState<DriverRide[]>([])
+  const [selectedRide, setSelectedRide] = useState<DriverRide | null>(null)
   const [driverStats, setDriverStats] = useState<DriverStats>({ completed_rides: 0, total_miles: 0 })
   const [isLoading, setIsLoading] = useState(true)
   const [statsError, setStatsError] = useState<string | null>(null)
   const [activeTab, setActiveTab] = useState('all')
-  const [activeRides, setActiveRides] = useState<Ride[]>([])
-  const [upcomingRides, setUpcomingRides] = useState<Ride[]>([])
-  const [completedRides, setCompletedRides] = useState<Ride[]>([])
-  const [todayRides, setTodayRides] = useState<Ride[]>([])
+  const [activeRides, setActiveRides] = useState<DriverRide[]>([])
+  const [upcomingRides, setUpcomingRides] = useState<DriverRide[]>([])
+  const [completedRides, setCompletedRides] = useState<DriverRide[]>([])
+  const [todayRides, setTodayRides] = useState<DriverRide[]>([])
   const { user } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
@@ -81,10 +81,10 @@ export function DriverDashboard() {
 
   useEffect(() => {
     if (!user) return
-    
+
     fetchRides()
     fetchStats()
-    
+
     // Set up real-time subscription for rides
     const ridesSubscription = supabase
       .channel('rides_changes')
@@ -125,16 +125,15 @@ export function DriverDashboard() {
     try {
       console.log('[DriverDashboard] Fetching assigned rides for driver:', user.id)
       
-      // Use the exact same query structure that works in the member dashboard
-      // The foreign key relationship seems to be the key difference
+      // Use the same join pattern that works in the member dashboard
       const { data, error } = await supabase
         .from('rides')
         .select(`
           *,
-          member:member_id(id, full_name, phone, email)
+          member:profiles!rides_member_id_fkey(id, full_name, phone, email)
         `)
         .eq('driver_id', user.id)
-        .order('scheduled_pickup_time', { ascending: false })
+        .order('scheduled_pickup_time', { ascending: true })
       
       if (error) {
         console.error('[DriverDashboard] Error fetching assigned rides:', error)
@@ -146,50 +145,29 @@ export function DriverDashboard() {
         return
       }
       
-      console.log(`[DriverDashboard] First query found ${data?.length || 0} rides`)
+      console.log(`[DriverDashboard] Found ${data?.length || 0} rides`)
       
-      // If we still don't have all the rides, try direct SQL query
-      // This is to handle cases where there might be an inconsistency in 
-      // how the driver is assigned across different tables or fields
-      if (data.length < 2) {
-        console.log('[DriverDashboard] Performing comprehensive search for assigned rides...')
-        
-        // Let's try directly querying by driver profile data
-        const { data: fullData, error: fullError } = await supabase
-          .from('rides')
-          .select(`
-            id, 
-            member_id,
-            driver_id,
-            pickup_address,
-            dropoff_address,
-            scheduled_pickup_time,
-            status,
-            is_return_trip,
-            trip_id,
-            notes,
-            payment_method,
-            payment_status,
-            start_miles,
-            end_miles,
-            member:member_id(id, full_name, phone, email)
-          `)
-          .or(`driver_id.eq.${user.id},driver.eq.${user.id}`)
-          .order('scheduled_pickup_time', { ascending: false })
-        
-        if (!fullError && fullData && fullData.length > data.length) {
-          console.log(`[DriverDashboard] Found ${fullData.length} rides with comprehensive query!`)
-          setRides(fullData)
-          return
-        } else if (!fullError) {
-          console.log('[DriverDashboard] Comprehensive query did not find additional rides')
-        } else {
-          console.error('[DriverDashboard] Error with comprehensive query:', fullError)
+      // Set debug data to help troubleshoot
+      if (process.env.NODE_ENV === 'development') {
+        try {
+          // Get all recent rides for debugging (only in development)
+          const { data: allRidesData } = await supabase
+            .from('rides')
+            .select('id, driver_id, member_id, status, scheduled_pickup_time, is_return_trip, trip_id')
+            .order('scheduled_pickup_time', { ascending: false })
+            .limit(20)
+          
+          setDebugData({
+            allRides: allRidesData || [],
+            ridesWithDrivers: (allRidesData || []).filter(r => r.driver_id).length,
+            ridesWithMissingFields: (allRidesData || []).filter(r => !r.scheduled_pickup_time || !r.status).length
+          })
+        } catch (debugErr) {
+          console.error('[DriverDashboard] Error fetching debug data:', debugErr)
         }
       }
       
-      // If we got here, use original results
-      setRides(data || [])
+      setRides(data as DriverRide[] || [])
     } catch (err) {
       console.error('[DriverDashboard] Exception fetching rides:', err)
       toast({
@@ -385,14 +363,14 @@ export function DriverDashboard() {
     )
   }
 
-  const sortAndGroupRidesByDate = (rides: Ride[]) => {
+  const sortAndGroupRidesByDate = (rides: DriverRide[]) => {
     // Sort rides by date ascending
     const sortedRides = [...rides].sort((a, b) => 
       compareAsc(new Date(a.scheduled_pickup_time), new Date(b.scheduled_pickup_time))
     )
     
     // Group rides by date
-    const groupedRides: { [key: string]: Ride[] } = {}
+    const groupedRides: { [key: string]: DriverRide[] } = {}
     
     sortedRides.forEach(ride => {
       const date = format(new Date(ride.scheduled_pickup_time), 'yyyy-MM-dd')
@@ -406,8 +384,8 @@ export function DriverDashboard() {
   }
   
   // Group rides by trip_id to connect initial and return trips
-  const groupRelatedRides = (rides: Ride[]) => {
-    const tripGroups: { [tripId: string]: Ride[] } = {};
+  const groupRelatedRides = (rides: DriverRide[]) => {
+    const tripGroups: { [tripId: string]: DriverRide[] } = {};
     
     // First, group all rides by trip_id
     rides.forEach(ride => {
@@ -428,7 +406,7 @@ export function DriverDashboard() {
       }));
   };
 
-  const handleRideClick = (ride: Ride) => {
+  const handleRideClick = (ride: DriverRide) => {
     setSelectedRide(ride)
   }
 
@@ -436,7 +414,7 @@ export function DriverDashboard() {
     setSelectedRide(null)
   }
 
-  const handleRideAction = async (rideId: string, newStatus: Ride['status'], milesData?: { start?: number | null; end?: number | null }) => {
+  const handleRideAction = async (rideId: string, newStatus: DriverRide['status'], milesData?: { start?: number | null; end?: number | null }) => {
     const updatedRide = rides.find(r => r.id === rideId)
     if (!updatedRide) return
 
@@ -480,7 +458,7 @@ export function DriverDashboard() {
     await handleRideAction(rideId, selectedRide?.status || 'pending', miles)
   }
 
-  const renderRideCard = (ride: Ride, showLinkedTrip = false) => {
+  const renderRideCard = (ride: DriverRide, showLinkedTrip = false) => {
     // Safety checks for possible null/undefined values
     const rideTime = ride.scheduled_pickup_time ? 
       format(new Date(ride.scheduled_pickup_time), 'h:mm a') : 
@@ -634,7 +612,15 @@ export function DriverDashboard() {
   if (selectedRide) {
     return (
       <RideDetailView
-        ride={selectedRide}
+        ride={{
+          ...selectedRide,
+          member: {
+            id: selectedRide.member?.id || 'unknown',
+            full_name: selectedRide.member?.full_name || 'Unknown Member',
+            phone: selectedRide.member?.phone || 'No phone',
+            email: selectedRide.member?.email || 'No email'
+          }
+        }}
         onRideAction={handleRideAction}
         onBack={handleBack}
         onMilesEdit={handleMilesEdit}
@@ -650,7 +636,7 @@ export function DriverDashboard() {
         <CardHeader>
           <div className="flex justify-between items-center">
             <div>
-              <CardTitle>Driver Overview</CardTitle>
+          <CardTitle>Driver Overview</CardTitle>
               {!isToday(selectedDate) && (
                 <CardDescription className="text-blue-500 font-medium">
                   Viewing rides for {format(selectedDate, 'MMMM d, yyyy')}
@@ -702,17 +688,17 @@ export function DriverDashboard() {
           </div>
         </CardContent>
       </Card>
-      
+
       {/* Debug UI - Only visible to admins */}
       {user?.id && process.env.NODE_ENV === 'development' && (
         <Card className="border-red-300 bg-red-50">
-          <CardHeader>
+        <CardHeader>
             <CardTitle className="text-red-700">Debug Tools (Development Only)</CardTitle>
             <CardDescription className="text-red-600">
               These tools are only available in development mode for testing purposes.
             </CardDescription>
-          </CardHeader>
-          <CardContent>
+        </CardHeader>
+        <CardContent>
             <div className="space-y-4">
               <div>
                 <h3 className="font-medium mb-2">Driver Info</h3>
@@ -893,7 +879,7 @@ export function DriverDashboard() {
                       </div>
                     </div>
                   ))}
-                </div>
+                    </div>
               )}
               
               {/* Then show individual rides that don't have related trips */}
@@ -905,8 +891,8 @@ export function DriverDashboard() {
                     r.is_return_trip !== ride.is_return_trip
                   )
                 ).map(ride => renderRideCard(ride))}
-              </div>
-            </div>
+                    </div>
+                  </div>
           )}
         </TabsContent>
         
@@ -973,8 +959,8 @@ export function DriverDashboard() {
                 <Button variant="outline" onClick={fetchRides}>
                   Refresh
                 </Button>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
           ) : (
             <div className="space-y-6">
               {Object.entries(sortAndGroupRidesByDate(upcomingRides)).map(([date, rides]) => (
@@ -1003,8 +989,8 @@ export function DriverDashboard() {
                 <Button variant="outline" onClick={fetchRides}>
                   Refresh
                 </Button>
-              </CardContent>
-            </Card>
+        </CardContent>
+      </Card>
           ) : (
             <div className="space-y-6">
               {Object.entries(sortAndGroupRidesByDate(completedRides)).map(([date, rides]) => (
