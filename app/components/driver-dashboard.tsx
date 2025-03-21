@@ -97,6 +97,18 @@ export function DriverDashboard() {
     try {
       console.log('[DriverDashboard] Fetching assigned rides for driver:', user.id)
       
+      // First verify the user exists in the rides table
+      const { data: countCheck, error: countError } = await supabase
+        .from('rides')
+        .select('id', { count: 'exact' })
+        .eq('driver_id', user.id)
+      
+      if (countError) {
+        console.error('[DriverDashboard] Error checking ride count:', countError)
+      } else {
+        console.log(`[DriverDashboard] Found ${countCheck.length} rides for driver in database`)
+      }
+      
       const { data, error } = await supabase
         .from('rides')
         .select(`
@@ -117,6 +129,32 @@ export function DriverDashboard() {
       }
       
       console.log(`[DriverDashboard] Fetched ${data?.length || 0} assigned rides`)
+      
+      // Detailed logging for the first ride if we have any
+      if (data && data.length > 0) {
+        console.log('[DriverDashboard] First ride details:', {
+          id: data[0].id,
+          driver_id: data[0].driver_id,
+          member_id: data[0].member_id,
+          status: data[0].status,
+          scheduled_time: data[0].scheduled_pickup_time,
+          has_member_data: !!data[0].member
+        })
+        
+        // Check for any potential data issues
+        if (!data[0].status) {
+          console.warn('[DriverDashboard] Ride missing status field:', data[0].id)
+        }
+        
+        if (!data[0].scheduled_pickup_time) {
+          console.warn('[DriverDashboard] Ride missing scheduled_pickup_time:', data[0].id)
+        }
+        
+        if (!data[0].member) {
+          console.warn('[DriverDashboard] Ride missing member data:', data[0].id)
+        }
+      }
+      
       setRides(data || [])
     } catch (err) {
       console.error('[DriverDashboard] Exception fetching rides:', err)
@@ -177,31 +215,73 @@ export function DriverDashboard() {
     const now = new Date()
     const today = startOfDay(now)
     
+    // Debug info
+    console.log('[DriverDashboard] Categorizing rides, total:', rides.length)
+    if (rides.length > 0) {
+      console.log('[DriverDashboard] First ride details:', {
+        id: rides[0].id,
+        status: rides[0].status,
+        pickup_time: rides[0].scheduled_pickup_time,
+        member: rides[0].member?.full_name || 'Unknown member'
+      })
+    }
+    
     // Active rides are those that are started, picked_up, or any in_progress status
     const active = rides.filter(ride => 
       ['started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up'].includes(ride.status)
     )
+    console.log('[DriverDashboard] Active rides count:', active.length)
     
-    // Upcoming rides are scheduled or assigned and in the future
+    // Upcoming rides are pending or assigned, regardless of time
+    // This is a change to ensure we don't lose sight of pending rides
     const upcoming = rides.filter(ride => 
-      ['pending', 'assigned'].includes(ride.status) && 
-      compareAsc(new Date(ride.scheduled_pickup_time), now) > 0
+      ['pending', 'assigned'].includes(ride.status)
     )
+    console.log('[DriverDashboard] Upcoming rides count:', upcoming.length)
     
     // Completed rides are those with status completed or return_completed
     const completed = rides.filter(ride => 
       ['completed', 'return_completed'].includes(ride.status)
     )
+    console.log('[DriverDashboard] Completed rides count:', completed.length)
     
-    // Today's rides
+    // Today's rides - this needs special handling to ensure we're comparing dates properly
     const todayRides = rides.filter(ride => {
       const rideDate = new Date(ride.scheduled_pickup_time)
-      return (
+      const sameDay = (
         rideDate.getFullYear() === selectedDate.getFullYear() &&
         rideDate.getMonth() === selectedDate.getMonth() &&
         rideDate.getDate() === selectedDate.getDate()
       )
+      
+      if (sameDay) {
+        console.log('[DriverDashboard] Found ride for selected date:', 
+          format(selectedDate, 'yyyy-MM-dd'), 
+          'ride date:', 
+          format(rideDate, 'yyyy-MM-dd')
+        )
+      }
+      
+      return sameDay
     })
+    console.log('[DriverDashboard] Today rides count:', todayRides.length)
+    
+    // Check for uncategorized rides and log them
+    const uncategorized = rides.filter(ride => 
+      !active.includes(ride) && 
+      !upcoming.includes(ride) && 
+      !completed.includes(ride) &&
+      !todayRides.includes(ride)
+    )
+    
+    if (uncategorized.length > 0) {
+      console.log('[DriverDashboard] WARNING: Found uncategorized rides:', uncategorized.length)
+      console.log('[DriverDashboard] Uncategorized ride details:', uncategorized.map(r => ({
+        id: r.id,
+        status: r.status,
+        pickup_time: r.scheduled_pickup_time
+      })))
+    }
     
     setActiveRides(active)
     setUpcomingRides(upcoming)
@@ -335,30 +415,39 @@ export function DriverDashboard() {
   }
 
   const renderRideCard = (ride: Ride) => {
+    // Safety checks for possible null/undefined values
+    const rideTime = ride.scheduled_pickup_time ? 
+      format(new Date(ride.scheduled_pickup_time), 'h:mm a') : 
+      'No time set'
+    
+    const memberName = ride.member?.full_name || 'Unknown Member'
+    const pickupAddress = ride.pickup_address ? formatAddress(ride.pickup_address) : 'No pickup address'
+    const dropoffAddress = ride.dropoff_address ? formatAddress(ride.dropoff_address) : 'No dropoff address'
+    
     return (
       <Card key={ride.id} className="hover:shadow-md transition-shadow">
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-lg">
-                {format(new Date(ride.scheduled_pickup_time), 'h:mm a')}
+                {rideTime}
               </CardTitle>
               <CardDescription>
-                {ride.member?.full_name}
+                {memberName}
               </CardDescription>
             </div>
-            {renderStatusBadge(ride.status)}
+            {renderStatusBadge(ride.status || 'unknown')}
           </div>
         </CardHeader>
         <CardContent className="py-2">
           <div className="space-y-2 text-sm">
             <div className="flex gap-2">
               <span className="font-medium">From:</span>
-              <span className="flex-1">{formatAddress(ride.pickup_address)}</span>
+              <span className="flex-1">{pickupAddress}</span>
             </div>
             <div className="flex gap-2">
               <span className="font-medium">To:</span>
-              <span className="flex-1">{formatAddress(ride.dropoff_address)}</span>
+              <span className="flex-1">{dropoffAddress}</span>
             </div>
             {ride.notes && (
               <div className="flex gap-2">
@@ -374,9 +463,9 @@ export function DriverDashboard() {
             onClick={() => handleRideClick(ride)}
           >
             {
-              ['started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up'].includes(ride.status)
+              ['started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up'].includes(ride.status || '')
                 ? 'Continue Ride'
-                : ['completed', 'return_completed'].includes(ride.status)
+                : ['completed', 'return_completed'].includes(ride.status || '')
                   ? 'View Details'
                   : 'Manage Ride'
             }
@@ -416,7 +505,14 @@ export function DriverDashboard() {
       <Card>
         <CardHeader>
           <div className="flex justify-between items-center">
-            <CardTitle>Driver Overview</CardTitle>
+            <div>
+              <CardTitle>Driver Overview</CardTitle>
+              {!isToday(selectedDate) && (
+                <CardDescription className="text-blue-500 font-medium">
+                  Viewing rides for {format(selectedDate, 'MMMM d, yyyy')}
+                </CardDescription>
+              )}
+            </div>
             <Button variant="outline" size="sm" onClick={fetchRides} className="gap-2">
               <RefreshCw size={16} />
               Refresh
@@ -431,13 +527,20 @@ export function DriverDashboard() {
                   <Button variant="outline" className={!isToday(selectedDate) ? "text-blue-500" : ""}>
                     <CalendarIcon className="mr-2 h-4 w-4" />
                     {format(selectedDate, 'PPP')}
+                    {!isToday(selectedDate) && " (Selected)"}
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-auto p-0">
                   <Calendar
                     mode="single"
                     selected={selectedDate}
-                    onSelect={(date) => date && setSelectedDate(date)}
+                    onSelect={(date) => {
+                      if (date) {
+                        setSelectedDate(date);
+                        // Switch to the "Selected Date" tab when a date is chosen
+                        setActiveTab('today');
+                      }
+                    }}
                   />
                 </PopoverContent>
               </Popover>
@@ -456,11 +559,34 @@ export function DriverDashboard() {
         </CardContent>
       </Card>
 
+      {/* Debug info if rides were fetched but not showing up */}
+      {rides.length > 0 && todayRides.length === 0 && activeRides.length === 0 && upcomingRides.length === 0 && (
+        <Card className="bg-yellow-50 border-yellow-200">
+          <CardContent className="pt-6">
+            <h3 className="text-lg font-medium text-yellow-800 mb-2">Debug Info: Rides Fetched but Not Displaying</h3>
+            <p className="text-sm text-yellow-700 mb-4">
+              {rides.length} ride(s) were fetched but aren't showing in any category. Check that:
+            </p>
+            <ul className="list-disc pl-5 text-sm text-yellow-700 space-y-1 mb-4">
+              <li>The ride has a valid status (found: {rides[0]?.status || 'unknown'})</li>
+              <li>The ride has a valid date (found: {rides[0]?.scheduled_pickup_time || 'unknown'})</li>
+              <li>The selected date matches the ride date</li>
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Tabs for All Rides */}
-      <Tabs defaultValue="today" onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="today">
-            Today
+      <Tabs defaultValue="all" onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="all">
+            All Rides
+            {rides.length > 0 && (
+              <Badge variant="secondary" className="ml-2">{rides.length}</Badge>
+            )}
+          </TabsTrigger>
+          <TabsTrigger value="today" className={!isToday(selectedDate) ? "text-blue-500" : ""}>
+            {isToday(selectedDate) ? "Today" : "Selected Date"}
             {todayRides.length > 0 && (
               <Badge variant="secondary" className="ml-2">{todayRides.length}</Badge>
             )}
@@ -482,14 +608,54 @@ export function DriverDashboard() {
           </TabsTrigger>
         </TabsList>
         
-        {/* Today's Rides Tab */}
+        {/* All Rides Tab */}
+        <TabsContent value="all" className="mt-4">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">All Assigned Rides</h2>
+            <Button variant="outline" size="sm" onClick={fetchRides} className="gap-2">
+              <RefreshCw size={16} />
+              Refresh
+            </Button>
+          </div>
+          
+          {rides.length === 0 ? (
+            <Card>
+              <CardContent className="py-8 text-center">
+                <p className="text-lg font-medium mb-2">No rides assigned</p>
+                <p className="text-muted-foreground mb-4">You don't have any rides assigned to you yet</p>
+                <Button variant="outline" onClick={fetchRides}>
+                  Check Again
+                </Button>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              {rides.map(ride => renderRideCard(ride))}
+            </div>
+          )}
+        </TabsContent>
+        
+        {/* Selected Date Rides Tab */}
         <TabsContent value="today" className="mt-4">
-          <h2 className="text-xl font-semibold mb-4">Rides for {format(selectedDate, 'MMMM d, yyyy')}</h2>
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-xl font-semibold">
+              Rides for {format(selectedDate, 'MMMM d, yyyy')}
+              {!isToday(selectedDate) && (
+                <span className="text-sm font-normal text-muted-foreground ml-2">
+                  (Selected Date)
+                </span>
+              )}
+            </h2>
+            <Button variant="outline" size="sm" onClick={fetchRides} className="gap-2">
+              <RefreshCw size={16} />
+              Refresh
+            </Button>
+          </div>
           
           {todayRides.length === 0 ? (
             <Card>
               <CardContent className="py-8 text-center">
-                <p className="text-lg font-medium mb-2">No rides scheduled for this date</p>
+                <p className="text-lg font-medium mb-2">No rides scheduled for {format(selectedDate, 'MMMM d, yyyy')}</p>
                 <p className="text-muted-foreground mb-4">Try selecting a different date or checking back later</p>
                 <Button variant="outline" onClick={fetchRides}>
                   Refresh
