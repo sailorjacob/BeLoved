@@ -254,21 +254,81 @@ export function AdminDashboard() {
   }
 
   const assignDriver = async (rideId: string, driverId: string | null) => {
-    const { error } = await supabase
-      .from('rides')
-      .update({
-        driver_id: driverId,
-        status: driverId ? 'assigned' : 'pending',
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', rideId)
+    try {
+      console.log(`[AdminDashboard] Assigning driver ${driverId || 'none'} to ride ${rideId}`);
+      
+      // First retrieve the current ride to get all fields
+      const { data: currentRide, error: fetchError } = await supabase
+        .from('rides')
+        .select('*')
+        .eq('id', rideId)
+        .single();
+      
+      if (fetchError) {
+        console.error('Error fetching ride for assignment:', fetchError);
+        toast({
+          title: "Error",
+          description: "Failed to assign driver: Could not retrieve ride information",
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Update the ride with the new driver
+      const { error } = await supabase
+        .from('rides')
+        .update({
+          driver_id: driverId,
+          status: driverId ? 'assigned' : 'pending',
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', rideId);
 
-    if (error) {
-      console.error('Error assigning driver:', error)
-      return
+      if (error) {
+        console.error('Error assigning driver:', error);
+        toast({
+          title: "Error",
+          description: "Failed to assign driver: " + error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      // Add to status history for tracking
+      const { error: historyError } = await supabase
+        .from('ride_status_history')
+        .insert({
+          ride_id: rideId,
+          previous_status: currentRide.status || 'unknown',
+          new_status: driverId ? 'assigned' : 'pending',
+          changed_by: user?.id || null,
+          notes: driverId 
+            ? `Assigned to driver by admin` 
+            : 'Removed driver assignment'
+        });
+      
+      if (historyError) {
+        console.error('Error recording status history:', historyError);
+        // Don't fail the whole operation for history error
+      }
+      
+      toast({
+        title: "Success",
+        description: driverId 
+          ? "Driver successfully assigned to ride" 
+          : "Driver assignment removed",
+      });
+
+      // Refresh rides data
+      fetchRides(provider.id);
+    } catch (err) {
+      console.error('Error in assignDriver:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while assigning the driver",
+        variant: "destructive"
+      });
     }
-
-    fetchRides(provider.id)
   }
 
   const filteredRides = showAssignedRides

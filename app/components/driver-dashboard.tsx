@@ -125,7 +125,7 @@ export function DriverDashboard() {
     try {
       console.log('[DriverDashboard] Fetching assigned rides for driver:', user.id)
       
-      // Try all possible join patterns to see which one works
+      // First, try with full explicit selection to avoid join issues
       const { data, error } = await supabase
         .from('rides')
         .select(`
@@ -165,33 +165,47 @@ export function DriverDashboard() {
       
       console.log(`[DriverDashboard] Found ${data?.length || 0} rides`)
       
+      // Check if rides have member data
+      const hasMemberData = data && data.length > 0 && data.some(ride => ride.member && typeof ride.member === 'object')
+      console.log(`[DriverDashboard] Member data present: ${hasMemberData ? 'Yes' : 'No'}`)
+      
       // If we got rides but member data is missing, try to get it separately
-      if (data && data.length > 0 && (!data[0].member || typeof data[0].member === 'string')) {
+      if (data && data.length > 0 && (!hasMemberData || data.some(ride => !ride.member || typeof ride.member !== 'object'))) {
         console.log('[DriverDashboard] Member data is missing or malformed, fetching member info separately')
         
         // Map to store member info
         const memberInfo = new Map()
         
         // Get all unique member IDs
-        const memberIds = [...new Set(data.map(ride => ride.member_id))]
+        const memberIds = [...new Set(data.map(ride => ride.member_id).filter(Boolean))]
+        console.log(`[DriverDashboard] Fetching data for ${memberIds.length} members:`, memberIds)
         
-        // Fetch member data
-        const { data: membersData, error: membersError } = await supabase
-          .from('profiles')
-          .select('id, full_name, phone, email')
-          .in('id', memberIds)
-        
-        if (!membersError && membersData) {
-          // Create a lookup map
-          membersData.forEach(member => memberInfo.set(member.id, member))
+        if (memberIds.length > 0) {
+          // Fetch member data
+          const { data: membersData, error: membersError } = await supabase
+            .from('profiles')
+            .select('id, full_name, phone, email')
+            .in('id', memberIds)
           
-          // Update the ride data with member info
-          data.forEach(ride => {
-            const member = memberInfo.get(ride.member_id)
-            if (member) {
-              ride.member = member
-            }
-          })
+          if (membersError) {
+            console.error('[DriverDashboard] Error fetching member data:', membersError)
+          } else if (membersData) {
+            console.log(`[DriverDashboard] Successfully fetched ${membersData.length} member profiles`)
+            
+            // Create a lookup map
+            membersData.forEach(member => memberInfo.set(member.id, member))
+            
+            // Update the ride data with member info
+            data.forEach(ride => {
+              if (ride.member_id) {
+                const member = memberInfo.get(ride.member_id)
+                if (member) {
+                  ride.member = member
+                  console.log(`[DriverDashboard] Added member info for ride ${ride.id}: ${member.full_name}`)
+                }
+              }
+            })
+          }
         }
       }
       
@@ -277,6 +291,14 @@ export function DriverDashboard() {
     
     // Debug info
     console.log('[DriverDashboard] Categorizing rides, total:', rides.length)
+    
+    // Log status of all rides to help debug
+    if (rides.length > 0) {
+      rides.forEach(ride => {
+        console.log(`[DriverDashboard] Ride ${ride.id} status: ${ride.status}, date: ${format(new Date(ride.scheduled_pickup_time || ''), 'yyyy-MM-dd')}, member: ${ride.member?.full_name || 'Unknown'}`);
+      });
+    }
+    
     if (rides.length > 0) {
       console.log('[DriverDashboard] First ride details:', {
         id: rides[0].id,
@@ -293,20 +315,28 @@ export function DriverDashboard() {
     // Active rides are those that are started, picked_up, or any in_progress status
     // Include both regular and return trip statuses
     const active = rides.filter(ride => 
-      ['started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up'].includes(ride.status)
+      ['started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up'].includes(ride.status || '')
     )
     console.log('[DriverDashboard] Active rides count:', active.length)
     
     // Upcoming rides are pending or assigned, regardless of time
     // Both regular rides and return trips
     const upcoming = rides.filter(ride => 
-      ['pending', 'assigned', 'return_pending'].includes(ride.status)
+      ['pending', 'assigned', 'return_pending'].includes(ride.status || '')
     )
     console.log('[DriverDashboard] Upcoming rides count:', upcoming.length)
+    if (upcoming.length > 0) {
+      console.log('[DriverDashboard] Upcoming rides:', upcoming.map(r => ({
+        id: r.id,
+        status: r.status,
+        date: format(new Date(r.scheduled_pickup_time || ''), 'yyyy-MM-dd'),
+        member: r.member?.full_name || 'Unknown'
+      })))
+    }
     
     // Completed rides are those with status completed or return_completed
     const completed = rides.filter(ride => 
-      ['completed', 'return_completed'].includes(ride.status)
+      ['completed', 'return_completed'].includes(ride.status || '')
     )
     console.log('[DriverDashboard] Completed rides count:', completed.length)
     
@@ -843,6 +873,54 @@ export function DriverDashboard() {
         </Card>
       )}
 
+      {/* Debug message when assigned rides aren't displaying properly */}
+      {rides.length > 0 && upcomingRides.length === 0 && process.env.NODE_ENV === 'development' && (
+        <Card className="border-orange-300 bg-orange-50">
+          <CardHeader>
+            <CardTitle className="text-orange-700">Assigned Rides Debug Info</CardTitle>
+          </CardHeader>
+          <CardContent className="text-orange-700">
+            <p className="mb-3">You have {rides.length} rides, but none are showing in the "Upcoming" category where assigned rides would appear.</p>
+            <p className="font-semibold mb-2">Ride Status Breakdown:</p>
+            <ul className="list-disc pl-5 mb-3">
+              {rides.map(ride => (
+                <li key={ride.id}>
+                  Ride {ride.id.substring(0, 8)}: status="{ride.status}", time={ride.scheduled_pickup_time ? format(new Date(ride.scheduled_pickup_time), 'MMM d, h:mm a') : 'unknown'}, 
+                  member={ride.member?.full_name || 'unknown'}
+                </li>
+              ))}
+            </ul>
+            <p className="font-semibold mb-2">Possible Issues:</p>
+            <ul className="list-disc pl-5">
+              <li>Rides might have incorrect status values (should be "assigned" for upcoming rides)</li>
+              <li>There might be a problem with date formatting or timezone issues</li>
+              <li>Rides might be missing required fields (check status and scheduled_pickup_time)</li>
+            </ul>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* If there are rides but none in the today tab on today's date */}
+      {rides.length > 0 && todayRides.length === 0 && isToday(selectedDate) && process.env.NODE_ENV === 'development' && (
+        <Card className="border-blue-300 bg-blue-50">
+          <CardHeader>
+            <CardTitle className="text-blue-700">Today's Rides Debug Info</CardTitle>
+          </CardHeader>
+          <CardContent className="text-blue-700">
+            <p className="mb-3">You have {rides.length} rides, but none are showing for today ({format(selectedDate, 'MMM d, yyyy')})</p>
+            <p className="font-semibold mb-2">Your Rides' Dates:</p>
+            <ul className="list-disc pl-5 mb-3">
+              {rides.map(ride => (
+                <li key={ride.id}>
+                  Ride {ride.id.substring(0, 8)}: {ride.scheduled_pickup_time ? format(new Date(ride.scheduled_pickup_time), 'MMM d, yyyy') : 'unknown date'}
+                </li>
+              ))}
+            </ul>
+            <p className="text-sm">The "Today" tab only shows rides scheduled specifically for today's date.</p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Debug info if rides were fetched but not showing up */}
       {rides.length > 0 && todayRides.length === 0 && activeRides.length === 0 && upcomingRides.length === 0 && (
         <Card className="bg-yellow-50 border-yellow-200">
@@ -861,7 +939,7 @@ export function DriverDashboard() {
       )}
 
       {/* Tabs for All Rides */}
-      <Tabs defaultValue="all" onValueChange={setActiveTab}>
+      <Tabs value={activeTab} defaultValue="all" onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="all">
             All Rides
