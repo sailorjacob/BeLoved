@@ -185,7 +185,7 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
         throw new Error(`Failed to create ride: ${error.message}`)
       }
 
-      // If a return trip is needed, create another ride entry
+      // Handle return trip if needed
       if (values.needs_return_trip) {
         // Determine return pickup time
         let returnPickupTime: Date | null = null;
@@ -196,53 +196,72 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
           returnPickupTime.setHours(returnHours, returnMinutes, 0, 0)
         }
 
-        // Use the same trip_id for the return trip to link them together
-        // Just a small note to indicate it's a return trip
-        console.log(`Creating return trip with same trip ID: ${uniqueTripId}`)
+        // Instead of manually creating a return trip, use the new database function
+        console.log(`Creating return trip using create_return_trip function for first ride`)
 
-        // Create return ride data
-        const returnRideData = {
-          member_id: isAdmin ? memberId : user?.id,
-          pickup_address: useCustomReturnAddresses && values.return_pickup_address 
-            ? values.return_pickup_address 
-            : values.dropoff_address,
-          dropoff_address: useCustomReturnAddresses && values.return_dropoff_address 
-            ? values.return_dropoff_address 
-            : values.pickup_address,
-          appointment_time: appointmentTime.toISOString(),
-          scheduled_pickup_time: values.return_pickup_tba 
-            ? new Date(new Date(appointmentTime).setHours(appointmentTime.getHours() + 2)).toISOString() 
-            : returnPickupTime!.toISOString(),
-          notes: values.notes + (values.return_pickup_tba ? " (Return pickup time TBA)" : ""),
-          payment_method: values.payment_method,
-          recurring: values.recurring,
-          status: 'pending',
-          payment_status: 'pending',
-          super_admin_status: 'pending',
-          is_return_trip: true,
-          return_pickup_tba: values.return_pickup_tba,
-          trip_id: uniqueTripId // Using the same trip_id links them together
-        }
-
-        // Try with regular client first
-        let { error: returnError } = await supabase
-          .from('rides')
-          .insert(returnRideData)
-
-        // If there's an RLS error, try with supabaseAdmin
-        if (returnError && returnError.code === '42501') {
-          console.log('Using admin client for return trip due to RLS policy issue')
-          const { error: returnAdminError } = await supabaseAdmin
+        try {
+          // First, get the ID of the ride we just created
+          const { data: justCreatedRide, error: fetchError } = await supabase
             .from('rides')
-            .insert(returnRideData)
+            .select('id')
+            .eq('trip_id', uniqueTripId)
+            .eq('is_return_trip', false)
+            .single();
             
-          if (returnAdminError) {
-            console.error('Error creating return ride with admin client:', returnAdminError)
-            // Don't throw here since the first ride was created successfully
+          if (fetchError) {
+            console.error('Error fetching just created ride:', fetchError);
+            throw fetchError;
           }
-        } else if (returnError) {
-          console.error('Error creating return ride:', returnError)
-          // Don't throw here since the first ride was created successfully
+          
+          if (!justCreatedRide) {
+            console.error('Could not find just created ride with trip_id:', uniqueTripId);
+            throw new Error('Original ride not found');
+          }
+          
+          // Now call the create_return_trip function with the original ride ID
+          const { data: returnData, error: returnFunctionError } = await supabase
+            .rpc('create_return_trip', { 
+              original_ride_id: justCreatedRide.id 
+            });
+            
+          if (returnFunctionError) {
+            console.error('Error calling create_return_trip function:', returnFunctionError);
+            
+            // If there's a function error, try to manually update the return trip details
+            const returnRideID = returnData as unknown as string;
+            if (returnRideID) {
+              // Update the return trip with specific details from form
+              const updateData: any = {};
+              
+              if (!values.return_pickup_tba) {
+                updateData.scheduled_pickup_time = returnPickupTime!.toISOString();
+              }
+              
+              if (useCustomReturnAddresses && values.return_pickup_address) {
+                updateData.pickup_address = values.return_pickup_address;
+              }
+              
+              if (useCustomReturnAddresses && values.return_dropoff_address) {
+                updateData.dropoff_address = values.return_dropoff_address;
+              }
+              
+              if (Object.keys(updateData).length > 0) {
+                const { error: updateError } = await supabase
+                  .from('rides')
+                  .update(updateData)
+                  .eq('id', returnRideID);
+                  
+                if (updateError) {
+                  console.error('Error updating return ride details:', updateError);
+                }
+              }
+            }
+          } else {
+            console.log('Return trip created successfully with ID:', returnData);
+          }
+        } catch (returnError) {
+          console.error('Error in return trip creation flow:', returnError);
+          // Continue with the rest of the function - don't block the user for return trip errors
         }
       }
 
