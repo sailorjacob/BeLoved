@@ -125,11 +125,29 @@ export function DriverDashboard() {
     try {
       console.log('[DriverDashboard] Fetching assigned rides for driver:', user.id)
       
-      // Use the same join pattern that works in the member dashboard
+      // Try all possible join patterns to see which one works
       const { data, error } = await supabase
         .from('rides')
         .select(`
-          *,
+          id,
+          member_id,
+          driver_id,
+          pickup_address,
+          dropoff_address,
+          scheduled_pickup_time,
+          status,
+          start_miles,
+          end_miles,
+          start_time,
+          end_time,
+          notes,
+          payment_method,
+          payment_status,
+          recurring,
+          created_at,
+          updated_at,
+          is_return_trip,
+          trip_id,
           member:profiles!rides_member_id_fkey(id, full_name, phone, email)
         `)
         .eq('driver_id', user.id)
@@ -146,6 +164,36 @@ export function DriverDashboard() {
       }
       
       console.log(`[DriverDashboard] Found ${data?.length || 0} rides`)
+      
+      // If we got rides but member data is missing, try to get it separately
+      if (data && data.length > 0 && (!data[0].member || typeof data[0].member === 'string')) {
+        console.log('[DriverDashboard] Member data is missing or malformed, fetching member info separately')
+        
+        // Map to store member info
+        const memberInfo = new Map()
+        
+        // Get all unique member IDs
+        const memberIds = [...new Set(data.map(ride => ride.member_id))]
+        
+        // Fetch member data
+        const { data: membersData, error: membersError } = await supabase
+          .from('profiles')
+          .select('id, full_name, phone, email')
+          .in('id', memberIds)
+        
+        if (!membersError && membersData) {
+          // Create a lookup map
+          membersData.forEach(member => memberInfo.set(member.id, member))
+          
+          // Update the ride data with member info
+          data.forEach(ride => {
+            const member = memberInfo.get(ride.member_id)
+            if (member) {
+              ride.member = member
+            }
+          })
+        }
+      }
       
       // Set debug data to help troubleshoot
       if (process.env.NODE_ENV === 'development') {
@@ -167,7 +215,7 @@ export function DriverDashboard() {
         }
       }
       
-      setRides(data as DriverRide[] || [])
+      setRides(data as unknown as DriverRide[] || [])
     } catch (err) {
       console.error('[DriverDashboard] Exception fetching rides:', err)
       toast({
@@ -237,6 +285,9 @@ export function DriverDashboard() {
         is_return_trip: rides[0].is_return_trip,
         member: rides[0].member?.full_name || 'Unknown member'
       })
+      
+      // Log full ride object for debugging
+      console.log('[DriverDashboard] Full ride object:', rides[0])
     }
     
     // Active rides are those that are started, picked_up, or any in_progress status
@@ -273,14 +324,12 @@ export function DriverDashboard() {
         rideDate.getDate() === selectedDate.getDate()
       )
       
-      if (sameDay) {
-        console.log('[DriverDashboard] Found ride for selected date:', 
-          format(selectedDate, 'yyyy-MM-dd'), 
-          'ride date:', 
-          format(rideDate, 'yyyy-MM-dd'),
-          'is_return_trip:', ride.is_return_trip || false
-        )
-      }
+      // Add more detailed logging for date comparison
+      console.log('[DriverDashboard] Date comparison for ride:', ride.id, {
+        rideDate: format(rideDate, 'yyyy-MM-dd'),
+        selectedDate: format(selectedDate, 'yyyy-MM-dd'),
+        sameDay
+      })
       
       return sameDay
     })
