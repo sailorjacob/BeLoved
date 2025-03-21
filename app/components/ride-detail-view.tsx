@@ -9,9 +9,18 @@ import { RideProgress } from './ride-progress'
 import { Input } from "@/components/ui/input"
 import { format } from 'date-fns'
 import { SignaturePad } from './signature-pad'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import jsPDF from 'jspdf'
 import type { BadgeProps } from "@/components/ui/badge"
+import { useRouter } from 'next/navigation'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { ArrowLeftRight, ExternalLink } from 'lucide-react'
+import { useToast } from "@/components/ui/use-toast"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Textarea } from "@/components/ui/textarea"
+import { Separator } from '@/components/ui/separator'
+import { Link } from 'lucide-react'
+import { supabase } from '@/lib/supabase'
 
 interface Address {
   address: string
@@ -42,7 +51,17 @@ interface Ride {
     id: string
     full_name: string
     phone: string
+    email: string
   }
+  trip_id?: string
+  is_return_trip?: boolean
+}
+
+interface RelatedRide {
+  id: string
+  status: string
+  scheduled_pickup_time: string
+  is_return_trip: boolean
 }
 
 interface RideDetailViewProps {
@@ -100,6 +119,10 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
   const [isSignatureSaved, setIsSignatureSaved] = useState(initialData.isSignatureSaved)
   const [savedMiles, setSavedMiles] = useState(initialData.savedMiles)
   const [timestamps, setTimestamps] = useState(initialData.timestamps)
+  const [relatedRides, setRelatedRides] = useState<RelatedRide[]>([])
+  const [isLoadingRelated, setIsLoadingRelated] = useState(false)
+  const { toast } = useToast()
+  const router = useRouter()
 
   // Update state when initialRide changes (e.g., when navigating between rides)
   useEffect(() => {
@@ -139,6 +162,41 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
       window.removeEventListener('beforeunload', persistRideData)
     }
   }, [ride, savedMiles, timestamps, signature, isSignatureSaved])
+
+  // Fetch related rides
+  useEffect(() => {
+    if (ride.trip_id) {
+      fetchRelatedRides(ride.trip_id);
+    }
+  }, [ride.trip_id, ride.id]);
+
+  const fetchRelatedRides = async (tripId: string) => {
+    if (!tripId) return;
+    
+    setIsLoadingRelated(true);
+    try {
+      const { data, error } = await supabase
+        .from('rides')
+        .select('id, status, scheduled_pickup_time, is_return_trip')
+        .eq('trip_id', tripId)
+        .neq('id', ride.id); // Don't include the current ride
+      
+      if (error) throw error;
+      
+      console.log(`[RideDetailView] Found ${data?.length || 0} related rides for trip ID ${tripId}`);
+      setRelatedRides(data || []);
+    } catch (err) {
+      console.error('Error fetching related rides:', err);
+    } finally {
+      setIsLoadingRelated(false);
+    }
+  };
+
+  const navigateToRelatedRide = (rideId: string) => {
+    // For now we'll use a page reload approach since we don't have a direct way to 
+    // update the selected ride in the parent component
+    router.push(`/driver-dashboard/rides/${rideId}`);
+  };
 
   const handleSignatureSave = (signatureData: string) => {
     setSignature(signatureData)
@@ -274,7 +332,11 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
 
   const generatePDF = () => {
     if (!isSignatureSaved) {
-      alert('Please add and save a signature before generating the PDF')
+      toast({
+        title: "Signature Required",
+        description: "Please save the signature before generating the PDF.",
+        variant: "destructive"
+      })
       return
     }
 
@@ -436,15 +498,68 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
           Back to Dashboard
         </Button>
         <div className="flex items-center gap-2">
-        <Badge variant={ride.status === 'completed' ? "default" : "secondary"}>
-          {ride.status.replace(/_/g, ' ').toUpperCase()}
-        </Badge>
+          {ride.trip_id && (
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Badge variant="outline" className="bg-gray-100">
+                    Trip ID: {ride.trip_id}
+                  </Badge>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>This identifier connects related trips</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          )}
+          {ride.is_return_trip ? (
+            <Badge className="bg-pink-100 text-pink-800">Return Trip</Badge>
+          ) : (
+            <Badge className="bg-blue-100 text-blue-800">Initial Trip</Badge>
+          )}
+          <Badge variant={ride.status === 'completed' ? "default" : "secondary"}>
+            {ride.status.replace(/_/g, ' ').toUpperCase()}
+          </Badge>
           <Button variant="outline" onClick={generatePDF}>
             <DownloadIcon className="mr-2 h-4 w-4" />
             Download PDF
           </Button>
         </div>
       </div>
+      
+      {/* Related trips section */}
+      {relatedRides.length > 0 && (
+        <Card className="border-dashed border-blue-300">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Link className="h-4 w-4" />
+              Related Trip
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-0">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-muted-foreground text-sm">
+                  {relatedRides[0].is_return_trip ? 'Return Trip' : 'Initial Trip'} • {' '}
+                  {format(new Date(relatedRides[0].scheduled_pickup_time), 'MMM d, h:mm a')}
+                </p>
+                <Badge className="mt-1" variant="outline">
+                  Status: {relatedRides[0].status.replace(/_/g, ' ')}
+                </Badge>
+              </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigateToRelatedRide(relatedRides[0].id)}
+                className="flex items-center gap-1"
+              >
+                <ArrowLeftRight className="h-3 w-3" />
+                Switch to {relatedRides[0].is_return_trip ? 'Return' : 'Initial'} Trip
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
       
       <Card>
         <CardHeader>
@@ -523,15 +638,6 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
                 onMilesEdit={handleMilesEdit}
                 savedMiles={savedMiles}
                 timestamps={timestamps}
-              />
-            </div>
-
-            <div className="pt-4 border-t">
-              <SignaturePad 
-                onSave={handleSignatureSave} 
-                onClear={handleSignatureClear}
-                savedSignature={signature}
-                isSignatureSaved={isSignatureSaved}
               />
             </div>
           </div>

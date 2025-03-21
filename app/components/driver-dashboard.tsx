@@ -27,7 +27,15 @@ interface Address {
 }
 
 type Ride = Database['public']['Tables']['rides']['Row'] & {
-  member: Database['public']['Tables']['profiles']['Row']
+  member: {
+    id: string
+    full_name: string
+    phone: string
+    email?: string
+    user_type?: string
+    created_at?: string
+    updated_at?: string
+  }
   is_return_trip?: boolean
   return_pickup_tba?: boolean
   trip_id?: string
@@ -387,6 +395,29 @@ export function DriverDashboard() {
     
     return groupedRides
   }
+  
+  // Group rides by trip_id to connect initial and return trips
+  const groupRelatedRides = (rides: Ride[]) => {
+    const tripGroups: { [tripId: string]: Ride[] } = {};
+    
+    // First, group all rides by trip_id
+    rides.forEach(ride => {
+      if (ride.trip_id) {
+        if (!tripGroups[ride.trip_id]) {
+          tripGroups[ride.trip_id] = [];
+        }
+        tripGroups[ride.trip_id].push(ride);
+      }
+    });
+    
+    // Only return groups that have more than one ride (initial + return)
+    return Object.entries(tripGroups)
+      .filter(([_, rides]) => rides.length > 1)
+      .map(([tripId, rides]) => ({
+        tripId,
+        rides: rides.sort((a, b) => a.is_return_trip ? 1 : -1) // Sort so initial trip is first
+      }));
+  };
 
   const handleRideClick = (ride: Ride) => {
     setSelectedRide(ride)
@@ -440,7 +471,7 @@ export function DriverDashboard() {
     await handleRideAction(rideId, selectedRide?.status || 'pending', miles)
   }
 
-  const renderRideCard = (ride: Ride) => {
+  const renderRideCard = (ride: Ride, showLinkedTrip = false) => {
     // Safety checks for possible null/undefined values
     const rideTime = ride.scheduled_pickup_time ? 
       format(new Date(ride.scheduled_pickup_time), 'h:mm a') : 
@@ -450,8 +481,21 @@ export function DriverDashboard() {
     const pickupAddress = ride.pickup_address ? formatAddress(ride.pickup_address) : 'No pickup address'
     const dropoffAddress = ride.dropoff_address ? formatAddress(ride.dropoff_address) : 'No dropoff address'
     
+    // Find linked trip if it exists
+    const hasLinkedTrip = ride.trip_id && rides.some(r => 
+      r.trip_id === ride.trip_id && 
+      r.id !== ride.id && 
+      r.is_return_trip !== ride.is_return_trip
+    );
+    
+    const linkedTrip = hasLinkedTrip ? rides.find(r => 
+      r.trip_id === ride.trip_id && 
+      r.id !== ride.id && 
+      r.is_return_trip !== ride.is_return_trip
+    ) : null;
+    
     return (
-      <Card key={ride.id} className="hover:shadow-md transition-shadow">
+      <Card key={ride.id} className={`hover:shadow-md transition-shadow ${ride.is_return_trip ? 'border-pink-200' : ''}`}>
         <CardHeader className="pb-2">
           <div className="flex justify-between items-start">
             <div>
@@ -484,6 +528,17 @@ export function DriverDashboard() {
               <div className="flex gap-2">
                 <span className="font-medium">Notes:</span>
                 <span className="flex-1">{ride.notes}</span>
+              </div>
+            )}
+            {hasLinkedTrip && linkedTrip && showLinkedTrip && (
+              <div className="mt-2 pt-2 border-t border-dashed border-gray-200">
+                <span className="text-xs font-medium text-gray-500 block mb-1">
+                  {linkedTrip.is_return_trip ? 'Return Trip' : 'Initial Trip'}: {' '}
+                  {format(new Date(linkedTrip.scheduled_pickup_time), 'h:mm a')}
+                </span>
+                <Badge variant="outline" className="text-xs">
+                  {linkedTrip.status.replace(/_/g, ' ')}
+                </Badge>
               </div>
             )}
             {ride.trip_id && (
@@ -665,8 +720,34 @@ export function DriverDashboard() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {rides.map(ride => renderRideCard(ride))}
+            <div className="space-y-8">
+              {/* First show groups of related trips */}
+              {groupRelatedRides(rides).length > 0 && (
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium text-muted-foreground">Connected Trips</h3>
+                  {groupRelatedRides(rides).map(group => (
+                    <div key={group.tripId} className="space-y-2">
+                      <div className="text-sm font-medium text-primary-foreground bg-primary/10 px-2 py-1 rounded-sm">
+                        Trip ID: {group.tripId} ({group.rides.length} connected rides)
+                      </div>
+                      <div className="space-y-4">
+                        {group.rides.map(ride => renderRideCard(ride, true))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              
+              {/* Then show individual rides that don't have related trips */}
+              <div className="space-y-4">
+                {rides.filter(ride => 
+                  !rides.some(r => 
+                    r.id !== ride.id && 
+                    r.trip_id === ride.trip_id && 
+                    r.is_return_trip !== ride.is_return_trip
+                  )
+                ).map(ride => renderRideCard(ride))}
+              </div>
             </div>
           )}
         </TabsContent>

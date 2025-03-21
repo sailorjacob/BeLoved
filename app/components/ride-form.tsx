@@ -196,10 +196,9 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
           returnPickupTime.setHours(returnHours, returnMinutes, 0, 0)
         }
 
-        // Generate another unique trip_id for the return trip
-        const returnTimestamp = new Date().getTime();
-        const returnRandomPart = Math.floor(Math.random() * 10000);
-        const returnTripId = `R${returnTimestamp}${returnRandomPart}`.substring(0, 7);
+        // Use the same trip_id for the return trip to link them together
+        // Just a small note to indicate it's a return trip
+        console.log(`Creating return trip with same trip ID: ${uniqueTripId}`)
 
         // Create return ride data
         const returnRideData = {
@@ -222,7 +221,7 @@ export function RideForm({ selectedDate, isAdmin = false, memberId }: RideFormPr
           super_admin_status: 'pending',
           is_return_trip: true,
           return_pickup_tba: values.return_pickup_tba,
-          trip_id: returnTripId
+          trip_id: uniqueTripId // Using the same trip_id links them together
         }
 
         // Try with regular client first
