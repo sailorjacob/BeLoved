@@ -85,9 +85,9 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
         return
       }
       
-      if (role !== 'super_admin') {
-        const dashboardPath = role === 'admin' 
-          ? '/admin-dashboard'
+      if (role !== 'admin') {
+        const dashboardPath = role === 'super_admin' 
+          ? '/super-admin-dashboard'
           : role === 'driver'
             ? '/driver-dashboard'
             : '/member-dashboard'
@@ -95,7 +95,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
         return
       }
       
-      // If we got here, user is logged in as super_admin
+      // If we got here, user is logged in as admin
       fetchMemberData(params.id)
     }
   }, [isLoggedIn, role, router, authLoading, params.id])
@@ -229,7 +229,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
         <div className="flex justify-between items-center mb-8">
           <h1 className="text-3xl font-bold">Member Profile</h1>
           <Button variant="outline" asChild>
-            <Link href="/super-admin-dashboard/members">
+            <Link href="/admin-dashboard/members">
               Back to Members
             </Link>
           </Button>
@@ -243,7 +243,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
             </div>
             <div className="flex justify-center mt-4">
               <Button asChild>
-                <Link href="/super-admin-dashboard/members">
+                <Link href="/admin-dashboard/members">
                   Return to Members Directory
                 </Link>
               </Button>
@@ -277,7 +277,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
         </div>
         <div className="flex items-center gap-4">
           <Button variant="outline" asChild>
-            <Link href="/super-admin-dashboard/members">
+            <Link href="/admin-dashboard/members">
               Back to Members
             </Link>
           </Button>
@@ -425,7 +425,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
             </div>
             <div className="border-t pt-4">
               <Button variant="outline" className="w-full">
-                <Link href={`/super-admin-dashboard/members/${member.id}/rides`} className="w-full">
+                <Link href={`/admin-dashboard/members/${member.id}/rides`} className="w-full">
                   View All Rides
                 </Link>
               </Button>
@@ -468,7 +468,7 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
                         className="mt-4"
                         asChild
                       >
-                        <Link href={`/super-admin-dashboard/members/${member.id}/rides`}>
+                        <Link href={`/admin-dashboard/members/${member.id}/rides`}>
                           View Driver's Rides
                         </Link>
                       </Button>
@@ -522,11 +522,11 @@ export default function MemberProfilePage({ params }: { params: { id: string } }
               <CardFooter className="border-t px-6 py-4">
                 <Button variant="outline" className="ml-auto" asChild>
                   {member.user_role === 'driver' ? (
-                    <Link href={`/super-admin-dashboard/members/${member.id}/rides`}>
+                    <Link href={`/admin-dashboard/members/${member.id}/rides`}>
                       View All Driver Rides
                     </Link>
                   ) : (
-                    <Link href={`/super-admin-dashboard/members/${member.id}/rides`}>
+                    <Link href={`/admin-dashboard/members/${member.id}/rides`}>
                       View All Rides
                     </Link>
                   )}
