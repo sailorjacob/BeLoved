@@ -152,22 +152,22 @@ export function DriverDashboard() {
       
       // First, try with full explicit selection to avoid join issues
       const { data, error } = await supabase
-        .from('rides')
-        .select(`
-          id,
-          member_id,
-          driver_id,
-          pickup_address,
-          dropoff_address,
-          scheduled_pickup_time,
-          status,
+          .from('rides')
+          .select(`
+            id, 
+            member_id,
+            driver_id,
+            pickup_address,
+            dropoff_address,
+            scheduled_pickup_time,
+            status,
           start_miles,
           end_miles,
           start_time,
           end_time,
-          notes,
-          payment_method,
-          payment_status,
+            notes,
+            payment_method,
+            payment_status,
           recurring,
           created_at,
           updated_at,
@@ -347,28 +347,6 @@ export function DriverDashboard() {
         }
       }
       
-      // Log specific information about trip T174207
-      const specificTrip = (data || []).find(r => r.trip_id === 'T174207');
-      if (specificTrip) {
-        console.log('[DriverDashboard] Found specific trip T174207:', {
-          id: specificTrip.id,
-          status: specificTrip.status,
-          driver_id: specificTrip.driver_id,
-          scheduled_time: specificTrip.scheduled_pickup_time,
-          member_id: specificTrip.member_id,
-          member_data: specificTrip.member || 'No member data'
-        });
-      }
-
-      // Check all rides for comparison
-      console.log('[DriverDashboard] All ride statuses:', (data || []).map(r => ({
-        id: r.id,
-        trip_id: r.trip_id,
-        status: r.status,
-        driver_id: r.driver_id === user.id ? 'Correct driver' : 'Wrong driver',
-        scheduled: r.scheduled_pickup_time
-      })));
-      
       setRides(data as unknown as DriverRide[] || [])
 
       // Use our custom functions to get details about specifically trip T174207
@@ -466,14 +444,6 @@ export function DriverDashboard() {
       });
     }
     
-    // Check specifically for trip T174207
-    const specificTrip = rides.find(r => r.trip_id === 'T174207');
-    if (specificTrip) {
-      console.log('[DriverDashboard] Trip T174207 found in rides array with status:', specificTrip.status);
-    } else {
-      console.log('[DriverDashboard] Trip T174207 NOT found in rides array');
-    }
-    
     if (rides.length > 0) {
       console.log('[DriverDashboard] First ride details:', {
         id: rides[0].id,
@@ -564,14 +534,14 @@ export function DriverDashboard() {
       }
       
       try {
-        const rideDate = new Date(ride.scheduled_pickup_time)
-        const sameDay = (
-          rideDate.getFullYear() === selectedDate.getFullYear() &&
-          rideDate.getMonth() === selectedDate.getMonth() &&
-          rideDate.getDate() === selectedDate.getDate()
-        )
-        
-        return sameDay
+      const rideDate = new Date(ride.scheduled_pickup_time)
+      const sameDay = (
+        rideDate.getFullYear() === selectedDate.getFullYear() &&
+        rideDate.getMonth() === selectedDate.getMonth() &&
+        rideDate.getDate() === selectedDate.getDate()
+      )
+      
+      return sameDay
       } catch (err) {
         console.error(`[DriverDashboard] Error parsing date for ride ${ride.id}:`, err)
         // If there's an error parsing the date, it's better to include it in today's rides
@@ -695,7 +665,7 @@ export function DriverDashboard() {
         }
         else {
           // Last resort fallback
-          color = "bg-gray-200 text-gray-800"
+        color = "bg-gray-200 text-gray-800"
           label = status ? status.replace(/_/g, ' ') : 'Unknown'
         }
     }
@@ -1325,41 +1295,26 @@ export function DriverDashboard() {
             </Card>
           ) : (
             <div className="space-y-8">
-              {/* First show the trip that is known to work correctly */}
-              {rides.some(ride => ride.trip_id === 'T174207') && (
-                <div className="space-y-4">
-                  <h3 className="text-md font-medium text-green-700 bg-green-50 p-2 rounded">
-                    Working Trip (T174207)
-                  </h3>
-                  <div className="space-y-4">
-                    {rides.filter(ride => ride.trip_id === 'T174207').map(ride => renderRideCard(ride, true))}
-                  </div>
-                </div>
-              )}
-              
               {/* First show groups of related trips */}
               {groupRelatedRides(rides).length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-muted-foreground">Connected Trips</h3>
-                  {groupRelatedRides(rides)
-                    .filter(group => group.tripId !== 'T174207') // Skip the known working trip
-                    .map(group => (
-                      <div key={group.tripId} className="space-y-2">
-                        <div className="text-sm font-medium text-primary-foreground bg-primary/10 px-2 py-1 rounded-sm">
-                          Trip ID: {group.tripId} ({group.rides.length} connected rides)
-                        </div>
-                        <div className="space-y-4">
-                          {group.rides.map(ride => renderRideCard(ride, true))}
-                        </div>
+                  {groupRelatedRides(rides).map(group => (
+                    <div key={group.tripId} className="space-y-2">
+                      <div className="text-sm font-medium text-primary-foreground bg-primary/10 px-2 py-1 rounded-sm">
+                        Trip ID: {group.tripId} ({group.rides.length} connected rides)
                       </div>
-                    ))
-                  }
+                      <div className="space-y-4">
+                        {group.rides.map(ride => renderRideCard(ride, true))}
+                      </div>
+                    </div>
+                  ))}
                 </div>
               )}
               
               {/* Show Debug Info - rides with unusual statuses */}
               {rides.some(ride => !['started', 'picked_up', 'in_progress', 'pending', 'assigned', 'completed', 'return_started', 'return_picked_up', 'return_pending', 'return_completed'].includes(ride.status || '')) && (
-                <div className="space-y-4">
+              <div className="space-y-4">
                   <h3 className="text-md font-medium text-orange-700 bg-orange-50 p-2 rounded">
                     Rides with Unusual Status Values
                   </h3>
@@ -1390,8 +1345,6 @@ export function DriverDashboard() {
                       r.trip_id === ride.trip_id && 
                       r.is_return_trip !== ride.is_return_trip
                     ) && 
-                    // Not the known working trip
-                    ride.trip_id !== 'T174207' &&
                     // Has a standard status we recognize
                     ['started', 'picked_up', 'in_progress', 'pending', 'assigned', 'completed', 'return_started', 'return_picked_up', 'return_pending', 'return_completed'].includes(ride.status || '')
                   )
