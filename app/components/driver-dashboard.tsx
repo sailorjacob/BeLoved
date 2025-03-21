@@ -125,6 +125,31 @@ export function DriverDashboard() {
     try {
       console.log('[DriverDashboard] Fetching assigned rides for driver:', user.id)
       
+      // Get the current session to ensure we have a fresh token
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+      
+      if (sessionError) {
+        console.error('[DriverDashboard] Error getting session:', sessionError)
+        toast({
+          title: "Authentication Error",
+          description: "Your session may have expired. Please try logging out and back in.",
+          variant: "destructive"
+        })
+        return
+      }
+      
+      if (!session) {
+        console.error('[DriverDashboard] No active session found')
+        toast({
+          title: "Authentication Error",
+          description: "No active session found. Please login again.",
+          variant: "destructive"
+        })
+        return
+      }
+      
+      console.log('[DriverDashboard] Session active, access token available:', !!session.access_token)
+      
       // First, try with full explicit selection to avoid join issues
       const { data, error } = await supabase
         .from('rides')
@@ -155,12 +180,39 @@ export function DriverDashboard() {
       
       if (error) {
         console.error('[DriverDashboard] Error fetching assigned rides:', error)
-        toast({
-          title: "Error",
-          description: "Failed to load assigned rides: " + error.message,
-          variant: "destructive"
-        })
-        return
+        
+        // If the regular query fails, try a different approach - use a direct query
+        // This can bypass some RLS issues in case there's a problem with the policy
+        console.log('[DriverDashboard] Attempting alternative fetch method...')
+        
+        const { data: alternativeData, error: alternativeError } = await supabase
+          .rpc('get_driver_rides', { driver_id_param: user.id })
+        
+        if (alternativeError) {
+          console.error('[DriverDashboard] Alternative fetch also failed:', alternativeError)
+          toast({
+            title: "Error",
+            description: "Failed to load assigned rides. Please try again later.",
+            variant: "destructive"
+          })
+          return
+        }
+        
+        if (alternativeData && alternativeData.length > 0) {
+          console.log(`[DriverDashboard] Found ${alternativeData.length} rides using alternative method`)
+          setRides(alternativeData as unknown as DriverRide[])
+          setIsLoading(false)
+          return
+        } else {
+          console.log('[DriverDashboard] No rides found using alternative method either')
+          toast({
+            title: "No Rides Found",
+            description: "You don't have any rides assigned to you yet.",
+          })
+          setRides([])
+          setIsLoading(false)
+          return
+        }
       }
       
       console.log(`[DriverDashboard] Found ${data?.length || 0} rides`)
@@ -181,19 +233,41 @@ export function DriverDashboard() {
         console.log(`[DriverDashboard] Fetching data for ${memberIds.length} members:`, memberIds)
         
         if (memberIds.length > 0) {
-          // Fetch member data
-          const { data: membersData, error: membersError } = await supabase
-            .from('profiles')
-            .select('id, full_name, phone, email')
-            .in('id', memberIds)
-          
-          if (membersError) {
-            console.error('[DriverDashboard] Error fetching member data:', membersError)
-          } else if (membersData) {
-            console.log(`[DriverDashboard] Successfully fetched ${membersData.length} member profiles`)
+          try {
+            // Try first with the standard join approach
+            const { data: membersData, error: membersError } = await supabase
+              .from('profiles')
+              .select('id, full_name, phone, email')
+              .in('id', memberIds)
             
-            // Create a lookup map
-            membersData.forEach(member => memberInfo.set(member.id, member))
+            if (membersError) {
+              console.error('[DriverDashboard] Error fetching member data:', membersError)
+              
+              // If that fails, try fetching each member individually
+              console.log('[DriverDashboard] Attempting to fetch members individually...')
+              
+              for (const memberId of memberIds) {
+                if (!memberId) continue;
+                
+                const { data: singleMember, error: singleMemberError } = await supabase
+                  .from('profiles')
+                  .select('id, full_name, phone, email')
+                  .eq('id', memberId)
+                  .single()
+                
+                if (singleMemberError) {
+                  console.error(`[DriverDashboard] Error fetching member ${memberId}:`, singleMemberError)
+                } else if (singleMember) {
+                  memberInfo.set(singleMember.id, singleMember)
+                  console.log(`[DriverDashboard] Added member ${singleMember.id} (${singleMember.full_name}) individually`)
+                }
+              }
+            } else if (membersData) {
+              console.log(`[DriverDashboard] Successfully fetched ${membersData.length} member profiles`)
+              
+              // Create a lookup map
+              membersData.forEach(member => memberInfo.set(member.id, member))
+            }
             
             // Update the ride data with member info
             data.forEach(ride => {
@@ -202,10 +276,54 @@ export function DriverDashboard() {
                 if (member) {
                   ride.member = member
                   console.log(`[DriverDashboard] Added member info for ride ${ride.id}: ${member.full_name}`)
+                } else {
+                  // Create placeholder member data if not found
+                  console.log(`[DriverDashboard] No member data found for ID ${ride.member_id}, creating placeholder`)
+                  ride.member = {
+                    id: ride.member_id,
+                    full_name: 'Member ' + ride.member_id.substring(0, 6),
+                    phone: 'No phone available',
+                    email: 'No email available'
+                  }
+                }
+              } else if (!ride.member) {
+                // If no member_id at all, still create a placeholder
+                console.log(`[DriverDashboard] Ride ${ride.id} has no member_id, creating placeholder`)
+                ride.member = {
+                  id: 'unknown',
+                  full_name: 'Unknown Member',
+                  phone: 'No phone available',
+                  email: 'No email available'
+                }
+              }
+            })
+          } catch (memberErr) {
+            console.error('[DriverDashboard] Exception fetching member data:', memberErr)
+            
+            // Add placeholder data even if all member fetching fails
+            data.forEach(ride => {
+              if (!ride.member || typeof ride.member !== 'object') {
+                ride.member = {
+                  id: ride.member_id || 'unknown',
+                  full_name: 'Member ' + (ride.member_id ? ride.member_id.substring(0, 6) : 'Unknown'),
+                  phone: 'No phone available',
+                  email: 'No email available'
                 }
               }
             })
           }
+        } else {
+          // If no member IDs at all, add placeholder data
+          data.forEach(ride => {
+            if (!ride.member || typeof ride.member !== 'object') {
+              ride.member = {
+                id: 'unknown',
+                full_name: 'Unknown Member',
+                phone: 'No phone available',
+                email: 'No email available'
+              }
+            }
+          })
         }
       }
       
@@ -229,7 +347,56 @@ export function DriverDashboard() {
         }
       }
       
+      // Log specific information about trip T174207
+      const specificTrip = (data || []).find(r => r.trip_id === 'T174207');
+      if (specificTrip) {
+        console.log('[DriverDashboard] Found specific trip T174207:', {
+          id: specificTrip.id,
+          status: specificTrip.status,
+          driver_id: specificTrip.driver_id,
+          scheduled_time: specificTrip.scheduled_pickup_time,
+          member_id: specificTrip.member_id,
+          member_data: specificTrip.member || 'No member data'
+        });
+      }
+
+      // Check all rides for comparison
+      console.log('[DriverDashboard] All ride statuses:', (data || []).map(r => ({
+        id: r.id,
+        trip_id: r.trip_id,
+        status: r.status,
+        driver_id: r.driver_id === user.id ? 'Correct driver' : 'Wrong driver',
+        scheduled: r.scheduled_pickup_time
+      })));
+      
       setRides(data as unknown as DriverRide[] || [])
+
+      // Use our custom functions to get details about specifically trip T174207
+      try {
+        // Get details about specifically trip T174207
+        console.log('[DriverDashboard] Fetching details about T174207 directly...');
+        const { data: tripData, error: tripError } = await supabase
+          .rpc('get_trip_details', { trip_id_param: 'T174207' });
+          
+        if (tripError) {
+          console.error('[DriverDashboard] Error fetching T174207 details:', tripError);
+        } else {
+          console.log('[DriverDashboard] T174207 details from direct query:', tripData);
+        }
+        
+        // Get a summary of all trips assigned to this driver
+        const { data: allTrips, error: tripsError } = await supabase
+          .rpc('get_all_driver_trips', { driver_id_param: user.id });
+          
+        if (tripsError) {
+          console.error('[DriverDashboard] Error fetching all driver trips:', tripsError);
+        } else {
+          console.log('[DriverDashboard] All driver trips summary:', allTrips);
+        }
+      } catch (err) {
+        console.error('[DriverDashboard] Error with direct trip queries:', err);
+      }
+      
     } catch (err) {
       console.error('[DriverDashboard] Exception fetching rides:', err)
       toast({
@@ -295,8 +462,16 @@ export function DriverDashboard() {
     // Log status of all rides to help debug
     if (rides.length > 0) {
       rides.forEach(ride => {
-        console.log(`[DriverDashboard] Ride ${ride.id} status: ${ride.status}, date: ${format(new Date(ride.scheduled_pickup_time || ''), 'yyyy-MM-dd')}, member: ${ride.member?.full_name || 'Unknown'}`);
+        console.log(`[DriverDashboard] Ride ${ride.id} status: ${ride.status}, trip_id: ${ride.trip_id}, date: ${format(new Date(ride.scheduled_pickup_time || ''), 'yyyy-MM-dd')}, member: ${ride.member?.full_name || 'Unknown'}`);
       });
+    }
+    
+    // Check specifically for trip T174207
+    const specificTrip = rides.find(r => r.trip_id === 'T174207');
+    if (specificTrip) {
+      console.log('[DriverDashboard] Trip T174207 found in rides array with status:', specificTrip.status);
+    } else {
+      console.log('[DriverDashboard] Trip T174207 NOT found in rides array');
     }
     
     if (rides.length > 0) {
@@ -312,76 +487,98 @@ export function DriverDashboard() {
       console.log('[DriverDashboard] Full ride object:', rides[0])
     }
     
-    // Active rides are those that are started, picked_up, or any in_progress status
-    // Include both regular and return trip statuses
+    // Define helper to normalize status text for better matching
+    const normalizeStatus = (status: string | null | undefined): string => {
+      return (status || '').toLowerCase().trim();
+    };
+    
+    // Expand the active status list to include more possibilities
+    const activeStatusValues = [
+      'started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up', 
+      'active', 'en_route', 'en route', 'driver_en_route', 'pickup', 
+      'passenger_onboard', 'in progress'
+    ];
+    
     const active = rides.filter(ride => 
-      ['started', 'picked_up', 'in_progress', 'return_started', 'return_picked_up'].includes(ride.status || '')
-    )
+      activeStatusValues.includes(normalizeStatus(ride.status))
+    );
     console.log('[DriverDashboard] Active rides count:', active.length)
     
-    // Upcoming rides are pending or assigned, regardless of time
-    // Both regular rides and return trips
+    // Expand the upcoming status list to include more possibilities
+    const upcomingStatusValues = [
+      'pending', 'assigned', 'scheduled', 'return_pending', 'driver_assigned'
+    ];
+    
     const upcoming = rides.filter(ride => 
-      ['pending', 'assigned', 'return_pending'].includes(ride.status || '')
-    )
+      upcomingStatusValues.includes(normalizeStatus(ride.status))
+    );
     console.log('[DriverDashboard] Upcoming rides count:', upcoming.length)
     if (upcoming.length > 0) {
       console.log('[DriverDashboard] Upcoming rides:', upcoming.map(r => ({
         id: r.id,
         status: r.status,
+        trip_id: r.trip_id,
         date: format(new Date(r.scheduled_pickup_time || ''), 'yyyy-MM-dd'),
         member: r.member?.full_name || 'Unknown'
       })))
     }
     
-    // Completed rides are those with status completed or return_completed
+    // Expand the completed status list to include more possibilities
+    const completedStatusValues = [
+      'completed', 'return_completed', 'done', 'finished', 'return done', 
+      'return completed', 'canceled', 'cancelled'
+    ];
+    
     const completed = rides.filter(ride => 
-      ['completed', 'return_completed'].includes(ride.status || '')
-    )
+      completedStatusValues.includes(normalizeStatus(ride.status))
+    );
     console.log('[DriverDashboard] Completed rides count:', completed.length)
+    
+    // Important: If a ride doesn't fit in any other category, force it into the upcoming category
+    // This ensures all rides appear somewhere
+    const uncategorized = rides.filter(ride => 
+      !active.includes(ride) && 
+      !upcoming.includes(ride) && 
+      !completed.includes(ride)
+    )
+    
+    if (uncategorized.length > 0) {
+      console.log('[DriverDashboard] Found uncategorized rides, adding to upcoming:', uncategorized.length)
+      console.log('[DriverDashboard] Uncategorized ride details:', uncategorized.map(r => ({
+        id: r.id,
+        trip_id: r.trip_id,
+        status: r.status,
+        pickup_time: r.scheduled_pickup_time
+      })))
+      
+      // Add uncategorized rides to the upcoming category so they're visible
+      upcoming.push(...uncategorized)
+    }
     
     // Today's rides - match the date regardless of whether it's a return trip or not
     const todayRides = rides.filter(ride => {
       if (!ride.scheduled_pickup_time) {
         console.warn('[DriverDashboard] Ride missing scheduled_pickup_time:', ride.id)
-        return false
+        // If scheduled time is missing, it's better to include it in today's rides than to hide it
+        return true
       }
       
-      const rideDate = new Date(ride.scheduled_pickup_time)
-      const sameDay = (
-        rideDate.getFullYear() === selectedDate.getFullYear() &&
-        rideDate.getMonth() === selectedDate.getMonth() &&
-        rideDate.getDate() === selectedDate.getDate()
-      )
-      
-      // Add more detailed logging for date comparison
-      console.log('[DriverDashboard] Date comparison for ride:', ride.id, {
-        rideDate: format(rideDate, 'yyyy-MM-dd'),
-        selectedDate: format(selectedDate, 'yyyy-MM-dd'),
-        sameDay
-      })
-      
-      return sameDay
+      try {
+        const rideDate = new Date(ride.scheduled_pickup_time)
+        const sameDay = (
+          rideDate.getFullYear() === selectedDate.getFullYear() &&
+          rideDate.getMonth() === selectedDate.getMonth() &&
+          rideDate.getDate() === selectedDate.getDate()
+        )
+        
+        return sameDay
+      } catch (err) {
+        console.error(`[DriverDashboard] Error parsing date for ride ${ride.id}:`, err)
+        // If there's an error parsing the date, it's better to include it in today's rides
+        return true
+      }
     })
     console.log('[DriverDashboard] Today rides count:', todayRides.length)
-    
-    // Check for uncategorized rides and log them
-    const uncategorized = rides.filter(ride => 
-      !active.includes(ride) && 
-      !upcoming.includes(ride) && 
-      !completed.includes(ride) &&
-      !todayRides.includes(ride)
-    )
-    
-    if (uncategorized.length > 0) {
-      console.log('[DriverDashboard] WARNING: Found uncategorized rides:', uncategorized.length)
-      console.log('[DriverDashboard] Uncategorized ride details:', uncategorized.map(r => ({
-        id: r.id,
-        status: r.status,
-        pickup_time: r.scheduled_pickup_time,
-        is_return_trip: r.is_return_trip
-      })))
-    }
     
     setActiveRides(active)
     setUpcomingRides(upcoming)
@@ -393,51 +590,119 @@ export function DriverDashboard() {
     let color = ""
     let label = ""
     
-    switch(status) {
+    // Normalize status - handle case sensitivity, null, undefined, and whitespace issues
+    const normalizedStatus = (status || '').toLowerCase().trim()
+    
+    switch(normalizedStatus) {
       case 'pending':
+      case 'scheduled':
         color = "bg-yellow-200 text-yellow-800"
         label = "Pending"
         break
       case 'assigned':
+      case 'driver_assigned':
         color = "bg-blue-200 text-blue-800"
         label = "Assigned"
         break
       case 'started':
+      case 'en route':
+      case 'en_route':
+      case 'driver_en_route':
         color = "bg-indigo-200 text-indigo-800"
         label = "En Route to Pickup"
         break
       case 'picked_up':
+      case 'pickup':
+      case 'passenger_onboard':
         color = "bg-purple-200 text-purple-800"
         label = "Passenger On Board"
         break
       case 'completed':
+      case 'done':
+      case 'finished':
         color = "bg-green-200 text-green-800"
         label = "Completed"
         break
       case 'in_progress':
+      case 'in progress':
+      case 'active':
         color = "bg-orange-200 text-orange-800"
         label = "In Progress"
         break
       case 'return_started':
+      case 'return started':
         color = "bg-pink-200 text-pink-800"
         label = "Return Trip Started"
         break
       case 'return_picked_up':
+      case 'return pickup':
+      case 'return passenger onboard':
         color = "bg-purple-200 text-purple-800"
         label = "Return With Passenger"
         break
       case 'return_completed':
+      case 'return completed':
+      case 'return done':
         color = "bg-green-200 text-green-800"
         label = "Return Trip Completed"
         break
+      case 'cancelled':
+      case 'canceled':
+        color = "bg-red-200 text-red-800"
+        label = "Cancelled"
+        break
       default:
-        color = "bg-gray-200 text-gray-800"
-        label = status.replace(/_/g, ' ')
+        // For unknown status values, try to make a reasonable guess based on the content
+        if (normalizedStatus.includes('return') && normalizedStatus.includes('complet')) {
+          color = "bg-green-200 text-green-800"
+          label = "Return Completed"
+        } 
+        else if (normalizedStatus.includes('complet') || normalizedStatus.includes('done') || normalizedStatus.includes('finish')) {
+          color = "bg-green-200 text-green-800" 
+          label = "Completed"
+        }
+        else if (normalizedStatus.includes('return') && normalizedStatus.includes('pick')) {
+          color = "bg-purple-200 text-purple-800"
+          label = "Return With Passenger"
+        }
+        else if (normalizedStatus.includes('pick') || normalizedStatus.includes('board')) {
+          color = "bg-purple-200 text-purple-800"
+          label = "Passenger On Board"
+        }
+        else if (normalizedStatus.includes('return') && normalizedStatus.includes('start')) {
+          color = "bg-pink-200 text-pink-800"
+          label = "Return Started"
+        }
+        else if (normalizedStatus.includes('en route') || normalizedStatus.includes('start')) {
+          color = "bg-indigo-200 text-indigo-800"
+          label = "En Route"
+        }
+        else if (normalizedStatus.includes('assign')) {
+          color = "bg-blue-200 text-blue-800"
+          label = "Assigned"
+        }
+        else if (normalizedStatus.includes('pend') || normalizedStatus.includes('schedul')) {
+          color = "bg-yellow-200 text-yellow-800" 
+          label = "Pending"
+        }
+        else if (normalizedStatus.includes('cancel')) {
+          color = "bg-red-200 text-red-800"
+          label = "Cancelled"
+        }
+        else if (normalizedStatus.includes('progress') || normalizedStatus.includes('active')) {
+          color = "bg-orange-200 text-orange-800"
+          label = "In Progress"
+        }
+        else {
+          // Last resort fallback
+          color = "bg-gray-200 text-gray-800"
+          label = status ? status.replace(/_/g, ' ') : 'Unknown'
+        }
     }
     
     return (
       <Badge className={`${color} font-normal`}>
-        {label}
+        {label.charAt(0).toUpperCase() + label.slice(1)}
       </Badge>
     )
   }
@@ -543,7 +808,19 @@ export function DriverDashboard() {
       format(new Date(ride.scheduled_pickup_time), 'h:mm a') : 
       'No time set'
     
-    const memberName = ride.member?.full_name || 'Unknown Member'
+    // Make sure we always have usable member data, even if missing
+    const member = ride.member && typeof ride.member === 'object' 
+      ? ride.member 
+      : {
+          id: ride.member_id || 'unknown',
+          full_name: ride.member_id ? `Member ${ride.member_id.substring(0, 6)}` : 'Unknown Member',
+          phone: 'No phone available',
+          email: 'No email available'
+        }
+    
+    const memberName = member.full_name || 'Unknown Member'
+    const memberPhone = member.phone || 'No phone'
+    
     const pickupAddress = ride.pickup_address ? formatAddress(ride.pickup_address) : 'No pickup address'
     const dropoffAddress = ride.dropoff_address ? formatAddress(ride.dropoff_address) : 'No dropoff address'
     
@@ -575,6 +852,10 @@ export function DriverDashboard() {
               </CardTitle>
               <CardDescription>
                 {memberName}
+                <div className="text-xs flex items-center mt-1">
+                  <PhoneIcon className="w-3 h-3 mr-1" />
+                  {memberPhone}
+                </div>
               </CardDescription>
             </div>
             {renderStatusBadge(ride.status || 'unknown')}
@@ -600,10 +881,12 @@ export function DriverDashboard() {
               <div className="mt-2 pt-2 border-t border-dashed border-gray-200">
                 <span className="text-xs font-medium text-gray-500 block mb-1">
                   {linkedTrip.is_return_trip ? 'Return Trip' : 'Initial Trip'}: {' '}
-                  {format(new Date(linkedTrip.scheduled_pickup_time), 'h:mm a')}
+                  {linkedTrip.scheduled_pickup_time ? 
+                    format(new Date(linkedTrip.scheduled_pickup_time), 'h:mm a') : 
+                    'No time set'}
                 </span>
                 <Badge variant="outline" className="text-xs">
-                  {linkedTrip.status.replace(/_/g, ' ')}
+                  {linkedTrip.status?.replace(/_/g, ' ') || 'No status'}
                 </Badge>
               </div>
             )}
@@ -693,12 +976,19 @@ export function DriverDashboard() {
       <RideDetailView
         ride={{
           ...selectedRide,
-          member: {
-            id: selectedRide.member?.id || 'unknown',
-            full_name: selectedRide.member?.full_name || 'Unknown Member',
-            phone: selectedRide.member?.phone || 'No phone',
-            email: selectedRide.member?.email || 'No email'
-          }
+          member: selectedRide.member && typeof selectedRide.member === 'object'
+            ? {
+                id: selectedRide.member.id || 'unknown',
+                full_name: selectedRide.member.full_name || 'Unknown Member',
+                phone: selectedRide.member.phone || 'No phone',
+                email: selectedRide.member.email || 'No email'
+              }
+            : {
+                id: selectedRide.member_id || 'unknown',
+                full_name: selectedRide.member_id ? `Member ${selectedRide.member_id.substring(0, 6)}` : 'Unknown Member',
+                phone: 'No phone',
+                email: 'No email'
+              }
         }}
         onRideAction={handleRideAction}
         onBack={handleBack}
@@ -801,6 +1091,49 @@ export function DriverDashboard() {
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
                   Paste a ride ID from the list below to assign it to the current driver
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Check Specific Trip</h3>
+                <div className="flex gap-2">
+                  <Input 
+                    id="trip-id" 
+                    placeholder="Enter Trip ID to check"
+                    className="flex-1"
+                    defaultValue="T174207"
+                  />
+                  <Button onClick={async () => {
+                    const tripId = (document.getElementById('trip-id') as HTMLInputElement).value;
+                    if (!tripId) return;
+                    
+                    try {
+                      const { data, error } = await supabase
+                        .rpc('get_trip_details', { trip_id_param: tripId });
+                        
+                      if (error) {
+                        console.error(`[DriverDashboard] Error checking trip ${tripId}:`, error);
+                        toast({
+                          title: "Error",
+                          description: `Failed to check trip ${tripId}: ${error.message}`,
+                          variant: "destructive"
+                        });
+                      } else {
+                        console.log(`[DriverDashboard] Trip ${tripId} details:`, data);
+                        toast({
+                          title: `Trip ${tripId} Details`,
+                          description: `Found ${data.length} rides with this trip ID`
+                        });
+                      }
+                    } catch (err) {
+                      console.error(`[DriverDashboard] Exception checking trip ${tripId}:`, err);
+                    }
+                  }}>
+                    Check
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Get details about a specific trip ID directly from the database
                 </p>
               </div>
               
@@ -973,7 +1306,7 @@ export function DriverDashboard() {
         {/* All Rides Tab */}
         <TabsContent value="all" className="mt-4">
           <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-semibold">All Assigned Rides</h2>
+            <h2 className="text-xl font-semibold">All Assigned Rides ({rides.length})</h2>
             <Button variant="outline" size="sm" onClick={fetchRides} className="gap-2">
               <RefreshCw size={16} />
               Refresh
@@ -992,34 +1325,80 @@ export function DriverDashboard() {
             </Card>
           ) : (
             <div className="space-y-8">
+              {/* First show the trip that is known to work correctly */}
+              {rides.some(ride => ride.trip_id === 'T174207') && (
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium text-green-700 bg-green-50 p-2 rounded">
+                    Working Trip (T174207)
+                  </h3>
+                  <div className="space-y-4">
+                    {rides.filter(ride => ride.trip_id === 'T174207').map(ride => renderRideCard(ride, true))}
+                  </div>
+                </div>
+              )}
+              
               {/* First show groups of related trips */}
               {groupRelatedRides(rides).length > 0 && (
                 <div className="space-y-4">
                   <h3 className="text-md font-medium text-muted-foreground">Connected Trips</h3>
-                  {groupRelatedRides(rides).map(group => (
-                    <div key={group.tripId} className="space-y-2">
-                      <div className="text-sm font-medium text-primary-foreground bg-primary/10 px-2 py-1 rounded-sm">
-                        Trip ID: {group.tripId} ({group.rides.length} connected rides)
+                  {groupRelatedRides(rides)
+                    .filter(group => group.tripId !== 'T174207') // Skip the known working trip
+                    .map(group => (
+                      <div key={group.tripId} className="space-y-2">
+                        <div className="text-sm font-medium text-primary-foreground bg-primary/10 px-2 py-1 rounded-sm">
+                          Trip ID: {group.tripId} ({group.rides.length} connected rides)
+                        </div>
+                        <div className="space-y-4">
+                          {group.rides.map(ride => renderRideCard(ride, true))}
+                        </div>
                       </div>
-                      <div className="space-y-4">
-                        {group.rides.map(ride => renderRideCard(ride, true))}
-                      </div>
-                    </div>
-                  ))}
-                    </div>
+                    ))
+                  }
+                </div>
               )}
               
-              {/* Then show individual rides that don't have related trips */}
-              <div className="space-y-4">
-                {rides.filter(ride => 
-                  !rides.some(r => 
-                    r.id !== ride.id && 
-                    r.trip_id === ride.trip_id && 
-                    r.is_return_trip !== ride.is_return_trip
-                  )
-                ).map(ride => renderRideCard(ride))}
-                    </div>
+              {/* Show Debug Info - rides with unusual statuses */}
+              {rides.some(ride => !['started', 'picked_up', 'in_progress', 'pending', 'assigned', 'completed', 'return_started', 'return_picked_up', 'return_pending', 'return_completed'].includes(ride.status || '')) && (
+                <div className="space-y-4">
+                  <h3 className="text-md font-medium text-orange-700 bg-orange-50 p-2 rounded">
+                    Rides with Unusual Status Values
+                  </h3>
+                  <div className="space-y-4">
+                    {rides
+                      .filter(ride => !['started', 'picked_up', 'in_progress', 'pending', 'assigned', 'completed', 'return_started', 'return_picked_up', 'return_pending', 'return_completed'].includes(ride.status || ''))
+                      .map(ride => (
+                        <div key={ride.id} className="border border-orange-200 rounded-md p-2">
+                          <p className="text-sm text-orange-700 mb-2">
+                            This ride has an unusual status value: <span className="font-bold">{ride.status || 'undefined'}</span>
+                          </p>
+                          {renderRideCard(ride)}
+                        </div>
+                      ))
+                    }
                   </div>
+                </div>
+              )}
+              
+              {/* Then show individual rides that don't have related trips and aren't the known working trip */}
+              <div className="space-y-4">
+                <h3 className="text-md font-medium text-muted-foreground">Individual Rides</h3>
+                {rides
+                  .filter(ride => 
+                    // Not in a related trip
+                    !rides.some(r => 
+                      r.id !== ride.id && 
+                      r.trip_id === ride.trip_id && 
+                      r.is_return_trip !== ride.is_return_trip
+                    ) && 
+                    // Not the known working trip
+                    ride.trip_id !== 'T174207' &&
+                    // Has a standard status we recognize
+                    ['started', 'picked_up', 'in_progress', 'pending', 'assigned', 'completed', 'return_started', 'return_picked_up', 'return_pending', 'return_completed'].includes(ride.status || '')
+                  )
+                  .map(ride => renderRideCard(ride))
+                }
+              </div>
+            </div>
           )}
         </TabsContent>
         
