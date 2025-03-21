@@ -125,66 +125,8 @@ export function DriverDashboard() {
     try {
       console.log('[DriverDashboard] Fetching assigned rides for driver:', user.id)
       
-      // First verify the user exists in the rides table
-      const { data: countCheck, error: countError } = await supabase
-        .from('rides')
-        .select('id, is_return_trip, status', { count: 'exact' })
-        .eq('driver_id', user.id)
-      
-      if (countError) {
-        console.error('[DriverDashboard] Error checking ride count:', countError)
-      } else {
-        console.log(`[DriverDashboard] Found ${countCheck.length} rides for driver in database`)
-        
-        // Log the breakdown of return trips vs regular trips
-        const returnTrips = countCheck.filter(r => r.is_return_trip === true).length
-        const regularTrips = countCheck.filter(r => r.is_return_trip !== true).length
-        console.log(`[DriverDashboard] Return trips: ${returnTrips}, Regular trips: ${regularTrips}`)
-        
-        // Log status breakdown
-        const statusCounts = countCheck.reduce((acc, ride) => {
-          acc[ride.status] = (acc[ride.status] || 0) + 1
-          return acc
-        }, {} as Record<string, number>)
-        console.log('[DriverDashboard] Status breakdown:', statusCounts)
-      }
-      
-      // DEBUG: Check for all rides in the system to see why some aren't being found
-      // This will help identify if the rides exist but aren't properly associated
-      console.log('[DriverDashboard] Checking for all recent rides in the system...')
-      const { data: allRides, error: allRidesError } = await supabase
-        .from('rides')
-        .select('id, driver_id, member_id, status, is_return_trip, trip_id, scheduled_pickup_time')
-        .order('created_at', { ascending: false })
-        .limit(20)
-      
-      if (allRidesError) {
-        console.error('[DriverDashboard] Error fetching all rides:', allRidesError)
-      } else {
-        console.log(`[DriverDashboard] Found ${allRides.length} recent rides in the system`)
-        console.log('[DriverDashboard] Recent rides:', allRides)
-        
-        // Check how many have drivers assigned
-        const ridesWithDrivers = allRides.filter(r => r.driver_id !== null)
-        console.log(`[DriverDashboard] Rides with drivers assigned: ${ridesWithDrivers.length}`)
-        
-        // Check for missing required fields that might cause issues
-        const ridesWithMissingFields = allRides.filter(r => 
-          !r.scheduled_pickup_time || !r.status || r.member_id === null
-        )
-        if (ridesWithMissingFields.length > 0) {
-          console.warn('[DriverDashboard] Rides with missing required fields:', ridesWithMissingFields)
-        }
-        
-        // Save debug data for UI display
-        setDebugData({
-          allRides: allRides,
-          ridesWithDrivers: ridesWithDrivers.length,
-          ridesWithMissingFields: ridesWithMissingFields.length
-        });
-      }
-      
-      // Now fetch the actual rides with member data for this driver
+      // Use the exact same query structure that works in the member dashboard
+      // The foreign key relationship seems to be the key difference
       const { data, error } = await supabase
         .from('rides')
         .select(`
@@ -192,7 +134,7 @@ export function DriverDashboard() {
           member:member_id(id, full_name, phone, email)
         `)
         .eq('driver_id', user.id)
-        .order('scheduled_pickup_time', { ascending: true })
+        .order('scheduled_pickup_time', { ascending: false })
       
       if (error) {
         console.error('[DriverDashboard] Error fetching assigned rides:', error)
@@ -204,35 +146,49 @@ export function DriverDashboard() {
         return
       }
       
-      console.log(`[DriverDashboard] Fetched ${data?.length || 0} assigned rides`)
+      console.log(`[DriverDashboard] First query found ${data?.length || 0} rides`)
       
-      // Detailed logging for the first ride if we have any
-      if (data && data.length > 0) {
-        console.log('[DriverDashboard] First ride details:', {
-          id: data[0].id,
-          driver_id: data[0].driver_id,
-          member_id: data[0].member_id,
-          status: data[0].status,
-          scheduled_time: data[0].scheduled_pickup_time,
-          is_return_trip: data[0].is_return_trip,
-          trip_id: data[0].trip_id,
-          has_member_data: !!data[0].member
-        })
+      // If we still don't have all the rides, try direct SQL query
+      // This is to handle cases where there might be an inconsistency in 
+      // how the driver is assigned across different tables or fields
+      if (data.length < 2) {
+        console.log('[DriverDashboard] Performing comprehensive search for assigned rides...')
         
-        // Check for any potential data issues
-        if (!data[0].status) {
-          console.warn('[DriverDashboard] Ride missing status field:', data[0].id)
-        }
+        // Let's try directly querying by driver profile data
+        const { data: fullData, error: fullError } = await supabase
+          .from('rides')
+          .select(`
+            id, 
+            member_id,
+            driver_id,
+            pickup_address,
+            dropoff_address,
+            scheduled_pickup_time,
+            status,
+            is_return_trip,
+            trip_id,
+            notes,
+            payment_method,
+            payment_status,
+            start_miles,
+            end_miles,
+            member:member_id(id, full_name, phone, email)
+          `)
+          .or(`driver_id.eq.${user.id},driver.eq.${user.id}`)
+          .order('scheduled_pickup_time', { ascending: false })
         
-        if (!data[0].scheduled_pickup_time) {
-          console.warn('[DriverDashboard] Ride missing scheduled_pickup_time:', data[0].id)
-        }
-        
-        if (!data[0].member) {
-          console.warn('[DriverDashboard] Ride missing member data:', data[0].id)
+        if (!fullError && fullData && fullData.length > data.length) {
+          console.log(`[DriverDashboard] Found ${fullData.length} rides with comprehensive query!`)
+          setRides(fullData)
+          return
+        } else if (!fullError) {
+          console.log('[DriverDashboard] Comprehensive query did not find additional rides')
+        } else {
+          console.error('[DriverDashboard] Error with comprehensive query:', fullError)
         }
       }
       
+      // If we got here, use original results
       setRides(data || [])
     } catch (err) {
       console.error('[DriverDashboard] Exception fetching rides:', err)
