@@ -61,6 +61,23 @@ export function DriverDashboard() {
   const { user } = useAuth()
   const router = useRouter()
   const { toast } = useToast()
+  const [debugData, setDebugData] = useState<{
+    allRides: Array<{
+      id: string;
+      driver_id: string | null;
+      member_id: string | null;
+      status: string | null;
+      is_return_trip: boolean | null;
+      trip_id: string | null;
+      scheduled_pickup_time: string | null;
+    }>;
+    ridesWithDrivers: number;
+    ridesWithMissingFields: number;
+  }>({
+    allRides: [],
+    ridesWithDrivers: 0,
+    ridesWithMissingFields: 0
+  });
 
   useEffect(() => {
     if (!user) return
@@ -132,6 +149,42 @@ export function DriverDashboard() {
         console.log('[DriverDashboard] Status breakdown:', statusCounts)
       }
       
+      // DEBUG: Check for all rides in the system to see why some aren't being found
+      // This will help identify if the rides exist but aren't properly associated
+      console.log('[DriverDashboard] Checking for all recent rides in the system...')
+      const { data: allRides, error: allRidesError } = await supabase
+        .from('rides')
+        .select('id, driver_id, member_id, status, is_return_trip, trip_id, scheduled_pickup_time')
+        .order('created_at', { ascending: false })
+        .limit(20)
+      
+      if (allRidesError) {
+        console.error('[DriverDashboard] Error fetching all rides:', allRidesError)
+      } else {
+        console.log(`[DriverDashboard] Found ${allRides.length} recent rides in the system`)
+        console.log('[DriverDashboard] Recent rides:', allRides)
+        
+        // Check how many have drivers assigned
+        const ridesWithDrivers = allRides.filter(r => r.driver_id !== null)
+        console.log(`[DriverDashboard] Rides with drivers assigned: ${ridesWithDrivers.length}`)
+        
+        // Check for missing required fields that might cause issues
+        const ridesWithMissingFields = allRides.filter(r => 
+          !r.scheduled_pickup_time || !r.status || r.member_id === null
+        )
+        if (ridesWithMissingFields.length > 0) {
+          console.warn('[DriverDashboard] Rides with missing required fields:', ridesWithMissingFields)
+        }
+        
+        // Save debug data for UI display
+        setDebugData({
+          allRides: allRides,
+          ridesWithDrivers: ridesWithDrivers.length,
+          ridesWithMissingFields: ridesWithMissingFields.length
+        });
+      }
+      
+      // Now fetch the actual rides with member data for this driver
       const { data, error } = await supabase
         .from('rides')
         .select(`
@@ -566,6 +619,50 @@ export function DriverDashboard() {
     )
   }
 
+  // DEBUG function for admins to assign rides to the current driver
+  const assignRideToDriver = async (rideId: string) => {
+    if (!user?.id) return;
+    
+    try {
+      console.log('[DriverDashboard] Attempting to assign ride to current driver:', rideId);
+      
+      const { data, error } = await supabase
+        .from('rides')
+        .update({ 
+          driver_id: user.id,
+          status: 'assigned'
+        })
+        .eq('id', rideId)
+        .select();
+      
+      if (error) {
+        console.error('[DriverDashboard] Error assigning ride:', error);
+        toast({
+          title: "Error",
+          description: "Failed to assign ride: " + error.message,
+          variant: "destructive"
+        });
+        return;
+      }
+      
+      console.log('[DriverDashboard] Successfully assigned ride to driver:', data);
+      toast({
+        title: "Success",
+        description: "Ride assigned to current driver",
+      });
+      
+      // Refresh rides list
+      fetchRides();
+    } catch (err) {
+      console.error('[DriverDashboard] Exception assigning ride:', err);
+      toast({
+        title: "Error",
+        description: "Failed to assign ride",
+        variant: "destructive"
+      });
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-[60vh]">
@@ -649,6 +746,111 @@ export function DriverDashboard() {
           </div>
         </CardContent>
       </Card>
+      
+      {/* Debug UI - Only visible to admins */}
+      {user?.id && process.env.NODE_ENV === 'development' && (
+        <Card className="border-red-300 bg-red-50">
+          <CardHeader>
+            <CardTitle className="text-red-700">Debug Tools (Development Only)</CardTitle>
+            <CardDescription className="text-red-600">
+              These tools are only available in development mode for testing purposes.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-medium mb-2">Driver Info</h3>
+                <p className="text-sm">Current driver ID: <code className="bg-gray-100 p-1 rounded">{user.id}</code></p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Manual Assignment</h3>
+                <div className="flex gap-2">
+                  <Input 
+                    id="ride-id" 
+                    placeholder="Enter Ride ID to assign to current driver"
+                    className="flex-1"
+                  />
+                  <Button onClick={() => {
+                    const rideId = (document.getElementById('ride-id') as HTMLInputElement).value;
+                    if (rideId) assignRideToDriver(rideId);
+                  }}>
+                    Assign
+                  </Button>
+                </div>
+                <p className="text-xs text-gray-500 mt-1">
+                  Paste a ride ID from the list below to assign it to the current driver
+                </p>
+              </div>
+              
+              <div>
+                <h3 className="font-medium mb-2">Recent Rides in Database</h3>
+                <div className="bg-white p-2 rounded border text-xs overflow-auto max-h-60">
+                  <p className="mb-2">
+                    Found {debugData.allRides.length} recent rides
+                    ({debugData.ridesWithDrivers} with drivers assigned, 
+                    {debugData.ridesWithMissingFields} with missing fields)
+                  </p>
+                  
+                  <table className="w-full text-left text-xs">
+                    <thead className="bg-gray-100">
+                      <tr>
+                        <th className="p-1">ID</th>
+                        <th className="p-1">Driver</th>
+                        <th className="p-1">Status</th>
+                        <th className="p-1">Date</th>
+                        <th className="p-1">Return?</th>
+                        <th className="p-1">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {debugData.allRides.map(ride => (
+                        <tr key={ride.id} className="border-b">
+                          <td className="p-1 font-mono">
+                            {ride.id?.substring(0, 8)}...
+                          </td>
+                          <td className="p-1">
+                            {ride.driver_id ? (
+                              ride.driver_id === user.id ? 
+                                <span className="text-green-600 font-medium">This Driver</span> : 
+                                <span className="text-red-600">Other Driver</span>
+                            ) : (
+                              <span className="text-gray-400">None</span>
+                            )}
+                          </td>
+                          <td className="p-1">
+                            {ride.status || 'Missing'}
+                          </td>
+                          <td className="p-1">
+                            {ride.scheduled_pickup_time ? 
+                              format(new Date(ride.scheduled_pickup_time), 'MM/dd/yy h:mm a') : 
+                              'Missing'
+                            }
+                          </td>
+                          <td className="p-1 text-center">
+                            {ride.is_return_trip ? '✅' : '❌'}
+                          </td>
+                          <td className="p-1">
+                            <Button 
+                              size="sm" 
+                              variant="outline" 
+                              className="h-6 text-xs"
+                              onClick={() => assignRideToDriver(ride.id)}
+                              disabled={ride.driver_id === user.id}
+                            >
+                              Assign
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Debug info if rides were fetched but not showing up */}
       {rides.length > 0 && todayRides.length === 0 && activeRides.length === 0 && upcomingRides.length === 0 && (
