@@ -53,23 +53,47 @@ export function DriverRides() {
   const fetchAssignedRides = async () => {
     try {
       setIsLoading(true)
+      console.log('[DriverRides] Fetching assigned rides for driver:', user?.id)
+      
+      // Validate user is available
+      if (!user?.id) {
+        console.error('[DriverRides] No user ID available for fetching rides')
+        toast({
+          title: "Error",
+          description: "User authentication issue. Please log out and log back in.",
+          variant: "destructive"
+        })
+        setIsLoading(false)
+        return
+      }
+      
       const { data, error } = await supabase
         .from('rides')
         .select(`
           *,
           member:member_id(id, full_name, phone, email)
         `)
-        .eq('driver_id', user?.id)
+        .eq('driver_id', user.id)
         .order('scheduled_pickup_time', { ascending: true })
       
-      if (error) throw error
+      if (error) {
+        console.error('[DriverRides] Error fetching assigned rides:', error)
+        toast({
+          title: "Error",
+          description: "Failed to load assigned rides. " + error.message,
+          variant: "destructive"
+        })
+        setIsLoading(false)
+        return
+      }
       
+      console.log(`[DriverRides] Fetched ${data?.length || 0} assigned rides`)
       setAssignedRides(data || [])
     } catch (error) {
-      console.error('Error fetching assigned rides:', error)
+      console.error('[DriverRides] Exception fetching assigned rides:', error)
       toast({
         title: "Error",
-        description: "Failed to load assigned rides",
+        description: "Failed to load assigned rides. Please try again.",
         variant: "destructive"
       })
     } finally {
@@ -236,11 +260,19 @@ export function DriverRides() {
       </div>
       
       {isLoading ? (
-        <div className="text-center py-8">Loading rides...</div>
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600 mb-4 mx-auto"></div>
+          <p className="text-lg font-medium">Loading rides...</p>
+          <p className="text-sm text-gray-500 mt-1">Retrieving your assigned trips</p>
+        </div>
       ) : assignedRides.length === 0 ? (
         <Card>
           <CardContent className="py-8 text-center">
-            <p className="text-muted-foreground">No assigned rides</p>
+            <p className="text-lg font-medium mb-2">No assigned rides found</p>
+            <p className="text-muted-foreground mb-4">You don't have any trips assigned to you yet.</p>
+            <Button onClick={fetchAssignedRides} variant="outline">
+              Check Again
+            </Button>
           </CardContent>
         </Card>
       ) : (

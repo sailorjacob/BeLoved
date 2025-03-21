@@ -6,6 +6,8 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '../components/user-nav'
 import { DriverDashboard } from '../components/driver-dashboard'
 import Image from 'next/image'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 export default function DriverDashboardPage() {
   const { isLoggedIn, isDriver, isInitialized } = useAuth()
@@ -58,8 +60,27 @@ export default function DriverDashboardPage() {
           </div>
           <h1 className="text-4xl font-bold">Driver Dashboard</h1>
         </div>
-        <UserNav />
+        <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            className="hidden sm:flex" 
+            onClick={() => router.push('/driver-dashboard/rides')}
+          >
+            View All My Rides
+          </Button>
+          <UserNav />
+        </div>
       </div>
+      
+      <div className="sm:hidden mb-4">
+        <Button 
+          className="w-full bg-red-600 hover:bg-red-700"
+          onClick={() => router.push('/driver-dashboard/rides')}
+        >
+          View All My Rides
+        </Button>
+      </div>
+      
       <DriverDashboard />
     </main>
   )

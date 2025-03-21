@@ -52,6 +52,7 @@ export function DriverDashboard() {
   const [selectedRide, setSelectedRide] = useState<Ride | null>(null)
   const [driverStats, setDriverStats] = useState<DriverStats>({ completed_rides: 0, total_miles: 0 })
   const [isLoading, setIsLoading] = useState(true)
+  const [statsError, setStatsError] = useState<string | null>(null)
   const { user } = useAuth()
   const router = useRouter()
 
@@ -75,6 +76,10 @@ export function DriverDashboard() {
   const navigateToAccount = () => {
     console.log('[DriverDashboard] Navigating to account')
     router.push('/account')
+  }
+  const navigateToRides = () => {
+    console.log('[DriverDashboard] Navigating to all rides')
+    router.push('/driver-dashboard/rides')
   }
 
   useEffect(() => {
@@ -107,6 +112,26 @@ export function DriverDashboard() {
 
     const fetchStats = async () => {
       try {
+        // First try to see if driver profile exists
+        const { data: profileCheck, error: profileError } = await supabase
+          .from('driver_profiles')
+          .select('id')
+          .eq('id', user.id)
+        
+        if (profileError) {
+          console.error('Error checking driver profile:', profileError)
+          setStatsError('Could not verify driver profile')
+          return
+        }
+
+        // If profile doesn't exist, create default stats
+        if (!profileCheck || profileCheck.length === 0) {
+          console.log('No driver profile found, using default stats')
+          setDriverStats({ completed_rides: 0, total_miles: 0 })
+          return
+        }
+
+        // If profile exists, fetch the stats
         const { data: stats, error } = await supabase
           .from('driver_profiles')
           .select('completed_rides, total_miles')
@@ -115,12 +140,14 @@ export function DriverDashboard() {
 
         if (error) {
           console.error('Error fetching driver stats:', error)
+          setStatsError('Could not load driver statistics')
           return
         }
 
         setDriverStats(stats)
       } catch (err) {
         console.error('Error fetching driver stats:', err)
+        setStatsError('Error retrieving statistics')
       }
     }
 
@@ -237,7 +264,16 @@ export function DriverDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Quick Access Section - Removed as requested */}
+      {/* View All Rides Button - NEW */}
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-semibold">Driver Dashboard</h2>
+        <Button 
+          className="bg-red-600 hover:bg-red-700" 
+          onClick={navigateToRides}
+        >
+          View All My Rides
+        </Button>
+      </div>
 
       <Card>
         <CardHeader>
