@@ -640,6 +640,31 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
                 timestamps={timestamps}
               />
             </div>
+
+            {/* E-Signature Section */}
+            <div className="pt-4 border-t mt-6">
+              <div className="text-sm text-gray-500 mb-4">Member Signature</div>
+              <div className="border rounded-md p-4">
+                {signature ? (
+                  <div className="space-y-4">
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Signature Collected:</p>
+                      <div className="border p-2 bg-white">
+                        <img src={signature} alt="Member Signature" className="max-h-24" />
+                      </div>
+                    </div>
+                    <Button variant="outline" onClick={handleSignatureClear}>Clear Signature</Button>
+                  </div>
+                ) : (
+                  <div>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Please have the member sign below to confirm this trip:
+                    </p>
+                    <SignaturePad onSave={handleSignatureSave} onClear={handleSignatureClear} />
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
