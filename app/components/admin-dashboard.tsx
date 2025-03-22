@@ -348,10 +348,12 @@ export function AdminDashboard() {
 
   const handleViewDetails = (ride: Ride) => {
     setSelectedRide(ride)
+    setSelectedView('ride')
   }
 
   const handleBackFromDetails = () => {
     setSelectedRide(null)
+    setSelectedView('overview')
   }
 
   const handleBackFromDriver = () => {
@@ -649,9 +651,22 @@ export function AdminDashboard() {
   }
 
   if (selectedView === 'ride' && selectedRide) {
+    // Ensure member has the correct structure
+    const memberData = {
+      id: selectedRide.member?.id || 'unknown',
+      full_name: selectedRide.member?.full_name || 'Unknown Member',
+      phone: selectedRide.member?.phone || 'No phone',
+      email: (selectedRide.member as any)?.email || 'No email'
+    };
+    
+    const rideData = {
+      ...selectedRide,
+      member: memberData
+    };
+    
     return (
       <RideDetailView
-        ride={selectedRide}
+        ride={rideData}
         onBack={handleBackFromDetails}
         onRideAction={handleRideAction}
         onMilesEdit={handleMilesEdit}
