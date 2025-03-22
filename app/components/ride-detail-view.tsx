@@ -251,83 +251,218 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, completed: miles }))
         break
       case 'return_started':
+        milesData.start = miles
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_started: miles }))
         break
       case 'return_picked_up':
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_picked_up: miles }))
         break
       case 'return_completed':
+        milesData.end = miles
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_completed: miles }))
         break
     }
     
     try {
+      console.log(`[RideDetailView] Updating ride ${ride.id} to status ${status} with miles data:`, milesData)
+      
+      // Attempt to use the parent component's callback
       await onRideAction(ride.id, status, milesData)
       
-      const updatedRide = {
-        ...ride,
-        status,
-        ...(status === 'started' ? { start_time: now, start_miles: miles } : {}),
-        ...(status === 'completed' ? { end_time: now, end_miles: miles } : {})
+      // Also directly update to Supabase as a fallback
+      try {
+        // Create an update object with the fields to update
+        const updateObject: any = {
+          status: status,
+          updated_at: now
+        }
+        
+        // Add miles data if present
+        if (milesData.start !== undefined) {
+          updateObject.start_miles = milesData.start
+        }
+        if (milesData.end !== undefined) {
+          updateObject.end_miles = milesData.end
+        }
+        
+        // Only add timestamps for specific status transitions
+        if (status === 'started' || status === 'return_started') {
+          updateObject.start_time = now
+        }
+        if (status === 'completed' || status === 'return_completed') {
+          updateObject.end_time = now
+        }
+        
+        console.log(`[RideDetailView] Direct Supabase update for ride ${ride.id}:`, updateObject)
+        
+        // Update ride directly in Supabase
+        const { error } = await supabase
+          .from('rides')
+          .update(updateObject)
+          .eq('id', ride.id)
+        
+        if (error) {
+          console.error(`[RideDetailView] Supabase update error:`, error)
+          toast({
+            title: "Warning",
+            description: "Ride data saved locally but database update may have failed. Your changes will sync when connection is restored.",
+            variant: "destructive"
+          })
+        } else {
+          console.log(`[RideDetailView] Supabase update successful`)
+          toast({
+            title: "Success",
+            description: `Ride status updated to ${status.replace('_', ' ')}`,
+          })
+        }
+      } catch (supabaseError) {
+        console.error(`[RideDetailView] Supabase error:`, supabaseError)
       }
       
       // Update local ride state
-      setRide(updatedRide)
+      setRide((prev) => ({
+        ...prev,
+        status: status,
+        ...(milesData.start !== undefined && { start_miles: milesData.start }),
+        ...(milesData.end !== undefined && { end_miles: milesData.end }),
+      }))
       
-      // Persist updated state
-      const persistedData = {
-        id: ride.id,
-        status: updatedRide.status,
-        savedMiles: {
-          ...savedMiles,
-          [status]: miles
-        },
-        timestamps: newTimestamps,
-        signature,
-        isSignatureSaved
-      }
-      localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
     } catch (error) {
-      console.error('Failed to update ride:', error)
-      alert('Failed to update ride status. Please try again.')
+      console.error(`[RideDetailView] Error in handleRideAction:`, error)
+      toast({
+        title: "Error",
+        description: "Failed to update ride status. Your changes are saved locally and will sync when connection is restored.",
+        variant: "destructive"
+      })
+      
+      // Continue with local update even if callback failed
+      setRide((prev) => ({
+        ...prev,
+        status: status,
+        ...(milesData.start !== undefined && { start_miles: milesData.start }),
+        ...(milesData.end !== undefined && { end_miles: milesData.end }),
+      }))
     }
+    
+    // Persist data to localStorage
+    const persistedData = {
+      id: ride.id,
+      status: status,
+      savedMiles: {
+        ...savedMiles,
+        ...(status === 'started' && { started: miles }),
+        ...(status === 'picked_up' && { picked_up: miles }),
+        ...(status === 'completed' && { completed: miles }),
+        ...(status === 'return_started' && { return_started: miles }),
+        ...(status === 'return_picked_up' && { return_picked_up: miles }),
+        ...(status === 'return_completed' && { return_completed: miles }),
+      },
+      timestamps: newTimestamps,
+      signature,
+      isSignatureSaved
+    }
+    
+    localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
   }
 
-  const handleMilesEdit = async (status: string, miles: number) => {
-    try {
-      // Update local state
-      const newSavedMiles = { ...savedMiles, [status]: miles }
-      setSavedMiles(newSavedMiles)
-
-      // If this is a start or end miles update, we need to call onMilesEdit
-      if (status === 'started') {
-        await onMilesEdit(ride.id, { start: miles })
-      } else if (status === 'completed') {
-        await onMilesEdit(ride.id, { end: miles })
+  const handleMilesEdit = async (rideId: string, milesData: { start?: number | null; end?: number | null }) => {
+    console.log(`[RideDetailView] Editing miles for ride ${rideId}:`, milesData)
+    
+    // Update local state
+    if (milesData.start !== undefined) {
+      if (ride.status === 'started') {
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, started: milesData.start }))
+      } else if (ride.status === 'return_started') {
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_started: milesData.start }))
       }
-
-      // Update the ride object if needed
-      const updatedRide = {
-        ...ride,
-        ...(status === 'started' ? { start_miles: miles } : {}),
-        ...(status === 'completed' ? { end_miles: miles } : {})
-      }
-      setRide(updatedRide)
-
-      // Persist to localStorage
-      const persistedData = {
-        id: ride.id,
-        status: ride.status,
-        savedMiles: newSavedMiles,
-        timestamps,
-        signature,
-        isSignatureSaved
-      }
-      localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
-    } catch (error) {
-      console.error('Failed to update mileage:', error)
-      alert('Failed to save mileage. Please try again.')
     }
+    
+    if (milesData.end !== undefined) {
+      if (ride.status === 'completed') {
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, completed: milesData.end }))
+      } else if (ride.status === 'return_completed') {
+        setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_completed: milesData.end }))
+      }
+    }
+    
+    try {
+      // Attempt to use the parent component's callback
+      await onMilesEdit(rideId, milesData)
+      
+      // Also directly update to Supabase as a fallback
+      try {
+        console.log(`[RideDetailView] Direct Supabase miles update for ride ${rideId}:`, milesData)
+        
+        // Update ride directly in Supabase
+        const { error } = await supabase
+          .from('rides')
+          .update({
+            ...(milesData.start !== undefined && { start_miles: milesData.start }),
+            ...(milesData.end !== undefined && { end_miles: milesData.end }),
+            updated_at: new Date().toISOString()
+          })
+          .eq('id', rideId)
+        
+        if (error) {
+          console.error(`[RideDetailView] Supabase miles update error:`, error)
+          toast({
+            title: "Warning",
+            description: "Mileage saved locally but database update may have failed. Your changes will sync when connection is restored.",
+            variant: "destructive"
+          })
+        } else {
+          console.log(`[RideDetailView] Supabase miles update successful`)
+          toast({
+            title: "Success",
+            description: "Mileage updated successfully",
+          })
+        }
+      } catch (supabaseError) {
+        console.error(`[RideDetailView] Supabase miles error:`, supabaseError)
+      }
+      
+      // Update local ride state
+      setRide((prev) => ({
+        ...prev,
+        ...(milesData.start !== undefined && { start_miles: milesData.start }),
+        ...(milesData.end !== undefined && { end_miles: milesData.end }),
+      }))
+      
+    } catch (error) {
+      console.error(`[RideDetailView] Error in handleMilesEdit:`, error)
+      toast({
+        title: "Error",
+        description: "Failed to update mileage. Your changes are saved locally and will sync when connection is restored.",
+        variant: "destructive"
+      })
+      
+      // Update local ride state even if callback failed
+      setRide((prev) => ({
+        ...prev,
+        ...(milesData.start !== undefined && { start_miles: milesData.start }),
+        ...(milesData.end !== undefined && { end_miles: milesData.end }),
+      }))
+    }
+    
+    // Update persisted data
+    const persistedData = {
+      id: ride.id,
+      status: ride.status,
+      savedMiles: {
+        ...savedMiles,
+        ...(milesData.start !== undefined && 
+           ((ride.status === 'started' && { started: milesData.start }) || 
+            (ride.status === 'return_started' && { return_started: milesData.start }))),
+        ...(milesData.end !== undefined && 
+           ((ride.status === 'completed' && { completed: milesData.end }) || 
+            (ride.status === 'return_completed' && { return_completed: milesData.end }))),
+      },
+      timestamps,
+      signature,
+      isSignatureSaved
+    }
+    
+    localStorage.setItem(`ride_${ride.id}`, JSON.stringify(persistedData))
   }
 
   const generatePDF = () => {
@@ -635,7 +770,16 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
                 onReturnPickup={(miles) => handleRideAction('return_picked_up', miles)}
                 onReturnComplete={(miles) => handleRideAction('return_completed', miles)}
                 onBack={(status) => handleRideAction(status, 0)}
-                onMilesEdit={handleMilesEdit}
+                onMilesEdit={(status, miles) => {
+                  if (status === 'started' || status === 'return_started') {
+                    handleMilesEdit(ride.id, { start: miles });
+                  } else if (status === 'completed' || status === 'return_completed') {
+                    handleMilesEdit(ride.id, { end: miles });
+                  } else {
+                    // For intermediate statuses just update the local state
+                    setSavedMiles((prev: typeof savedMiles) => ({ ...prev, [status]: miles }));
+                  }
+                }}
                 savedMiles={savedMiles}
                 timestamps={timestamps}
               />
