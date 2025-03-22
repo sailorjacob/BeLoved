@@ -231,7 +231,18 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
   }
 
   const handleRideAction = async (status: Ride['status'], miles: number) => {
-    const milesData: { start?: number | null; end?: number | null } = {}
+    console.log(`[RideDetailView] handleRideAction called with status: ${status}, miles: ${miles}`)
+    
+    // Create an extended milesData object that includes all our tracking points
+    const milesData: { 
+      start?: number | null
+      end?: number | null
+      pickup?: number | null 
+      dropoff?: number | null
+      return_pickup?: number | null
+      return_dropoff?: number | null
+    } = {}
+    
     const now = new Date().toISOString()
     
     // Update timestamps
@@ -244,21 +255,26 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, started: miles }))
         break
       case 'picked_up':
+        milesData.pickup = miles
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, picked_up: miles }))
         break
       case 'completed':
+        milesData.dropoff = miles
         milesData.end = miles
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, completed: miles }))
         break
       case 'return_started':
-        milesData.start = miles
+        milesData.return_pickup = miles
+        milesData.start = miles // Also update start miles for legacy support
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_started: miles }))
         break
       case 'return_picked_up':
+        milesData.return_pickup = miles
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_picked_up: miles }))
         break
       case 'return_completed':
-        milesData.end = miles
+        milesData.return_dropoff = miles
+        milesData.end = miles // Also update end miles for legacy support
         setSavedMiles((prev: typeof savedMiles) => ({ ...prev, return_completed: miles }))
         break
     }
@@ -277,20 +293,36 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
           updated_at: now
         }
         
-        // Add miles data if present
-        if (milesData.start !== undefined) {
-          updateObject.start_miles = milesData.start
-        }
-        if (milesData.end !== undefined) {
-          updateObject.end_miles = milesData.end
-        }
+        // Add mileage data for all supported fields
+        if (milesData.start !== undefined) updateObject.start_miles = milesData.start
+        if (milesData.pickup !== undefined) updateObject.pickup_miles = milesData.pickup
+        if (milesData.dropoff !== undefined) updateObject.dropoff_miles = milesData.dropoff
+        if (milesData.return_pickup !== undefined) updateObject.return_pickup_miles = milesData.return_pickup
+        if (milesData.return_dropoff !== undefined) updateObject.return_dropoff_miles = milesData.return_dropoff
+        if (milesData.end !== undefined) updateObject.end_miles = milesData.end
         
-        // Only add timestamps for specific status transitions
-        if (status === 'started' || status === 'return_started') {
-          updateObject.start_time = now
-        }
-        if (status === 'completed' || status === 'return_completed') {
-          updateObject.end_time = now
+        // Add timestamps for all status changes
+        switch (status) {
+          case 'started':
+            updateObject.start_time = now
+            break
+          case 'picked_up':
+            updateObject.pickup_time = now
+            break
+          case 'completed':
+            updateObject.dropoff_time = now
+            updateObject.end_time = now
+            break
+          case 'return_started':
+            updateObject.return_pickup_time = now
+            break
+          case 'return_picked_up':
+            updateObject.return_pickup_time = now
+            break
+          case 'return_completed':
+            updateObject.return_dropoff_time = now
+            updateObject.end_time = now
+            break
         }
         
         console.log(`[RideDetailView] Direct Supabase update for ride ${ride.id}:`, updateObject)
@@ -319,12 +351,16 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
         console.error(`[RideDetailView] Supabase error:`, supabaseError)
       }
       
-      // Update local ride state
+      // Update local ride state with all properties
       setRide((prev) => ({
         ...prev,
         status: status,
         ...(milesData.start !== undefined && { start_miles: milesData.start }),
-        ...(milesData.end !== undefined && { end_miles: milesData.end }),
+        ...(milesData.pickup !== undefined && { pickup_miles: milesData.pickup }),
+        ...(milesData.dropoff !== undefined && { dropoff_miles: milesData.dropoff }),
+        ...(milesData.return_pickup !== undefined && { return_pickup_miles: milesData.return_pickup }),
+        ...(milesData.return_dropoff !== undefined && { return_dropoff_miles: milesData.return_dropoff }),
+        ...(milesData.end !== undefined && { end_miles: milesData.end })
       }))
       
     } catch (error) {
@@ -340,7 +376,11 @@ export function RideDetailView({ ride: initialRide, onRideAction, onBack, onMile
         ...prev,
         status: status,
         ...(milesData.start !== undefined && { start_miles: milesData.start }),
-        ...(milesData.end !== undefined && { end_miles: milesData.end }),
+        ...(milesData.pickup !== undefined && { pickup_miles: milesData.pickup }),
+        ...(milesData.dropoff !== undefined && { dropoff_miles: milesData.dropoff }),
+        ...(milesData.return_pickup !== undefined && { return_pickup_miles: milesData.return_pickup }),
+        ...(milesData.return_dropoff !== undefined && { return_dropoff_miles: milesData.return_dropoff }),
+        ...(milesData.end !== undefined && { end_miles: milesData.end })
       }))
     }
     

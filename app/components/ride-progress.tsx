@@ -62,6 +62,7 @@ export function RideProgress({
   const [unsavedChanges, setUnsavedChanges] = useState<{[key: string]: boolean}>({})
 
   useEffect(() => {
+    console.log(`[RideProgress] Status updated to ${status}, savedMiles:`, savedMiles)
     setCurrentStatus(status)
     const currentMiles = savedMiles[status as keyof typeof savedMiles]
     if (currentMiles !== undefined) {
@@ -90,6 +91,7 @@ export function RideProgress({
     }
     
     try {
+      console.log(`[RideProgress] Handling action ${action} with mileage ${mileage}`)
       setEditingMiles(prev => ({ ...prev, [action]: mileage.toString() }))
       
       const milesData: any = {}
@@ -121,12 +123,16 @@ export function RideProgress({
           milesData.end = mileage
           await onReturnComplete(mileage)
           break
+        default:
+          console.warn(`[RideProgress] Unknown action: ${action}`)
+          break
       }
       
+      console.log(`[RideProgress] Setting current status from ${currentStatus} to ${action}`)
       setCurrentStatus(action)
       setMiles('')
     } catch (error) {
-      console.error('Failed to update ride status:', error)
+      console.error('[RideProgress] Failed to update ride status:', error)
       alert('Failed to update ride status. Please try again.')
     }
   }
@@ -219,9 +225,23 @@ export function RideProgress({
     const mainStatusOrder = ['started', 'picked_up', 'completed']
     const returnStatusOrder = ['return_started', 'return_picked_up', 'return_completed']
     
+    // Log to help debug status issues
+    console.log(`[RideProgress] Getting color for segment ${segment}, isReturn=${isReturn}, currentStatus=${currentStatus}`)
+    
+    // Fix issue with pending/assigned not showing correct colors
+    if (currentStatus === 'pending' || currentStatus === 'assigned') {
+      return 'bg-gray-200' // All segments are gray when ride is pending/assigned
+    }
+    
     if (isReturn) {
       if (currentStatus === 'return_completed') {
         return 'bg-green-500' // All green when return is completed
+      }
+      
+      // Include the case where a return trip hasn't started yet
+      if (currentStatus === 'completed') {
+        // Initial trip is completed but return hasn't started
+        return 'bg-gray-200' 
       }
       
       const currentIndex = returnStatusOrder.indexOf(currentStatus)
@@ -240,7 +260,13 @@ export function RideProgress({
       const currentIndex = mainStatusOrder.indexOf(currentStatus)
       const segmentIndex = mainStatusOrder.indexOf(segment)
       
-      if (currentIndex >= 0 && segmentIndex <= currentIndex) {
+      if (currentIndex === -1) {
+        console.warn(`[RideProgress] Current status ${currentStatus} not found in mainStatusOrder`)
+        // Handle edge case where currentStatus might be assigned or pending
+        return 'bg-gray-200'
+      }
+      
+      if (segmentIndex <= currentIndex) {
         return 'bg-red-500' // Red for in-progress segments
       }
       
