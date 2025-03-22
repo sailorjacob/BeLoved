@@ -92,32 +92,38 @@ export function RideProgress({
     try {
       setEditingMiles(prev => ({ ...prev, [action]: mileage.toString() }))
       
+      const milesData: any = {}
+      
       switch (action) {
         case 'started':
+          milesData.start = mileage
           await onStart(mileage)
-          setCurrentStatus('started')
           break
         case 'picked_up':
+          milesData.pickup = mileage
           await onPickup(mileage)
-          setCurrentStatus('picked_up')
           break
         case 'completed':
+          milesData.dropoff = mileage
+          milesData.end = mileage
           await onComplete(mileage)
-          setCurrentStatus('completed')
           break
         case 'return_started':
+          milesData.return_pickup = mileage
           await onReturnStart(mileage)
-          setCurrentStatus('return_started')
           break
         case 'return_picked_up':
+          milesData.return_pickup = mileage
           await onReturnPickup(mileage)
-          setCurrentStatus('return_picked_up')
           break
         case 'return_completed':
+          milesData.return_dropoff = mileage
+          milesData.end = mileage
           await onReturnComplete(mileage)
-          setCurrentStatus('return_completed')
           break
       }
+      
+      setCurrentStatus(action)
       setMiles('')
     } catch (error) {
       console.error('Failed to update ride status:', error)

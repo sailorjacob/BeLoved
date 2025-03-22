@@ -39,6 +39,14 @@ interface DriverRide extends Omit<Ride, 'member'> {
   is_return_trip?: boolean
   return_pickup_tba?: boolean
   trip_id?: string
+  pickup_miles?: number | null
+  dropoff_miles?: number | null
+  return_pickup_miles?: number | null
+  return_dropoff_miles?: number | null
+  pickup_time?: string | null
+  dropoff_time?: string | null
+  return_pickup_time?: string | null
+  return_dropoff_time?: string | null
 }
 
 interface DriverStats {
@@ -732,17 +740,59 @@ export function DriverDashboard() {
     setSelectedRide(null)
   }
 
-  const handleRideAction = async (rideId: string, newStatus: DriverRide['status'], milesData?: { start?: number | null; end?: number | null }) => {
+  const handleRideAction = async (rideId: string, newStatus: DriverRide['status'], milesData?: { 
+    start?: number | null
+    end?: number | null
+    pickup?: number | null
+    dropoff?: number | null
+    return_pickup?: number | null
+    return_dropoff?: number | null
+  }) => {
     const updatedRide = rides.find(r => r.id === rideId)
     if (!updatedRide) return
 
     let finalRide = { ...updatedRide }
+    const now = new Date().toISOString()
 
+    // Update mileage and timestamps based on status
     if (milesData) {
+      // Create an object to hold all mileage updates
+      const mileageUpdates: any = {}
+
+      switch (newStatus) {
+        case 'started':
+          mileageUpdates.start_miles = milesData.start
+          mileageUpdates.start_time = now
+          break
+        case 'picked_up':
+          mileageUpdates.pickup_miles = milesData.pickup
+          mileageUpdates.pickup_time = now
+          break
+        case 'completed':
+          mileageUpdates.dropoff_miles = milesData.dropoff
+          mileageUpdates.end_miles = milesData.end
+          mileageUpdates.dropoff_time = now
+          mileageUpdates.end_time = now
+          break
+        case 'return_started':
+          mileageUpdates.return_pickup_miles = milesData.return_pickup
+          mileageUpdates.return_pickup_time = now
+          break
+        case 'return_picked_up':
+          mileageUpdates.return_pickup_miles = milesData.return_pickup
+          mileageUpdates.return_pickup_time = now
+          break
+        case 'return_completed':
+          mileageUpdates.return_dropoff_miles = milesData.return_dropoff
+          mileageUpdates.end_miles = milesData.end
+          mileageUpdates.return_dropoff_time = now
+          mileageUpdates.end_time = now
+          break
+      }
+
       finalRide = {
         ...finalRide,
-        ...(milesData.start !== undefined && { start_miles: milesData.start }),
-        ...(milesData.end !== undefined && { end_miles: milesData.end })
+        ...mileageUpdates
       }
     }
 
@@ -768,7 +818,7 @@ export function DriverDashboard() {
     setRides(rides.map(r => r.id === rideId ? finalRide : r))
     toast({
       title: "Success",
-      description: "Ride status updated successfully",
+      description: "Ride status and mileage updated successfully",
     })
   }
 
