@@ -237,21 +237,39 @@ class AuthService {
       // Clear any existing session
       await this.supabase.auth.signOut()
       
-      const { data, error } = await this.supabase.auth.signInWithPassword({
-        email,
-        password,
-      })
+      // Add retry logic for network issues
+      let retries = 3;
+      let lastError = null;
+      
+      while (retries > 0) {
+        try {
+          const { data, error } = await this.supabase.auth.signInWithPassword({
+            email,
+            password,
+          })
 
-      if (error) {
-        console.error('[AuthService] Login error:', error)
-        return { user: null, error }
+          if (error) {
+            console.error('[AuthService] Login error:', error)
+            return { user: null, error }
+          }
+
+          if (data.user) {
+            await ensureUserProfile(data.user.id)
+          }
+
+          return { user: data.user, error: null }
+        } catch (error) {
+          lastError = error;
+          retries--;
+          if (retries > 0) {
+            console.log(`[AuthService] Login attempt failed, retrying... (${retries} attempts left)`)
+            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+          }
+        }
       }
 
-      if (data.user) {
-        await ensureUserProfile(data.user.id)
-      }
-
-      return { user: data.user, error: null }
+      console.error('[AuthService] All login attempts failed:', lastError)
+      return { user: null, error: lastError as Error }
     } catch (error) {
       console.error('[AuthService] Unexpected login error:', error)
       return { user: null, error: error as Error }

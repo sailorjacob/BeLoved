@@ -24,8 +24,9 @@ export const supabase = createClient<SupabaseDatabase>(
       autoRefreshToken: true,
       persistSession: true,
       detectSessionInUrl: true,
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-      flowType: 'pkce'
+      storage: isBrowser ? window.localStorage : undefined,
+      flowType: 'pkce',
+      debug: process.env.NEXT_PUBLIC_ENV === 'development'
     },
     global: {
       headers: {
@@ -42,14 +43,14 @@ export function getSupabaseClient() {
 
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: any) => {
-  console.error('Supabase error:', error)
+  console.error('[Supabase] Error:', error)
   throw error
 }
 
 // Helper function to get the redirect URL
 export function getRedirectUrl() {
   if (typeof window === 'undefined') {
-    return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+    return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   }
   return window.location.origin
 }
