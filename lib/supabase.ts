@@ -15,9 +15,12 @@ if (!supabaseAnonKey) {
   throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
 }
 
+// Ensure the URL is properly formatted
+const formattedUrl = supabaseUrl.startsWith('https://') ? supabaseUrl : `https://${supabaseUrl}`
+
 // Create a single supabase client for interacting with your database
 export const supabase = createClient<SupabaseDatabase>(
-  supabaseUrl,
+  formattedUrl,
   supabaseAnonKey,
   {
     auth: {
@@ -54,6 +57,7 @@ export const handleSupabaseError = (error: any) => {
   console.error('[Supabase] Error:', error)
   if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
     console.error('[Supabase] Network error - please check your connection and try again')
+    console.error('[Supabase] URL:', formattedUrl)
   }
   throw error
 }
