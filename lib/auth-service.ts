@@ -1,6 +1,6 @@
+import { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from './supabase'
 import { supabaseAdmin, ensureUserProfile } from './supabase-admin'
-import type { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
 import { createClient } from '@supabase/supabase-js'
 
@@ -16,8 +16,10 @@ export interface AuthUser {
   role: UserRole | null
 }
 
-export class AuthService {
+class AuthService {
   private static instance: AuthService
+  private currentSession: Session | null = null
+  private currentUser: User | null = null
   private supabase: any
   private initialized = false
   
@@ -34,29 +36,44 @@ export class AuthService {
         },
       }
     )
+
+    // Initialize auth state change listener
+    this.supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      console.log('Auth state changed:', event, session?.user?.email)
+      this.currentSession = session
+      this.currentUser = session?.user ?? null
+
+      if (event === 'SIGNED_IN' && session?.user) {
+        try {
+          void ensureUserProfile(session.user.id)
+        } catch (error) {
+          console.error('Error ensuring user profile:', error)
+        }
+      }
+    })
   }
 
-  static getInstance(): AuthService {
+  public static getInstance(): AuthService {
     if (!AuthService.instance) {
       AuthService.instance = new AuthService()
     }
     return AuthService.instance
   }
 
-  async getSession(): Promise<Session | null> {
-    try {
-      const { data: { session }, error } = await this.supabase.auth.getSession()
-      
-      if (error) {
-        console.error('Error getting session:', error)
-        return null
-      }
-      
-      return session
-    } catch (error) {
-      console.error('Unexpected error getting session:', error)
+  public async getSession(): Promise<Session | null> {
+    if (this.currentSession) {
+      return this.currentSession
+    }
+
+    const { data: { session }, error } = await this.supabase.auth.getSession()
+    if (error) {
+      console.error('Error getting session:', error)
       return null
     }
+
+    this.currentSession = session
+    this.currentUser = session?.user ?? null
+    return session
   }
 
   // Separate method for testing database connection
@@ -191,180 +208,57 @@ export class AuthService {
     }
   }
 
-  async getCurrentUser(): Promise<AuthUser> {
-    try {
-      console.log('[AuthService] Getting current user')
-      const session = await this.getSession()
-      
-      if (!session?.user) {
-        console.log('[AuthService] No session found')
-        return {
-          user: null,
-          session: null,
-          profile: null,
-          isLoggedIn: false,
-          role: null
-        }
-      }
-
-      console.log('[AuthService] Session found for user:', {
-        id: session.user.id,
-        email: session.user.email
-      })
-
-      const profile = await this.getProfile(session.user.id)
-      
-      if (!profile) {
-        console.error('[AuthService] No profile found for user:', session.user.id)
-        // Last resort - try to create a profile directly if we're the super admin
-        if (session.user.id === 'c8ef80bc-c7de-4ba8-a473-bb859b2efd9b') {
-          console.log('[AuthService] Attempting to create super admin profile as last resort')
-          const superAdminProfile = await this.createProfile(session.user.id, session.user.email || '')
-          if (superAdminProfile) {
-            console.log('[AuthService] Created super admin profile:', superAdminProfile)
-            return {
-              user: session.user,
-              session,
-              profile: superAdminProfile,
-              isLoggedIn: true,
-              role: 'super_admin'
-            }
-          }
-        }
-        
-        return {
-          user: session.user,
-          session,
-          profile: null,
-          isLoggedIn: true,
-          role: null
-        }
-      }
-
-      // Validate user_role
-      const validRoles: UserRole[] = ['member', 'driver', 'admin', 'super_admin']
-      const userRole = profile.user_role as UserRole
-      
-      if (!userRole || !validRoles.includes(userRole)) {
-        console.error('[AuthService] Invalid user_role found:', userRole)
-        return {
-          user: session.user,
-          session,
-          profile,
-          isLoggedIn: true,
-          role: null
-        }
-      }
-      
-      // Check user status - don't allow login if inactive
-      if (profile.status === 'inactive') {
-        console.log('[AuthService] User account is inactive:', profile.id)
-        return {
-          user: session.user,
-          session,
-          profile,
-          isLoggedIn: false,
-          role: userRole
-        }
-      }
-      
-      // For admin users, also check if their provider is active
-      if (userRole === 'admin' && profile.provider_id) {
-        try {
-          console.log('[AuthService] Checking provider status for admin:', profile.id)
-          const { data: provider, error: providerError } = await supabase
-            .from('transportation_providers')
-            .select('status')
-            .eq('id', profile.provider_id)
-            .single()
-          
-          if (providerError) {
-            console.error('[AuthService] Error checking provider status:', providerError)
-          } else if (provider && provider.status === 'inactive') {
-            console.log('[AuthService] Provider is inactive for admin:', profile.id)
-            return {
-              user: session.user,
-              session,
-              profile,
-              isLoggedIn: false,
-              role: userRole
-            }
-          }
-        } catch (error) {
-          console.error('[AuthService] Exception checking provider status:', error)
-        }
-      }
-      
-      console.log('[AuthService] Valid role found:', userRole)
-      return {
-        user: session.user,
-        session,
-        profile,
-        isLoggedIn: true,
-        role: userRole
-      }
-    } catch (error) {
-      console.error('[AuthService] Exception getting current user:', error)
-      return {
-        user: null,
-        session: null,
-        profile: null,
-        isLoggedIn: false,
-        role: null
-      }
+  public async getCurrentUser(): Promise<User | null> {
+    if (this.currentUser) {
+      return this.currentUser
     }
+
+    const session = await this.getSession()
+    return session?.user ?? null
   }
 
-  async login(email: string, password: string): Promise<{ error: Error | null }> {
+  public async login(email: string, password: string): Promise<{ user: User | null; error: Error | null }> {
     try {
-      console.log('Attempting login for:', email)
-      
       // Check for existing session
-      const currentSession = await this.getSession()
-      if (currentSession) {
+      const { data: { session } } = await this.supabase.auth.getSession()
+      if (session) {
         console.log('Found existing session, signing out first')
         await this.supabase.auth.signOut()
       }
-      
-      // Perform login
+
       const { data, error } = await this.supabase.auth.signInWithPassword({
         email,
         password,
       })
-      
+
       if (error) {
         console.error('Login error:', error)
-        return { error }
+        return { user: null, error }
       }
-      
-      if (!data.session) {
-        console.error('No session returned after login')
-        return { error: new Error('No session returned after login') }
+
+      if (data.user) {
+        try {
+          await ensureUserProfile(data.user.id)
+        } catch (error) {
+          console.error('Error ensuring user profile:', error)
+        }
       }
-      
-      console.log('Login successful, session established')
-      
-      // Set auth header for subsequent requests
-      this.supabase.auth.setSession({
-        access_token: data.session.access_token,
-        refresh_token: data.session.refresh_token,
-      })
-      
-      // Store session data in localStorage for debugging
-      try {
-        localStorage.setItem('debug_session', JSON.stringify({
-          access_token: data.session.access_token,
-          refresh_token: data.session.refresh_token,
-          expires_at: data.session.expires_at,
-        }))
-      } catch (e) {
-        console.warn('Failed to store debug session data:', e)
-      }
-      
-      return { error: null }
+
+      return { user: data.user, error: null }
     } catch (error) {
-      console.error('Unexpected error during login:', error)
-      return { error: error instanceof Error ? error : new Error('Unknown error during login') }
+      console.error('Unexpected login error:', error)
+      return { user: null, error: error as Error }
+    }
+  }
+
+  public async signOut(): Promise<void> {
+    try {
+      await this.supabase.auth.signOut()
+      this.currentSession = null
+      this.currentUser = null
+    } catch (error) {
+      console.error('Error signing out:', error)
+      throw error
     }
   }
 

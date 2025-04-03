@@ -1,41 +1,37 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database as SupabaseDatabase } from '@/types/supabase'
+import type { Database } from '@/types/supabase'
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL')
+// Get environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+if (!supabaseUrl || !supabaseServiceRoleKey) {
+  throw new Error('Missing Supabase environment variables')
 }
-if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error('Missing env.SUPABASE_SERVICE_ROLE_KEY')
-}
 
-// Create admin client with service role key
-// This should only be used server-side for admin operations or emergency fixes
-export const supabaseAdmin = createClient<SupabaseDatabase>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.SUPABASE_SERVICE_ROLE_KEY,
-  {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-      detectSessionInUrl: false,
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'be-loved-scheduler-admin',
-      },
-    },
-  }
-)
-
-// Force anonymous auth on every request to ensure we're using the service role
-supabaseAdmin.auth.onAuthStateChange(async (event) => {
-  if (event === 'SIGNED_IN') {
-    await supabaseAdmin.auth.signOut()
+// Create the admin client with proper configuration
+export const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseServiceRoleKey, {
+  auth: {
+    autoRefreshToken: false,
+    persistSession: false,
+    detectSessionInUrl: false
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'be-loved-scheduler-admin'
+    }
   }
 })
 
-// Helper function to ensure a user profile exists
-export async function ensureUserProfile(userId: string, email: string) {
+// Force anonymous auth on every request to ensure we're using the service role
+supabaseAdmin.auth.onAuthStateChange((event) => {
+  if (event === 'SIGNED_IN') {
+    void supabaseAdmin.auth.signOut()
+  }
+})
+
+// Helper function to ensure user profile exists
+export const ensureUserProfile = async (userId: string) => {
   try {
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
@@ -48,38 +44,17 @@ export async function ensureUserProfile(userId: string, email: string) {
         // Profile doesn't exist, create it
         const { error: createError } = await supabaseAdmin
           .from('profiles')
-          .insert([
-            {
-              id: userId,
-              email,
-              role: 'user',
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ])
-
-        if (createError) {
-          console.error('Error creating profile:', createError)
-          return null
-        }
-
-        // Return the newly created profile
-        const { data: newProfile } = await supabaseAdmin
-          .from('profiles')
-          .select('*')
-          .eq('id', userId)
-          .single()
-
-        return newProfile
+          .insert([{ id: userId }])
+        
+        if (createError) throw createError
+        return { id: userId }
       }
-
-      console.error('Error checking profile:', error)
-      return null
+      throw error
     }
 
     return profile
   } catch (error) {
-    console.error('Unexpected error ensuring profile:', error)
-    return null
+    console.error('Error ensuring user profile:', error)
+    throw error
   }
 } 

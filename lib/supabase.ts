@@ -1,44 +1,43 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database as SupabaseDatabase } from '@/types/supabase'
+import type { Database } from '@/types/supabase'
 
-if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL')
-}
-if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined'
+
+// Get environment variables
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error('Missing Supabase environment variables')
 }
 
-export const supabase = createClient<SupabaseDatabase>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'be-loved-scheduler',
-      },
-    },
+// Create the Supabase client with proper configuration
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: isBrowser, // Only persist session in browser
+    autoRefreshToken: isBrowser, // Only auto refresh in browser
+    detectSessionInUrl: isBrowser, // Only detect session in URL in browser
+  },
+  global: {
+    headers: {
+      'X-Client-Info': 'be-loved-scheduler'
+    }
   }
-)
+})
 
 // Helper function to handle Supabase errors
-export function handleSupabaseError(error: any) {
+export const handleSupabaseError = (error: any) => {
   console.error('Supabase error:', error)
-  if (error instanceof Error) {
-    return error
-  }
-  return new Error('An unknown error occurred')
+  throw error
 }
 
-// Helper to get environment-specific redirect URLs
-export function getRedirectUrl(path: string): string {
-  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
-  return `${baseUrl}${path}`
+// Helper function to get the redirect URL based on environment
+export const getRedirectUrl = () => {
+  if (process.env.NODE_ENV === 'development') {
+    return 'http://localhost:3000/auth/callback'
+  }
+  return 'https://be-loved-scheduler.vercel.app/auth/callback'
 }
 
 // Types for our database tables
