@@ -32,6 +32,14 @@ export const supabase = createClient<SupabaseDatabase>(
       headers: {
         'X-Client-Info': 'be-loved-scheduler'
       }
+    },
+    db: {
+      schema: 'public'
+    },
+    realtime: {
+      params: {
+        eventsPerSecond: 10
+      }
     }
   }
 )
@@ -44,6 +52,9 @@ export function getSupabaseClient() {
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: any) => {
   console.error('[Supabase] Error:', error)
+  if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
+    console.error('[Supabase] Network error - please check your connection and try again')
+  }
   throw error
 }
 

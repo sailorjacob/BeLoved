@@ -240,9 +240,12 @@ class AuthService {
       // Add retry logic for network issues
       let retries = 3;
       let lastError = null;
+      let delay = 1000; // Start with 1 second delay
       
       while (retries > 0) {
         try {
+          console.log(`[AuthService] Login attempt ${4 - retries}/3`)
+          
           const { data, error } = await this.supabase.auth.signInWithPassword({
             email,
             password,
@@ -250,10 +253,14 @@ class AuthService {
 
           if (error) {
             console.error('[AuthService] Login error:', error)
+            if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
+              throw error; // Let retry logic handle network errors
+            }
             return { user: null, error }
           }
 
           if (data.user) {
+            console.log('[AuthService] Login successful, ensuring user profile')
             await ensureUserProfile(data.user.id)
           }
 
@@ -262,8 +269,9 @@ class AuthService {
           lastError = error;
           retries--;
           if (retries > 0) {
-            console.log(`[AuthService] Login attempt failed, retrying... (${retries} attempts left)`)
-            await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second before retry
+            console.log(`[AuthService] Login attempt failed, retrying in ${delay/1000} seconds... (${retries} attempts left)`)
+            await new Promise(resolve => setTimeout(resolve, delay));
+            delay *= 2; // Exponential backoff
           }
         }
       }
