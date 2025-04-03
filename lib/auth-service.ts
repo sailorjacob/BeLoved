@@ -56,6 +56,8 @@ class AuthService {
       // Set up auth state change listener
       this.supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
         console.log('[AuthService] Auth state changed:', event)
+        
+        // Update session and user
         this.currentSession = session
         this.currentUser = session?.user ?? null
         
@@ -248,6 +250,11 @@ class AuthService {
   public async login(email: string, password: string) {
     try {
       console.log('[AuthService] Attempting login for:', email)
+      
+      // Clear any existing session first
+      await this.supabase.auth.signOut()
+      
+      // Attempt login
       const { data, error } = await this.supabase.auth.signInWithPassword({
         email,
         password,
@@ -272,6 +279,18 @@ class AuthService {
 
       if (!data?.user) {
         throw new Error('No user data returned from login attempt')
+      }
+
+      // Update current session and user
+      this.currentSession = data.session
+      this.currentUser = data.user
+      
+      // Try to ensure profile exists
+      try {
+        await ensureUserProfile(data.user.id)
+      } catch (profileError) {
+        console.error('[AuthService] Error ensuring user profile after login:', profileError)
+        // Continue without the profile - it will be created when needed
       }
 
       console.log('[AuthService] Login successful for:', email)

@@ -203,21 +203,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(currentSession.user);
       
       // Get user profile
-      const authUser = await authService.getCurrentUser();
+      const userProfile = await authService.getProfile(currentSession.user.id);
       
       // Skip if component unmounted
       if (!mountedRef.current) return;
       
       logWithTime('AuthProvider', 'Auth check result:', {
-        isLoggedIn: authUser.isLoggedIn,
-        userId: authUser.user?.id,
-        role: authUser.role
+        isLoggedIn: !!currentSession.user,
+        userId: currentSession.user?.id,
+        role: userProfile?.user_role || null
       });
       
       // Update state with auth check results
-      setProfile(authUser.profile);
-      setRole(authUser.role);
-      setIsLoggedIn(authUser.isLoggedIn);
+      setProfile(userProfile);
+      setRole(userProfile?.user_role || null);
+      setIsLoggedIn(!!currentSession.user);
       
     } catch (error) {
       logWithTime('AuthProvider', 'Error checking auth:', error);
@@ -295,22 +295,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Call login method from auth service
       const result = await authService.login(email, password);
       
-      if (result.error) {
-        logWithTime('AuthProvider', 'Login failed:', result.error);
-        return { error: result.error };
+      if (!result || !result.user) {
+        logWithTime('AuthProvider', 'Login failed: No user data returned');
+        return { error: new Error('Login failed: No user data returned') };
       }
       
       logWithTime('AuthProvider', 'Login successful');
       
-      // Perform auth check to update state after login
-      await checkAuth(false);
+      // Update state directly
+      setUser(result.user);
+      setSession(result.session);
+      setIsLoggedIn(true);
       
-      return { error: null, data: result.data };
+      // Get user profile
+      const userProfile = await authService.getProfile(result.user.id);
+      setProfile(userProfile);
+      setRole(userProfile?.user_role || null);
+      
+      return { error: null, data: { user: result.user, session: result.session } };
     } catch (error) {
       logWithTime('AuthProvider', 'Login exception:', error);
       return { error: error as Error };
     }
-  }, [checkAuth]);
+  }, []);
   
   // Signup method
   const signUp = async (
