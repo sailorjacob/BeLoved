@@ -45,7 +45,12 @@ class AuthService {
       this.currentUser = session?.user ?? null
       
       if (this.currentUser) {
-        await ensureUserProfile(this.currentUser.id)
+        try {
+          await ensureUserProfile(this.currentUser.id)
+        } catch (profileError) {
+          console.error('[AuthService] Error ensuring user profile:', profileError)
+          // Continue without the profile - it will be created when needed
+        }
       }
 
       // Set up auth state change listener
@@ -55,7 +60,12 @@ class AuthService {
         this.currentUser = session?.user ?? null
         
         if (event === 'SIGNED_IN' && this.currentUser) {
-          await ensureUserProfile(this.currentUser.id)
+          try {
+            await ensureUserProfile(this.currentUser.id)
+          } catch (profileError) {
+            console.error('[AuthService] Error ensuring user profile after sign in:', profileError)
+            // Continue without the profile - it will be created when needed
+          }
         }
       })
     } catch (error) {
@@ -117,8 +127,13 @@ class AuthService {
       
       console.log('[AuthService] Creating profile with role:', userRole)
 
-      // Use the admin client to bypass RLS
-      await ensureUserProfile(userId)
+      // Try to ensure the profile exists
+      try {
+        await ensureUserProfile(userId)
+      } catch (profileError) {
+        console.error('[AuthService] Error ensuring user profile:', profileError)
+        // Continue with manual profile creation
+      }
       
       // Get the created profile
       const { data: profile, error: fetchError } = await supabaseAdmin
