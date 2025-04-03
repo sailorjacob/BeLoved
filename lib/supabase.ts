@@ -1,4 +1,4 @@
-import { createClient } from '@supabase/supabase-js'
+import { createClient, SupabaseClient } from '@supabase/supabase-js'
 import type { Database as SupabaseDatabase } from '@/types/supabase'
 
 // Check if we're in a browser environment
@@ -19,38 +19,44 @@ if (!supabaseAnonKey) {
 const formattedUrl = supabaseUrl.startsWith('https://') ? supabaseUrl : `https://${supabaseUrl}`
 
 // Create a single supabase client for interacting with your database
-export const supabase = createClient<SupabaseDatabase>(
-  formattedUrl,
-  supabaseAnonKey,
-  {
-    auth: {
-      autoRefreshToken: true,
-      persistSession: true,
-      detectSessionInUrl: true,
-      storage: isBrowser ? window.localStorage : undefined,
-      flowType: 'pkce',
-      debug: process.env.NEXT_PUBLIC_ENV === 'development'
-    },
-    global: {
-      headers: {
-        'X-Client-Info': 'be-loved-scheduler'
-      }
-    },
-    db: {
-      schema: 'public'
-    },
-    realtime: {
-      params: {
-        eventsPerSecond: 10
-      }
-    }
-  }
-)
+let supabaseInstance: SupabaseClient<SupabaseDatabase, 'public'> | null = null
 
-// Export a function to get the client instance
 export function getSupabaseClient() {
-  return supabase
+  if (!supabaseInstance) {
+    console.log('[Supabase] Creating new client instance with URL:', formattedUrl)
+    supabaseInstance = createClient<SupabaseDatabase, 'public'>(
+      formattedUrl,
+      supabaseAnonKey as string,
+      {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true,
+          storage: isBrowser ? window.localStorage : undefined,
+          flowType: 'pkce',
+          debug: process.env.NEXT_PUBLIC_ENV === 'development'
+        },
+        global: {
+          headers: {
+            'X-Client-Info': 'be-loved-scheduler'
+          }
+        },
+        db: {
+          schema: 'public'
+        },
+        realtime: {
+          params: {
+            eventsPerSecond: 10
+          }
+        }
+      }
+    )
+  }
+  return supabaseInstance
 }
+
+// Export the singleton instance
+export const supabase = getSupabaseClient()
 
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: any) => {
@@ -58,6 +64,7 @@ export const handleSupabaseError = (error: any) => {
   if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
     console.error('[Supabase] Network error - please check your connection and try again')
     console.error('[Supabase] URL:', formattedUrl)
+    console.error('[Supabase] This might indicate that the Supabase project is inactive or the URL is incorrect')
   }
   throw error
 }
