@@ -24,7 +24,8 @@ export const supabaseAdmin = createClient<Database>(
   {
     auth: {
       autoRefreshToken: false,
-      persistSession: false
+      persistSession: false,
+      detectSessionInUrl: false
     },
     global: {
       headers: {
@@ -33,6 +34,15 @@ export const supabaseAdmin = createClient<Database>(
     }
   }
 )
+
+// Force anonymous auth on every request to ensure service role is used
+supabaseAdmin.auth.onAuthStateChange(async () => {
+  const { data: { session } } = await supabaseAdmin.auth.getSession()
+  if (session) {
+    console.log('[SupabaseAdmin] Forcing anonymous auth to ensure service role is used')
+    await supabaseAdmin.auth.signOut()
+  }
+})
 
 // Admin helper to create or update a user profile directly
 // This bypasses RLS policies by using the service role

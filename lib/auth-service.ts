@@ -317,8 +317,12 @@ class AuthService {
     try {
       console.log('[AuthService] Attempting login for:', email);
       
-      // Clear any existing session first to avoid token conflicts
-      await supabase.auth.signOut();
+      // Check for existing session first
+      const { data: { session: existingSession } } = await supabase.auth.getSession();
+      if (existingSession) {
+        console.log('[AuthService] Found existing session, signing out first');
+        await supabase.auth.signOut();
+      }
       
       // Perform login with PKCE flow
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -331,26 +335,27 @@ class AuthService {
         return { error };
       }
 
+      if (!data.session) {
+        console.error('[AuthService] No session returned after successful login');
+        return { error: new Error('No session returned after login') };
+      }
+
       console.log('[AuthService] Login successful, session established');
 
-      // Force the Supabase client to set the auth token in storage and headers
-      if (data.session) {
-        // Set auth header manually for subsequent requests
-        supabase.realtime.setAuth(data.session.access_token);
-        
-        // Store session data for debugging
-        if (typeof window !== 'undefined') {
-          // Only run in browser context
-          try {
-            localStorage.setItem('supabase_debug_session', JSON.stringify({
-              timestamp: new Date().toISOString(),
-              hasSession: !!data.session,
-              hasToken: !!data.session?.access_token,
-              expiresAt: data.session?.expires_at
-            }));
-          } catch (e) {
-            console.error('[AuthService] Could not save debug session info', e);
-          }
+      // Set auth header for subsequent requests
+      supabase.realtime.setAuth(data.session.access_token);
+      
+      // Store session data for debugging
+      if (typeof window !== 'undefined') {
+        try {
+          localStorage.setItem('supabase_debug_session', JSON.stringify({
+            timestamp: new Date().toISOString(),
+            hasSession: true,
+            hasToken: !!data.session.access_token,
+            expiresAt: data.session.expires_at
+          }));
+        } catch (e) {
+          console.error('[AuthService] Could not save debug session info', e);
         }
       }
       
