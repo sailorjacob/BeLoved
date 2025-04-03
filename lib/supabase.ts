@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import type { Database } from '@/types/supabase'
+import type { Database as SupabaseDatabase } from '@/types/supabase'
 
 // Check if we're in a browser environment
 const isBrowser = typeof window !== 'undefined'
@@ -8,23 +8,25 @@ const isBrowser = typeof window !== 'undefined'
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables')
+if (!supabaseUrl) {
+  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL')
+}
+if (!supabaseAnonKey) {
+  throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
 }
 
-// Create the Supabase client with proper configuration
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true
-  },
-  global: {
-    headers: {
-      'X-Client-Info': 'be-loved-scheduler'
+// Create a single supabase client for interacting with your database
+export const supabase = createClient<SupabaseDatabase>(
+  supabaseUrl,
+  supabaseAnonKey,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true
     }
   }
-})
+)
 
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: any) => {
@@ -32,7 +34,7 @@ export const handleSupabaseError = (error: any) => {
   throw error
 }
 
-// Helper function to get the redirect URL based on environment
+// Helper function to get the redirect URL
 export function getRedirectUrl() {
   if (typeof window === 'undefined') {
     return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
