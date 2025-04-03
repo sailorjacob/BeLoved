@@ -25,35 +25,21 @@ class AuthService {
   private initialized = false
   
   private constructor() {
-    // Only initialize Supabase client in browser environment
-    if (typeof window !== 'undefined') {
-      this.supabase = createClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-        {
-          auth: {
-            autoRefreshToken: true,
-            persistSession: true,
-            detectSessionInUrl: true,
-            storage: window.localStorage,
-          },
-        }
-      )
-
-      // Initialize auth state
-      this.initializeAuth()
-    } else {
-      // In server environment, use the regular Supabase client
-      this.supabase = supabase
-    }
+    this.supabase = supabase
+    this.initializeAuth()
   }
 
   private async initializeAuth() {
-    if (typeof window === 'undefined') return;
+    if (this.initialized) return;
+    this.initialized = true;
 
     try {
+      // Get initial session
       const { data: { session }, error } = await this.supabase.auth.getSession()
-      if (error) throw error
+      if (error) {
+        console.error('Error getting initial session:', error)
+        return
+      }
       
       this.currentSession = session
       this.currentUser = session?.user ?? null
@@ -61,19 +47,20 @@ class AuthService {
       if (this.currentUser) {
         await ensureUserProfile(this.currentUser.id)
       }
+
+      // Set up auth state change listener
+      this.supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+        console.log('[AuthService] Auth state changed:', event)
+        this.currentSession = session
+        this.currentUser = session?.user ?? null
+        
+        if (event === 'SIGNED_IN' && this.currentUser) {
+          await ensureUserProfile(this.currentUser.id)
+        }
+      })
     } catch (error) {
       console.error('Error initializing auth:', error)
     }
-
-    // Set up auth state change listener
-    this.supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      this.currentSession = session
-      this.currentUser = session?.user ?? null
-      
-      if (event === 'SIGNED_IN' && this.currentUser) {
-        void ensureUserProfile(this.currentUser.id)
-      }
-    })
   }
 
   public static getInstance(): AuthService {
@@ -84,12 +71,20 @@ class AuthService {
   }
 
   public async getSession(): Promise<Session | null> {
-    if (!this.currentSession) {
-      const { data: { session }, error } = await this.supabase.auth.getSession()
-      if (error) throw error
-      this.currentSession = session
+    try {
+      if (!this.currentSession) {
+        const { data: { session }, error } = await this.supabase.auth.getSession()
+        if (error) {
+          console.error('Error getting session:', error)
+          return null
+        }
+        this.currentSession = session
+      }
+      return this.currentSession
+    } catch (error) {
+      console.error('Error in getSession:', error)
+      return null
     }
-    return this.currentSession
   }
 
   // Separate method for testing database connection
@@ -237,20 +232,18 @@ class AuthService {
 
   public async login(email: string, password: string): Promise<{ user: User | null; error: Error | null }> {
     try {
-      // Check for existing session
-      const { data: { session } } = await this.supabase.auth.getSession()
-      if (session) {
-        console.log('Found existing session, signing out first')
-        await this.supabase.auth.signOut()
-      }
-
+      console.log('[AuthService] Attempting login for:', email)
+      
+      // Clear any existing session
+      await this.supabase.auth.signOut()
+      
       const { data, error } = await this.supabase.auth.signInWithPassword({
         email,
         password,
       })
 
       if (error) {
-        console.error('Login error:', error)
+        console.error('[AuthService] Login error:', error)
         return { user: null, error }
       }
 
@@ -260,7 +253,7 @@ class AuthService {
 
       return { user: data.user, error: null }
     } catch (error) {
-      console.error('Unexpected login error:', error)
+      console.error('[AuthService] Unexpected login error:', error)
       return { user: null, error: error as Error }
     }
   }

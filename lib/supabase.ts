@@ -23,7 +23,14 @@ export const supabase = createClient<SupabaseDatabase>(
     auth: {
       autoRefreshToken: true,
       persistSession: true,
-      detectSessionInUrl: true
+      detectSessionInUrl: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+      flowType: 'pkce'
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'be-loved-scheduler'
+      }
     }
   }
 )
