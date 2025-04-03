@@ -35,6 +35,11 @@ export const supabase = createClient<SupabaseDatabase>(
   }
 )
 
+// Export a function to get the client instance
+export function getSupabaseClient() {
+  return supabase
+}
+
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: any) => {
   console.error('Supabase error:', error)

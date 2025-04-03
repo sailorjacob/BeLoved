@@ -1,9 +1,8 @@
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
-import { supabase } from './supabase'
+import { supabase, getSupabaseClient } from './supabase'
 import { supabaseAdmin } from './supabase-admin'
 import { ensureUserProfile } from './supabase-admin'
 import type { Database } from '@/types/supabase'
-import { createClient } from '@supabase/supabase-js'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -25,7 +24,8 @@ class AuthService {
   private initialized = false
   
   private constructor() {
-    this.supabase = supabase
+    // Use the shared supabase instance
+    this.supabase = getSupabaseClient()
     this.initializeAuth()
   }
 
@@ -37,7 +37,7 @@ class AuthService {
       // Get initial session
       const { data: { session }, error } = await this.supabase.auth.getSession()
       if (error) {
-        console.error('Error getting initial session:', error)
+        console.error('[AuthService] Error getting initial session:', error)
         return
       }
       
@@ -59,7 +59,7 @@ class AuthService {
         }
       })
     } catch (error) {
-      console.error('Error initializing auth:', error)
+      console.error('[AuthService] Error initializing auth:', error)
     }
   }
 
@@ -75,14 +75,14 @@ class AuthService {
       if (!this.currentSession) {
         const { data: { session }, error } = await this.supabase.auth.getSession()
         if (error) {
-          console.error('Error getting session:', error)
+          console.error('[AuthService] Error getting session:', error)
           return null
         }
         this.currentSession = session
       }
       return this.currentSession
     } catch (error) {
-      console.error('Error in getSession:', error)
+      console.error('[AuthService] Error in getSession:', error)
       return null
     }
   }
