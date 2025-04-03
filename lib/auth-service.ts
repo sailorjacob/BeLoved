@@ -1,6 +1,7 @@
 import { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 import { supabase } from './supabase'
-import { supabaseAdmin, ensureUserProfile } from './supabase-admin'
+import { supabaseAdmin } from './supabase-admin'
+import { ensureUserProfile } from './supabase-admin'
 import type { Database } from '@/types/supabase'
 import { createClient } from '@supabase/supabase-js'
 
@@ -24,24 +25,32 @@ class AuthService {
   private initialized = false
   
   private constructor() {
-    this.supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        auth: {
-          autoRefreshToken: true,
-          persistSession: true,
-          detectSessionInUrl: true,
-          storage: window.localStorage,
-        },
-      }
-    )
+    // Only initialize Supabase client in browser environment
+    if (typeof window !== 'undefined') {
+      this.supabase = createClient(
+        process.env.NEXT_PUBLIC_SUPABASE_URL!,
+        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+        {
+          auth: {
+            autoRefreshToken: true,
+            persistSession: true,
+            detectSessionInUrl: true,
+            storage: window.localStorage,
+          },
+        }
+      )
 
-    // Initialize auth state
-    this.initializeAuth()
+      // Initialize auth state
+      this.initializeAuth()
+    } else {
+      // In server environment, use the regular Supabase client
+      this.supabase = supabase
+    }
   }
 
   private async initializeAuth() {
+    if (typeof window === 'undefined') return;
+
     try {
       const { data: { session }, error } = await this.supabase.auth.getSession()
       if (error) throw error
