@@ -15,9 +15,9 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Create the Supabase client with proper configuration
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
   auth: {
-    persistSession: isBrowser, // Only persist session in browser
-    autoRefreshToken: isBrowser, // Only auto refresh in browser
-    detectSessionInUrl: isBrowser, // Only detect session in URL in browser
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true
   },
   global: {
     headers: {
@@ -33,11 +33,11 @@ export const handleSupabaseError = (error: any) => {
 }
 
 // Helper function to get the redirect URL based on environment
-export const getRedirectUrl = () => {
-  if (process.env.NODE_ENV === 'development') {
-    return 'http://localhost:3000/auth/callback'
+export function getRedirectUrl() {
+  if (typeof window === 'undefined') {
+    return process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
   }
-  return 'https://be-loved-scheduler.vercel.app/auth/callback'
+  return window.location.origin
 }
 
 // Types for our database tables

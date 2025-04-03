@@ -37,18 +37,32 @@ class AuthService {
       }
     )
 
-    // Initialize auth state change listener
-    this.supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
-      console.log('Auth state changed:', event, session?.user?.email)
+    // Initialize auth state
+    this.initializeAuth()
+  }
+
+  private async initializeAuth() {
+    try {
+      const { data: { session }, error } = await this.supabase.auth.getSession()
+      if (error) throw error
+      
       this.currentSession = session
       this.currentUser = session?.user ?? null
+      
+      if (this.currentUser) {
+        await ensureUserProfile(this.currentUser.id)
+      }
+    } catch (error) {
+      console.error('Error initializing auth:', error)
+    }
 
-      if (event === 'SIGNED_IN' && session?.user) {
-        try {
-          void ensureUserProfile(session.user.id)
-        } catch (error) {
-          console.error('Error ensuring user profile:', error)
-        }
+    // Set up auth state change listener
+    this.supabase.auth.onAuthStateChange((event: AuthChangeEvent, session: Session | null) => {
+      this.currentSession = session
+      this.currentUser = session?.user ?? null
+      
+      if (event === 'SIGNED_IN' && this.currentUser) {
+        void ensureUserProfile(this.currentUser.id)
       }
     })
   }
@@ -61,19 +75,12 @@ class AuthService {
   }
 
   public async getSession(): Promise<Session | null> {
-    if (this.currentSession) {
-      return this.currentSession
+    if (!this.currentSession) {
+      const { data: { session }, error } = await this.supabase.auth.getSession()
+      if (error) throw error
+      this.currentSession = session
     }
-
-    const { data: { session }, error } = await this.supabase.auth.getSession()
-    if (error) {
-      console.error('Error getting session:', error)
-      return null
-    }
-
-    this.currentSession = session
-    this.currentUser = session?.user ?? null
-    return session
+    return this.currentSession
   }
 
   // Separate method for testing database connection
@@ -107,19 +114,21 @@ class AuthService {
       console.log('[AuthService] Creating profile with role:', userRole)
 
       // Use the admin client to bypass RLS
-      const { profile, error } = await ensureUserProfile(userId, email, userRole as any)
+      await ensureUserProfile(userId)
       
-      if (error) {
-        console.error('[AuthService] Error ensuring profile:', error)
+      // Get the created profile
+      const { data: profile, error: fetchError } = await supabaseAdmin
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+
+      if (fetchError) {
+        console.error('[AuthService] Error fetching profile:', fetchError)
         return null
       }
 
-      if (profile) {
-        console.log('[AuthService] Profile created/updated successfully:', profile)
-        return profile as Profile
-      }
-
-      return null
+      return profile
     } catch (error) {
       console.error('[AuthService] Exception in createProfile:', error)
       return null
@@ -237,11 +246,7 @@ class AuthService {
       }
 
       if (data.user) {
-        try {
-          await ensureUserProfile(data.user.id)
-        } catch (error) {
-          console.error('Error ensuring user profile:', error)
-        }
+        await ensureUserProfile(data.user.id)
       }
 
       return { user: data.user, error: null }
