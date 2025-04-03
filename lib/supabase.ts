@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { Database } from '@/types/supabase'
+import type { Database as SupabaseDatabase } from '@/types/supabase'
 
 if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
   throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL')
@@ -8,44 +8,37 @@ if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
   throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_ANON_KEY')
 }
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-// Create a single instance of the Supabase client
-export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
-  auth: {
-    autoRefreshToken: true,
-    persistSession: true,
-    detectSessionInUrl: true,
-    flowType: 'pkce',
-    storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-    storageKey: 'supabase.auth.token',
-  },
-  db: {
-    schema: 'public'
-  },
-  global: {
-    headers: {
-      'x-environment': process.env.NEXT_PUBLIC_ENV || 'development'
-    }
+export const supabase = createClient<SupabaseDatabase>(
+  process.env.NEXT_PUBLIC_SUPABASE_URL,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+  {
+    auth: {
+      autoRefreshToken: true,
+      persistSession: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+    },
+    global: {
+      headers: {
+        'X-Client-Info': 'be-loved-scheduler',
+      },
+    },
   }
-})
+)
 
-// Helper to get environment-specific redirect URLs
-export const getRedirectUrl = (path: string): string => {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-  return `${baseUrl}${path}`
+// Helper function to handle Supabase errors
+export function handleSupabaseError(error: any) {
+  console.error('Supabase error:', error)
+  if (error instanceof Error) {
+    return error
+  }
+  return new Error('An unknown error occurred')
 }
 
-// Helper to handle Supabase errors consistently
-export const handleSupabaseError = (error: any): never => {
-  if (process.env.NODE_ENV === 'development') {
-    console.error('Supabase Error:', error)
-  }
-  
-  // Convert Supabase errors to user-friendly messages
-  const message = error?.message || 'An unexpected error occurred'
-  throw new Error(message)
+// Helper to get environment-specific redirect URLs
+export function getRedirectUrl(path: string): string {
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'
+  return `${baseUrl}${path}`
 }
 
 // Types for our database tables

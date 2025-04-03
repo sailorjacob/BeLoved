@@ -1,7 +1,8 @@
 import { supabase } from './supabase'
 import { supabaseAdmin, ensureUserProfile } from './supabase-admin'
-import type { User, Session } from '@supabase/supabase-js'
+import type { User, Session, AuthChangeEvent } from '@supabase/supabase-js'
 import type { Database } from '@/types/supabase'
+import { createClient } from '@supabase/supabase-js'
 
 type Profile = Database['public']['Tables']['profiles']['Row']
 
@@ -15,11 +16,24 @@ export interface AuthUser {
   role: UserRole | null
 }
 
-class AuthService {
+export class AuthService {
   private static instance: AuthService
+  private supabase: any
+  private initialized = false
   
   private constructor() {
-    console.log('[AuthService] Service initialized')
+    this.supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: true,
+          persistSession: true,
+          detectSessionInUrl: true,
+          storage: window.localStorage,
+        },
+      }
+    )
   }
 
   static getInstance(): AuthService {
@@ -31,28 +45,16 @@ class AuthService {
 
   async getSession(): Promise<Session | null> {
     try {
-      console.log('[AuthService] Getting session')
-      const { data: { session }, error } = await supabase.auth.getSession()
+      const { data: { session }, error } = await this.supabase.auth.getSession()
       
       if (error) {
-        console.error('[AuthService] Error getting session:', error)
+        console.error('Error getting session:', error)
         return null
       }
-      
-      if (!session) {
-        console.log('[AuthService] No session found')
-        return null
-      }
-      
-      console.log('[AuthService] Session found:', {
-        id: session.user?.id,
-        email: session.user?.email,
-        expires_at: session.expires_at
-      })
       
       return session
     } catch (error) {
-      console.error('[AuthService] Exception getting session:', error)
+      console.error('Unexpected error getting session:', error)
       return null
     }
   }
@@ -313,56 +315,56 @@ class AuthService {
     }
   }
 
-  async login(email: string, password: string) {
+  async login(email: string, password: string): Promise<{ error: Error | null }> {
     try {
-      console.log('[AuthService] Attempting login for:', email);
+      console.log('Attempting login for:', email)
       
-      // Check for existing session first
-      const { data: { session: existingSession } } = await supabase.auth.getSession();
-      if (existingSession) {
-        console.log('[AuthService] Found existing session, signing out first');
-        await supabase.auth.signOut();
+      // Check for existing session
+      const currentSession = await this.getSession()
+      if (currentSession) {
+        console.log('Found existing session, signing out first')
+        await this.supabase.auth.signOut()
       }
       
-      // Perform login with PKCE flow
-      const { data, error } = await supabase.auth.signInWithPassword({
+      // Perform login
+      const { data, error } = await this.supabase.auth.signInWithPassword({
         email,
         password,
-      });
-
+      })
+      
       if (error) {
-        console.error('[AuthService] Login error:', error);
-        return { error };
+        console.error('Login error:', error)
+        return { error }
       }
-
+      
       if (!data.session) {
-        console.error('[AuthService] No session returned after successful login');
-        return { error: new Error('No session returned after login') };
+        console.error('No session returned after login')
+        return { error: new Error('No session returned after login') }
       }
-
-      console.log('[AuthService] Login successful, session established');
-
+      
+      console.log('Login successful, session established')
+      
       // Set auth header for subsequent requests
-      supabase.realtime.setAuth(data.session.access_token);
+      this.supabase.auth.setSession({
+        access_token: data.session.access_token,
+        refresh_token: data.session.refresh_token,
+      })
       
-      // Store session data for debugging
-      if (typeof window !== 'undefined') {
-        try {
-          localStorage.setItem('supabase_debug_session', JSON.stringify({
-            timestamp: new Date().toISOString(),
-            hasSession: true,
-            hasToken: !!data.session.access_token,
-            expiresAt: data.session.expires_at
-          }));
-        } catch (e) {
-          console.error('[AuthService] Could not save debug session info', e);
-        }
+      // Store session data in localStorage for debugging
+      try {
+        localStorage.setItem('debug_session', JSON.stringify({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+          expires_at: data.session.expires_at,
+        }))
+      } catch (e) {
+        console.warn('Failed to store debug session data:', e)
       }
       
-      return { data, error: null };
+      return { error: null }
     } catch (error) {
-      console.error('[AuthService] Unexpected login error:', error);
-      return { error: error as Error };
+      console.error('Unexpected error during login:', error)
+      return { error: error instanceof Error ? error : new Error('Unknown error during login') }
     }
   }
 
@@ -372,27 +374,27 @@ class AuthService {
     user_role?: UserRole 
   }) {
     try {
-      console.log('[AuthService] Signing up with email:', email);
+      console.log('[AuthService] Signing up with email:', email)
       
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await this.supabase.auth.signUp({
         email,
         password,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`
         }
-      });
+      })
       
       if (error) {
-        console.error('[AuthService] Signup error:', error);
-        return { error };
+        console.error('[AuthService] Signup error:', error)
+        return { error }
       }
       
       if (!data.user) {
-        console.error('[AuthService] No user returned from signup');
-        return { error: new Error('No user returned from signup') };
+        console.error('[AuthService] No user returned from signup')
+        return { error: new Error('No user returned from signup') }
       }
       
-      console.log('[AuthService] User signed up:', data.user.id);
+      console.log('[AuthService] User signed up:', data.user.id)
       
       // Create profile if needed
       if (data.user.id) {
@@ -400,17 +402,17 @@ class AuthService {
           const profile = await this.createProfile(
             data.user.id, 
             email
-          );
+          )
           
           // If profile creation was successful and we have userData, update it
           if (profile && userData) {
-            const { error: updateError } = await this.updateProfile(data.user.id, userData);
+            const { error: updateError } = await this.updateProfile(data.user.id, userData)
             if (updateError) {
-              console.error('[AuthService] Error updating profile after signup:', updateError);
+              console.error('[AuthService] Error updating profile after signup:', updateError)
             }
           }
         } catch (error) {
-          console.error('[AuthService] Error creating profile after signup:', error);
+          console.error('[AuthService] Error creating profile after signup:', error)
         }
       }
       
@@ -418,27 +420,28 @@ class AuthService {
         user: data.user, 
         session: data.session,
         error: null 
-      };
+      }
     } catch (error) {
-      console.error('[AuthService] Unexpected signup error:', error);
-      return { error: error as Error, user: null, session: null };
+      console.error('[AuthService] Unexpected signup error:', error)
+      return { error: error as Error, user: null, session: null }
     }
   }
 
-  async logout() {
+  async logout(): Promise<void> {
     try {
       console.log('[AuthService] Attempting logout')
-      const { data: { session } } = await supabase.auth.getSession()
+      const { data: { session } } = await this.supabase.auth.getSession()
       
       if (!session) {
         console.log('[AuthService] No active session found, clearing local state')
         return
       }
 
-      const { error } = await supabase.auth.signOut()
+      const { error } = await this.supabase.auth.signOut()
       if (error) throw error
       
       console.log('[AuthService] Logout successful')
+      localStorage.removeItem('debug_session')
       window.location.href = '/'
     } catch (error) {
       console.error('[AuthService] Logout error:', error)
@@ -448,31 +451,31 @@ class AuthService {
 
   async updateProfile(userId: string, data: Partial<Profile>) {
     try {
-      console.log('[AuthService] Updating profile for user:', userId);
+      console.log('[AuthService] Updating profile for user:', userId)
       
-      const { error } = await supabase
+      const { error } = await this.supabase
         .from('profiles')
         .update({
           ...data,
           updated_at: new Date().toISOString()
         })
-        .eq('id', userId);
+        .eq('id', userId)
       
       if (error) {
-        console.error('[AuthService] Error updating profile:', error);
-        return { error };
+        console.error('[AuthService] Error updating profile:', error)
+        return { error }
       }
       
-      console.log('[AuthService] Profile updated successfully');
-      return { error: null };
+      console.log('[AuthService] Profile updated successfully')
+      return { error: null }
     } catch (error) {
-      console.error('[AuthService] Exception updating profile:', error);
-      return { error: error as Error };
+      console.error('[AuthService] Exception updating profile:', error)
+      return { error: error as Error }
     }
   }
 
-  onAuthStateChange(callback: (event: string, session: any) => void) {
-    return supabase.auth.onAuthStateChange(callback)
+  onAuthStateChange(callback: (event: AuthChangeEvent, session: Session | null) => void) {
+    return this.supabase.auth.onAuthStateChange(callback)
   }
 }
 

@@ -186,7 +186,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       // Get current session first
       const currentSession = await authService.getSession();
       
-      // If no session, clear auth state
       if (!currentSession) {
         logWithTime('AuthProvider', 'No session found, clearing auth state');
         setUser(null);
@@ -194,6 +193,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setProfile(null);
         setRole(null);
         setIsLoggedIn(false);
+        setIsInitialized(true);
+        setIsLoading(false);
         return;
       }
       
