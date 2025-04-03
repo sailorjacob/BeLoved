@@ -61,11 +61,26 @@ export const supabase = getSupabaseClient()
 // Helper function to handle Supabase errors
 export const handleSupabaseError = (error: any) => {
   console.error('[Supabase] Error:', error)
+  
+  // Check for specific error types
   if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
-    console.error('[Supabase] Network error - please check your connection and try again')
+    console.error('[Supabase] Connection error detected')
     console.error('[Supabase] URL:', formattedUrl)
-    console.error('[Supabase] This might indicate that the Supabase project is inactive or the URL is incorrect')
+    
+    if (error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
+      console.error('[Supabase] The project URL could not be resolved. This usually means:')
+      console.error('1. The Supabase project is paused due to inactivity')
+      console.error('2. The project URL is incorrect')
+      console.error('3. There are DNS resolution issues')
+      console.error('\nTo resolve this:')
+      console.error('1. Check if your Supabase project is active in the dashboard')
+      console.error('2. Verify the project URL in your environment variables')
+      console.error('3. If the project was paused, reactivate it in the Supabase dashboard')
+    } else {
+      console.error('[Supabase] Network error - please check your connection and try again')
+    }
   }
+  
   throw error
 }
 

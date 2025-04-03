@@ -230,57 +230,40 @@ class AuthService {
     return session?.user ?? null
   }
 
-  public async login(email: string, password: string): Promise<{ user: User | null; error: Error | null }> {
+  public async login(email: string, password: string) {
     try {
       console.log('[AuthService] Attempting login for:', email)
-      
-      // Clear any existing session
-      await this.supabase.auth.signOut()
-      
-      // Add retry logic for network issues
-      let retries = 3;
-      let lastError = null;
-      let delay = 1000; // Start with 1 second delay
-      
-      while (retries > 0) {
-        try {
-          console.log(`[AuthService] Login attempt ${4 - retries}/3`)
-          
-          const { data, error } = await this.supabase.auth.signInWithPassword({
-            email,
-            password,
-          })
+      const { data, error } = await this.supabase.auth.signInWithPassword({
+        email,
+        password,
+      })
 
-          if (error) {
-            console.error('[AuthService] Login error:', error)
-            if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
-              throw error; // Let retry logic handle network errors
-            }
-            return { user: null, error }
-          }
-
-          if (data.user) {
-            console.log('[AuthService] Login successful, ensuring user profile')
-            await ensureUserProfile(data.user.id)
-          }
-
-          return { user: data.user, error: null }
-        } catch (error) {
-          lastError = error;
-          retries--;
-          if (retries > 0) {
-            console.log(`[AuthService] Login attempt failed, retrying in ${delay/1000} seconds... (${retries} attempts left)`)
-            await new Promise(resolve => setTimeout(resolve, delay));
-            delay *= 2; // Exponential backoff
-          }
+      if (error) {
+        console.error('[AuthService] Login error:', error)
+        
+        // Check for specific error types
+        if (error.message?.includes('Failed to fetch') || error.message?.includes('ERR_NAME_NOT_RESOLVED')) {
+          throw new Error(
+            'Unable to connect to the authentication service. This might be because:\n' +
+            '1. The service is temporarily unavailable\n' +
+            '2. The project is paused due to inactivity\n' +
+            '3. There are network connectivity issues\n\n' +
+            'Please try again later or contact support if the issue persists.'
+          )
         }
+        
+        throw error
       }
 
-      console.error('[AuthService] All login attempts failed:', lastError)
-      return { user: null, error: lastError as Error }
-    } catch (error) {
-      console.error('[AuthService] Unexpected login error:', error)
-      return { user: null, error: error as Error }
+      if (!data?.user) {
+        throw new Error('No user data returned from login attempt')
+      }
+
+      console.log('[AuthService] Login successful for:', email)
+      return data
+    } catch (error: any) {
+      console.error('[AuthService] Login failed:', error)
+      throw error
     }
   }
 
