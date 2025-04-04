@@ -13,62 +13,110 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from '@/lib/supabase';
+import { useToast } from "@/components/ui/use-toast";
 
 interface CrewCarwashCheckinProps {
   driverId: string;
 }
 
 export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
+  const { toast } = useToast();
   const [completedStars, setCompletedStars] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const totalStars = 5;
 
   useEffect(() => {
+    console.log('CrewCarwashCheckin mounted with driverId:', driverId);
     fetchCarwashCheckins();
   }, [driverId]);
 
   const fetchCarwashCheckins = async () => {
-    const startOfWeek = new Date();
-    startOfWeek.setHours(0, 0, 0, 0);
-    startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
+    try {
+      console.log('Fetching carwash checkins for driver:', driverId);
+      const startOfWeek = new Date();
+      startOfWeek.setHours(0, 0, 0, 0);
+      startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay());
 
-    const { data, error } = await supabase
-      .from('carwash_checkins')
-      .select('*')
-      .eq('driver_id', driverId)
-      .gte('created_at', startOfWeek.toISOString())
-      .order('created_at', { ascending: true });
+      const { data, error } = await supabase
+        .from('carwash_checkins')
+        .select('*')
+        .eq('driver_id', driverId)
+        .gte('created_at', startOfWeek.toISOString())
+        .order('created_at', { ascending: true });
 
-    if (error) {
-      console.error('Error fetching carwash checkins:', error);
-      return;
+      if (error) {
+        console.error('Error fetching carwash checkins:', error);
+        setError(error.message);
+        toast({
+          title: "Error",
+          description: "Failed to fetch carwash check-ins",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Carwash checkins data:', data);
+      setCompletedStars(data?.length || 0);
+      setError(null);
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('An unexpected error occurred');
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
     }
-
-    setCompletedStars(data?.length || 0);
   };
 
   const handleCheckin = async () => {
     if (completedStars >= totalStars) return;
     
-    setIsLoading(true);
-    const { error } = await supabase
-      .from('carwash_checkins')
-      .insert([
-        {
-          driver_id: driverId,
-          created_at: new Date().toISOString(),
-        }
-      ]);
+    try {
+      setIsLoading(true);
+      console.log('Recording carwash checkin for driver:', driverId);
+      
+      const { error } = await supabase
+        .from('carwash_checkins')
+        .insert([
+          {
+            driver_id: driverId,
+            created_at: new Date().toISOString(),
+          }
+        ]);
 
-    if (error) {
-      console.error('Error recording carwash checkin:', error);
-    } else {
+      if (error) {
+        console.error('Error recording carwash checkin:', error);
+        setError(error.message);
+        toast({
+          title: "Error",
+          description: "Failed to record carwash check-in",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log('Successfully recorded carwash checkin');
       setCompletedStars(prev => Math.min(prev + 1, totalStars));
+      setError(null);
+      toast({
+        title: "Success",
+        description: "Carwash check-in recorded successfully",
+      });
+    } catch (err) {
+      console.error('Unexpected error:', err);
+      setError('An unexpected error occurred');
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+      setIsDialogOpen(false);
     }
-    
-    setIsLoading(false);
-    setIsDialogOpen(false);
   };
 
   return (
@@ -81,7 +129,7 @@ export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
           variant="outline"
           className="ml-4"
         >
-          Check In
+          {isLoading ? "Processing..." : "Check In"}
         </Button>
       </div>
 
@@ -102,6 +150,10 @@ export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
       <p className="text-sm text-gray-500">
         {completedStars} of {totalStars} weekly car washes completed
       </p>
+
+      {error && (
+        <p className="text-sm text-red-500">{error}</p>
+      )}
 
       <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <AlertDialogContent>
