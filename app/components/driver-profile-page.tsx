@@ -13,6 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from '@/lib/supabase'
 import type { Database } from '@/lib/supabase'
 import { DriverHistoryView } from './driver-history-view'
+import { CrewCarwashCheckin } from './crew-carwash-checkin'
 
 type Driver = Database['public']['Tables']['profiles']['Row'] & {
   driver_profile: Database['public']['Tables']['driver_profiles']['Row']
@@ -137,6 +138,15 @@ export function DriverProfilePage({ driverId, onBack }: DriverProfilePageProps) 
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Crew Carwash Status</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CrewCarwashCheckin driverId={driverId} />
         </CardContent>
       </Card>
 
