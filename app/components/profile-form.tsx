@@ -12,6 +12,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Badge } from "@/components/ui/badge"
 import { format } from "date-fns"
 import { CarFront, Calendar, Clock, MapPin } from "lucide-react"
+import { CrewCarwashCheckin } from './crew-carwash-checkin'
 
 export function ProfileForm() {
   const { user, profile, isDriver } = useAuth()
@@ -215,7 +216,7 @@ export function ProfileForm() {
         </CardContent>
       </Card>
 
-      {isDriver && (
+      {isDriver && user && (
         <div className="space-y-6">
           <Card>
             <CardHeader>
@@ -276,35 +277,8 @@ export function ProfileForm() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle>Recent Activity</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoadingStats ? (
-                <div className="space-y-2">
-                  <Skeleton className="h-4 w-full" />
-                  <Skeleton className="h-4 w-3/4" />
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Last Completed Ride</p>
-                    <p className="text-lg font-medium">
-                      {driverStats.last_completed_ride 
-                        ? format(new Date(driverStats.last_completed_ride), 'PPP p')
-                        : 'No completed rides yet'}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-muted-foreground">Performance</p>
-                    <p className="text-lg font-medium">
-                      {driverStats.completed_rides > 0
-                        ? `Averaging ${driverStats.average_miles_per_ride} miles per ride`
-                        : 'Start completing rides to see performance metrics'}
-                    </p>
-                  </div>
-                </div>
-              )}
+            <CardContent className="pt-6">
+              <CrewCarwashCheckin driverId={user.id} />
             </CardContent>
           </Card>
         </div>
