@@ -28,12 +28,7 @@ public class IosFixes: CAPPlugin {
             if let url = webView.url?.absoluteString {
                 
                 // Extract statusBarColor from URL if present
-                var statusBarColor = "#EF4444" // Default to the new bright red color
-                if let urlComponents = URLComponents(string: url),
-                   let queryItems = urlComponents.queryItems,
-                   let colorParam = queryItems.first(where: { $0.name == "statusBarColor" })?.value {
-                    statusBarColor = "#\(colorParam)"
-                }
+                let statusBarColor = "#EF4444" // Force exact color - no parameter override
                 
                 // CSS to fix dashboard tabs and layout issues
                 let cssString = """
@@ -41,7 +36,7 @@ public class IosFixes: CAPPlugin {
                 html { -webkit-text-size-adjust: 100%; }
                 body { zoom: 0.92; }
                 
-                /* Fixed header that appears on scroll */
+                /* Fixed header that appears on scroll - EXACT COLOR, NO TRANSPARENCY */
                 body::before {
                     content: '';
                     position: fixed;
@@ -49,11 +44,11 @@ public class IosFixes: CAPPlugin {
                     left: 0;
                     right: 0;
                     height: env(safe-area-inset-top, 0);
-                    background-color: \(statusBarColor);
+                    background-color: rgb(239, 68, 68) !important; /* Using rgb for exact matching */
                     z-index: 1000;
                 }
                 
-                /* Fixed header for content area */
+                /* Fixed header for content area - EXACT COLOR, NO TRANSPARENCY */
                 body::after {
                     content: '';
                     position: fixed;
@@ -61,7 +56,7 @@ public class IosFixes: CAPPlugin {
                     left: 0;
                     right: 0;
                     height: 0;
-                    background-color: \(statusBarColor);
+                    background-color: rgb(239, 68, 68) !important; /* Using rgb for exact matching */
                     z-index: 999;
                     transition: height 0.3s ease;
                 }
@@ -69,6 +64,13 @@ public class IosFixes: CAPPlugin {
                 /* Expand the fixed header background when scrolled */
                 body.scrolled::after {
                     height: 48px;
+                }
+                
+                /* Override any other styles that might affect the header color */
+                body::before, body::after, .status-bar, .app-header, [class*="header"], [class*="Header"] {
+                    opacity: 1 !important;
+                    filter: none !important;
+                    mix-blend-mode: normal !important;
                 }
                 
                 /* Fix for dropdown menus to prevent zoom glitches */
@@ -288,14 +290,34 @@ public class IosFixes: CAPPlugin {
                     }
                     viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover';
                     
-                    // Set theme color meta tag for the status bar
+                    // Set theme color meta tag for the status bar - EXACT COLOR REQUIRED
                     let themeColorMeta = document.querySelector('meta[name="theme-color"]');
                     if (!themeColorMeta) {
                         themeColorMeta = document.createElement('meta');
                         themeColorMeta.name = 'theme-color';
                         document.head.appendChild(themeColorMeta);
                     }
-                    themeColorMeta.content = '\(statusBarColor)';
+                    themeColorMeta.content = '#EF4444';
+                    
+                    // Explicitly set apple-mobile-web-app-status-bar-style
+                    let statusBarStyleMeta = document.querySelector('meta[name="apple-mobile-web-app-status-bar-style"]');
+                    if (!statusBarStyleMeta) {
+                        statusBarStyleMeta = document.createElement('meta');
+                        statusBarStyleMeta.name = 'apple-mobile-web-app-status-bar-style';
+                        document.head.appendChild(statusBarStyleMeta);
+                    }
+                    // Use black-translucent to allow our custom color to show through
+                    statusBarStyleMeta.content = 'black-translucent';
+                    
+                    // Try to set status bar color via Capacitor API if available
+                    if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
+                        try {
+                            window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#EF4444' });
+                            console.log('Set status bar color via Capacitor API');
+                        } catch (e) {
+                            console.error('Error setting status bar color:', e);
+                        }
+                    }
                     
                     // Add scroll event listener to toggle header background
                     window.addEventListener('scroll', function() {
@@ -379,7 +401,7 @@ public class IosFixes: CAPPlugin {
                     if let error = error {
                         print("Error injecting iOS fixes: \(error)")
                     } else {
-                        print("Successfully injected iOS fixes with status bar color: \(statusBarColor)")
+                        print("Successfully injected iOS fixes with status bar color: #EF4444")
                     }
                 })
             }
