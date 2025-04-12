@@ -26,6 +26,9 @@ export function Footer({ className }: FooterProps) {
             </p>
           </div>
           <nav className="flex space-x-6">
+            <Link href="/about" className="text-sm text-gray-600 hover:text-blue-600 transition">
+              About
+            </Link>
             <Link href="/support" className="text-sm text-gray-600 hover:text-blue-600 transition">
               Support
             </Link>
