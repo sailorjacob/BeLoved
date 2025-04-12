@@ -23,7 +23,7 @@ export const metadata = {
       { url: '/favicons/favicon-512x512.png', sizes: '512x512', type: 'image/png', rel: 'apple-touch-icon' }
     ]
   },
-  themeColor: '#d41212',
+  themeColor: '#EF4444',
   appleWebApp: {
     title: 'BeLoved Transportation',
     statusBarStyle: 'default',
@@ -64,8 +64,8 @@ export default function RootLayout({
           name="apple-mobile-web-app-status-bar-style"
           content="black-translucent"
         />
-        <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#d41212" />
-        <meta name="msapplication-TileColor" content="#d41212" />
+        <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#EF4444" />
+        <meta name="msapplication-TileColor" content="#EF4444" />
       </head>
       <body className={inter.className}>
         <ClientLayout>{children}</ClientLayout>
