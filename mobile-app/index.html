@@ -6,8 +6,7 @@
   <meta name="format-detection" content="telephone=no">
   <meta name="msapplication-tap-highlight" content="no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="theme-color" content="#EF4444">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
   <!-- Prevent iOS text size adjustment -->
   <meta name="text-size-adjust" content="none">
   <meta name="keyboard-appearance" content="light">
@@ -35,19 +34,6 @@
       touch-action: manipulation;
     }
     
-    /* Status bar styling for iOS - EXACT COLOR WITH RGB VALUES */
-    body::before {
-      content: '';
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: env(safe-area-inset-top, 0);
-      background-color: rgb(239, 68, 68) !important;
-      opacity: 1 !important;
-      z-index: 1000;
-    }
-    
     input {
       font-size: 16px; /* iOS doesn't zoom on input if font size is 16px or larger */
     }
@@ -62,7 +48,7 @@
       font-size: 24px;
       font-weight: 600;
       margin-bottom: 15px;
-      color: #EF4444; /* Exact color match */
+      color: #d41212;
     }
     
     p {
@@ -75,9 +61,9 @@
     .spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid rgba(239, 68, 68, 0.1); /* RGB values match #EF4444 */
+      border: 4px solid rgba(212, 18, 18, 0.1);
       border-radius: 50%;
-      border-top-color: #EF4444; /* Exact color match */
+      border-top-color: #d41212;
       animation: spin 1s ease-in-out infinite;
       margin-bottom: 20px;
     }
@@ -87,7 +73,7 @@
     }
     
     .button {
-      background-color: #EF4444; /* Exact color match */
+      background-color: #d41212;
       color: white;
       border: none;
       padding: 12px 24px;
@@ -112,7 +98,6 @@
     // Configuration - Edit these values
     const APP_URL = 'https://be-loved-scheduler.vercel.app/'; // Replace with your app URL
     const LOAD_TIMEOUT = 5000; // 5 seconds timeout
-    const STATUS_BAR_COLOR = '#EF4444'; // Exact color required
 
     // Show manual load button after timeout
     setTimeout(function() {
@@ -122,37 +107,22 @@
 
     // Navigate to app on page load
     window.onload = function() {
-      // Set status bar color directly if possible
-      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
-        try {
-          window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: STATUS_BAR_COLOR });
-          console.log('Set status bar color on splash screen');
-        } catch (e) {
-          console.error('Error setting status bar color:', e);
-        }
-      }
-      
       // Small delay to show the splash screen
       setTimeout(function() {
-        // Force exact color to be used
-        window.location.href = APP_URL;
+        // Add our iOS fixes script as a parameter
+        window.location.href = APP_URL + '?injectIosFixes=true';
       }, 1500);
     };
 
     // Manual button click handler
     document.getElementById('manual-load').addEventListener('click', function() {
-      window.location.href = APP_URL;
+      window.location.href = APP_URL + '?injectIosFixes=true';
     });
 
     // Listen for Capacitor device ready event
     document.addEventListener('deviceready', function() {
       // Device is ready, additional native functionality can be initialized here
       console.log('Capacitor is ready');
-      
-      // Apply status bar color using Capacitor if available
-      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
-        window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: STATUS_BAR_COLOR });
-      }
     }, false);
   </script>
 </body>
