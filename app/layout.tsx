@@ -8,7 +8,27 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata = {
   title: "BeLoved Transportation",
   description: "Schedule your rides with BeLoved Transportation",
-  generator: 'v0.dev'
+  generator: 'v0.dev',
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/favicons/favicon-16x16.png', sizes: '16x16', type: 'image/png' },
+      { url: '/favicons/favicon-32x32.png', sizes: '32x32', type: 'image/png' }
+    ],
+    apple: [
+      { url: '/favicons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }
+    ],
+    other: [
+      { url: '/favicons/favicon-192x192.png', sizes: '192x192', type: 'image/png', rel: 'apple-touch-icon' },
+      { url: '/favicons/favicon-512x512.png', sizes: '512x512', type: 'image/png', rel: 'apple-touch-icon' }
+    ]
+  },
+  themeColor: '#f43f5e',
+  appleWebApp: {
+    title: 'BeLoved Transportation',
+    statusBarStyle: 'default',
+    capable: true
+  }
 }
 
 export default function RootLayout({
@@ -40,6 +60,8 @@ export default function RootLayout({
           name="apple-mobile-web-app-capable"
           content="yes"
         />
+        <link rel="mask-icon" href="/favicons/safari-pinned-tab.svg" color="#f43f5e" />
+        <meta name="msapplication-TileColor" content="#f43f5e" />
       </head>
       <body className={inter.className}>
         <ClientLayout>{children}</ClientLayout>
