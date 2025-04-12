@@ -13,10 +13,15 @@ const config: CapacitorConfig = {
       androidScaleType: "CENTER_CROP"
     },
     Keyboard: {
-      resize: 'native',
-      style: 'light',
-      hideFormAccessoryBar: true,
+      resize: 'ionic',
+      style: 'default',
+      hideFormAccessoryBar: false,
       resizeOnFullScreen: true
+    },
+    StatusBar: {
+      backgroundColor: "#EF4444",
+      style: "light",
+      overlaysWebView: true
     }
   },
   server: {
@@ -30,7 +35,8 @@ const config: CapacitorConfig = {
     preferredContentMode: 'mobile',
     allowsLinkPreview: false,
     scheme: 'BeLovedRides',
-    limitsNavigationsToAppBoundDomains: true
+    limitsNavigationsToAppBoundDomains: true,
+    backgroundColor: "#EF4444"
   }
 };
 

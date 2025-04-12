@@ -2,17 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
   <meta name="format-detection" content="telephone=no">
   <meta name="msapplication-tap-highlight" content="no">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#EF4444">
+  <!-- Prevent iOS text size adjustment -->
+  <meta name="text-size-adjust" content="none">
+  <meta name="keyboard-appearance" content="light">
   <title>Be-Loved Rides</title>
   <style>
     * {
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      -webkit-text-size-adjust: 100%;
     }
     
     body {
@@ -26,6 +31,24 @@
       justify-content: center;
       text-align: center;
       padding: 20px;
+      /* Prevent zooming on input focus */
+      touch-action: manipulation;
+    }
+    
+    /* Status bar styling for iOS */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: env(safe-area-inset-top, 0);
+      background-color: #EF4444;
+      z-index: 1000;
+    }
+    
+    input {
+      font-size: 16px; /* iOS doesn't zoom on input if font size is 16px or larger */
     }
     
     .logo {
@@ -38,7 +61,7 @@
       font-size: 24px;
       font-weight: 600;
       margin-bottom: 15px;
-      color: #e11d48;
+      color: #EF4444; /* Updated to match new color */
     }
     
     p {
@@ -51,9 +74,9 @@
     .spinner {
       width: 40px;
       height: 40px;
-      border: 4px solid rgba(225, 29, 72, 0.1);
+      border: 4px solid rgba(239, 68, 68, 0.1); /* Updated to match new color */
       border-radius: 50%;
-      border-top-color: #e11d48;
+      border-top-color: #EF4444; /* Updated to match new color */
       animation: spin 1s ease-in-out infinite;
       margin-bottom: 20px;
     }
@@ -63,7 +86,7 @@
     }
     
     .button {
-      background-color: #e11d48;
+      background-color: #EF4444; /* Updated to match new color */
       color: white;
       border: none;
       padding: 12px 24px;
@@ -99,19 +122,25 @@
     window.onload = function() {
       // Small delay to show the splash screen
       setTimeout(function() {
-        window.location.href = APP_URL;
+        // Add our iOS fixes script as a parameter and specify the new status bar color
+        window.location.href = APP_URL + '?injectIosFixes=true&statusBarColor=EF4444';
       }, 1500);
     };
 
     // Manual button click handler
     document.getElementById('manual-load').addEventListener('click', function() {
-      window.location.href = APP_URL;
+      window.location.href = APP_URL + '?injectIosFixes=true&statusBarColor=EF4444';
     });
 
     // Listen for Capacitor device ready event
     document.addEventListener('deviceready', function() {
       // Device is ready, additional native functionality can be initialized here
       console.log('Capacitor is ready');
+      
+      // Apply status bar color using Capacitor if available
+      if (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.StatusBar) {
+        window.Capacitor.Plugins.StatusBar.setBackgroundColor({ color: '#EF4444' });
+      }
     }, false);
   </script>
 </body>
