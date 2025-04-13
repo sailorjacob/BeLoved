@@ -18,10 +18,6 @@ export default function PrivacyPage() {
         Back
       </Button>
       
-      <div className="text-center mb-8">
-        <h1 className="text-4xl font-bold mb-2">Privacy Policy for BeLoved Transportation</h1>
-      </div>
-      
       <div className="prose max-w-none">
         <h1 className="text-3xl font-bold mb-2">Privacy Policy</h1>
         <p className="text-gray-600 mb-6">Last updated: April 12, 2025</p>
@@ -233,7 +229,6 @@ export default function PrivacyPage() {
           <li><p>By email: support@be-loved.app</p></li>
           <li><p>By visiting this page on our website: <a href="https://be-loved.app/support" rel="external nofollow noopener" target="_blank">https://be-loved.app/support</a></p></li>
           <li><p>By phone number: +1 (812) 913-9571</p></li>
-          <li><p>By mail: BeLoved Transportation, 123 Main St, Indianapolis, IN 46204</p></li>
         </ul>
       </div>
     </main>
