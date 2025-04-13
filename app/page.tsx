@@ -60,9 +60,9 @@ export default function Home() {
             className="mx-auto" 
           />
           <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            BeLoved Transportation
+            BeLoved
           </h2>
-          <p className="mt-2 text-sm text-gray-600">
+          <p className="mt-2 text-xs text-gray-600">
             Connecting riders with reliable transportation
           </p>
         </div>
