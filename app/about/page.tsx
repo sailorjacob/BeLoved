@@ -23,7 +23,7 @@ export default function AboutPage() {
           <span role="img" aria-label="van" className="text-3xl">🚐</span>
           <h1 className="text-[32px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved</h1>
         </div>
-        <p className="text-sm font-medium text-gray-500 mt-2 max-w-[400px]">
+        <p className="text-base font-medium text-[rgb(13,13,13)] mt-2 max-w-[400px]">
           A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile</strong> <strong>components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
         </p>
       </div>
