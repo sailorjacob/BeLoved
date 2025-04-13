@@ -19,10 +19,11 @@ export default function AboutPage() {
       </Button>
       
       <div className="mb-14">
-        <div className="mb-3 text-center">
+        <div className="mb-3 flex items-center gap-3">
+          <span role="img" aria-label="van" className="text-3xl">🚐</span>
           <h1 className="text-[32px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved</h1>
         </div>
-        <p className="text-lg font-medium tracking-tight text-gray-600 mt-2 text-center">
+        <p className="text-lg font-medium tracking-tight text-gray-600 mt-2">
           A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
         </p>
       </div>
