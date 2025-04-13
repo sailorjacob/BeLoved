@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(212, 312)">
+    <!-- Left pink heart -->
+    <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+          fill="#ffb6c1" transform="translate(-150, 0) scale(0.9)" />
+    
+    <!-- Right red heart -->
+    <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+          fill="#ff0033" transform="translate(150, 0) scale(0.9)" />
+          
+    <!-- Bottom accent curve -->
+    <path d="M250,450 C400,500 550,450 650,400" stroke="#ffb6c1" stroke-width="30" fill="none" />
+  </g>
+</svg> 

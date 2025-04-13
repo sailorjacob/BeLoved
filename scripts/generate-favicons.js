@@ -3,12 +3,19 @@ const path = require('path');
 const sharp = require('sharp');
 
 // Paths
-const logoPath = path.join(__dirname, '../public/bloved-2.png');
+const logoPathSVG = path.join(__dirname, '../public/source-images/beloved-hearts-logo.svg');
+const logoPathPNG = path.join(__dirname, '../public/source-images/beloved-hearts-logo.png');
 const faviconDir = path.join(__dirname, '../public/favicons');
 
 // Create favicon directory if it doesn't exist
 if (!fs.existsSync(faviconDir)) {
   fs.mkdirSync(faviconDir, { recursive: true });
+}
+
+// If the source-images directory doesn't exist, create it
+const sourceDir = path.join(__dirname, '../public/source-images');
+if (!fs.existsSync(sourceDir)) {
+  fs.mkdirSync(sourceDir, { recursive: true });
 }
 
 // Favicon sizes
@@ -19,74 +26,103 @@ const appleIconSize = 180;
 async function generateFavicons() {
   try {
     console.log('Generating favicons...');
+
+    // Use the SVG as our source if it exists
+    let sourceFile = fs.existsSync(logoPathSVG) ? logoPathSVG : logoPathPNG;
     
-    // Get original logo dimensions
-    const metadata = await sharp(logoPath).metadata();
-    const { width, height } = metadata;
+    if (!fs.existsSync(sourceFile)) {
+      console.error('Logo file not found at:', sourceFile);
+      throw new Error('No logo file found to work with');
+    }
     
-    // Create a square buffer with the logo properly centered
-    // For the BeLoved logo, we'll use a specific approach to extract the heart portion
-    // and center it properly in a square canvas with padding
+    console.log(`Using source file: ${sourceFile}`);
     
-    // First, detect the most important part of the logo (the heart icon)
-    // Since the logo has two hearts, let's focus on the right side which has the red heart
-    // We'll take approximately half of the logo from the right side where the red heart is
+    // If using SVG, create an optimized version with proper viewBox
+    let optimizedSourceFile = sourceFile;
+    if (sourceFile.endsWith('.svg')) {
+      const tmpSvgPath = path.join(faviconDir, 'temp-optimized.svg');
+      let svgContent = fs.readFileSync(sourceFile, 'utf8');
+      
+      // Extract just the content of the SVG, adjusting the viewBox to add padding around the hearts
+      const optimizedSvg = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="800" viewBox="-150 -150 900 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left pink heart -->
+  <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+        fill="#ffb6c1" transform="translate(-150, 0) scale(0.9)" />
+  
+  <!-- Right red heart -->
+  <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+        fill="#ff0033" transform="translate(150, 0) scale(0.9)" />
+        
+  <!-- Bottom accent curve -->
+  <path d="M250,450 C400,500 550,450 650,400" stroke="#ffb6c1" stroke-width="30" fill="none" />
+</svg>`;
+      
+      fs.writeFileSync(tmpSvgPath, optimizedSvg);
+      optimizedSourceFile = tmpSvgPath;
+    }
     
-    const cropWidth = height; // Make it square based on height
-    const cropLeft = Math.max(0, Math.floor(width / 2 - height / 4)); // Start from a position that captures the heart
-    
-    // Create a square buffer with the logo centered
-    const squareLogoBuffer = await sharp(logoPath)
-      // Crop to focus on the logo's heart portion
-      .extract({ 
-        left: cropLeft, 
-        top: 0, 
-        width: Math.min(cropWidth, width - cropLeft), 
-        height: height 
-      })
-      // Resize to a reasonable working size while maintaining aspect ratio
-      .resize({ 
-        width: 500, 
-        height: 500, 
-        fit: 'contain', 
-        background: { r: 255, g: 255, b: 255, alpha: 0 } 
-      })
-      // Ensure we have padding around the logo
-      .extend({
-        top: 50,
-        bottom: 50,
-        left: 50,
-        right: 50,
-        background: { r: 255, g: 255, b: 255, alpha: 0 }
-      })
-      // Create circular mask for the icon - this works well for the heart logo
-      .composite([{
-        input: Buffer.from(
-          '<svg><circle cx="300" cy="300" r="280" fill="white"/></svg>'
-        ),
-        blend: 'dest-in'
-      }])
-      .toBuffer();
-    
-    // Generate standard favicons
+    // Generate standard favicons - preserve original colors with better scaling
     for (const size of sizes) {
-      await sharp(squareLogoBuffer)
-        .resize(size, size)
+      await sharp(optimizedSourceFile)
+        .resize(size, size, { 
+          fit: 'inside',  // Changed from 'fill' to 'inside'
+          background: { r: 0, g: 0, b: 0, alpha: 0 }
+        })
+        .png()
         .toFile(path.join(faviconDir, `favicon-${size}x${size}.png`));
       console.log(`Generated ${size}x${size} favicon`);
     }
     
     // Generate Apple touch icon
-    await sharp(squareLogoBuffer)
-      .resize(appleIconSize, appleIconSize)
+    await sharp(optimizedSourceFile)
+      .resize(appleIconSize, appleIconSize, { 
+        fit: 'inside',  // Changed from 'fill' to 'inside'
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
+      .png()
       .toFile(path.join(faviconDir, 'apple-touch-icon.png'));
     console.log(`Generated ${appleIconSize}x${appleIconSize} Apple touch icon`);
     
-    // Create favicon.ico (16x16 + 32x32)
-    await sharp(squareLogoBuffer)
-      .resize(32, 32)
+    // Create favicon.ico
+    await sharp(optimizedSourceFile)
+      .resize(32, 32, { 
+        fit: 'inside',  // Changed from 'fill' to 'inside'
+        background: { r: 0, g: 0, b: 0, alpha: 0 }
+      })
       .toFile(path.join(faviconDir, 'favicon.ico'));
     console.log('Generated favicon.ico');
+    
+    // For Safari pinned tabs we need a monochrome SVG
+    if (sourceFile.endsWith('.svg')) {
+      // Create a copy of the SVG
+      fs.copyFileSync(optimizedSourceFile, path.join(faviconDir, 'safari-pinned-tab.svg'));
+      
+      // Update the SVG to have solid black fill for pinned tabs
+      let svgContent = fs.readFileSync(path.join(faviconDir, 'safari-pinned-tab.svg'), 'utf8');
+      svgContent = svgContent.replace(/fill="#[^"]*"/g, 'fill="#000000"');
+      svgContent = svgContent.replace(/stroke="#[^"]*"/g, 'stroke="#000000"');
+      fs.writeFileSync(path.join(faviconDir, 'safari-pinned-tab.svg'), svgContent);
+    } else {
+      // Create a generic heart SVG for Safari pinned tabs
+      const svgContent = `<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="1024" height="1024" viewBox="0 0 1024 1024" xmlns="http://www.w3.org/2000/svg">
+  <g transform="translate(212, 312)">
+    <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+          fill="#000000" transform="translate(-150, 0) scale(0.9)" />
+    <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+          fill="#000000" transform="translate(150, 0) scale(0.9)" />
+    <path d="M250,450 C400,500 550,450 650,400" stroke="#000000" stroke-width="30" fill="none" />
+  </g>
+</svg>`;
+      fs.writeFileSync(path.join(faviconDir, 'safari-pinned-tab.svg'), svgContent);
+    }
+    console.log('Generated safari-pinned-tab.svg');
+    
+    // Clean up temporary file if created
+    if (optimizedSourceFile !== sourceFile && fs.existsSync(optimizedSourceFile)) {
+      fs.unlinkSync(optimizedSourceFile);
+    }
     
     console.log('All favicons generated successfully!');
   } catch (error) {

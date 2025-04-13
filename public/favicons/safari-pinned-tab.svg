@@ -1,14 +1,13 @@
-<?xml version="1.0" standalone="no"?>
-<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 20010904//EN"
- "http://www.w3.org/TR/2001/REC-SVG-20010904/DTD/svg10.dtd">
-<svg version="1.1" xmlns="http://www.w3.org/2000/svg"
- width="700.000000pt" height="700.000000pt" viewBox="0 0 700.000000 700.000000"
- preserveAspectRatio="xMidYMid meet">
-<metadata>
-Created for BeLoved Transportation
-</metadata>
-<g transform="translate(0.000000,700.000000) scale(0.100000,-0.100000)"
-fill="#000000" stroke="none">
-<path d="M2430 5585 c-255 -40 -489 -154 -687 -336 -122 -113 -131 -124 -198 -229 -138 -217 -196 -427 -191 -695 5 -269 93 -501 304 -804 49 -71 353 -379 592 -601 107 -99 505 -450 701 -620 l220 -189 182 159 c100 88 189 165 197 171 8 7 80 70 160 140 80 70 152 133 160 140 8 6 98 86 200 177 358 316 442 391 505 450 36 33 90 84 120 113 118 112 197 203 257 297 143 222 203 432 195 680 -11 333 -183 640 -467 835 -235 160 -525 225 -805 180 -97 -16 -254 -65 -345 -109 -118 -57 -198 -112 -293 -203 l-67 -64 -65 64 c-114 110 -260 202 -390 246 -131 44 -171 51 -310 54 -69 1 -144 -1 -175 -6z"/>
-</g>
-</svg> 
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg width="800" height="800" viewBox="-150 -150 900 800" xmlns="http://www.w3.org/2000/svg">
+  <!-- Left pink heart -->
+  <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+        fill="#000000" transform="translate(-150, 0) scale(0.9)" />
+  
+  <!-- Right red heart -->
+  <path d="M300,0 C200,-100 0,-100 0,100 C0,250 150,400 300,500 C450,400 600,250 600,100 C600,-100 400,-100 300,0 Z" 
+        fill="#000000" transform="translate(150, 0) scale(0.9)" />
+        
+  <!-- Bottom accent curve -->
+  <path d="M250,450 C400,500 550,450 650,400" stroke="#000000" stroke-width="30" fill="none" />
+</svg>
