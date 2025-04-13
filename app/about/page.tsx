@@ -21,7 +21,7 @@ export default function AboutPage() {
       <div className="mb-14">
         <div className="flex items-center gap-3 mb-3">
           <span role="img" aria-label="van" className="text-3xl">🚐</span>
-          <h1 className="text-4xl font-extrabold tracking-tight text-gray-900">BeLoved</h1>
+          <h1 className="text-[32px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved</h1>
         </div>
         <p className="text-lg font-medium tracking-tight text-gray-600 mt-2">
           A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
@@ -33,7 +33,7 @@ export default function AboutPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="people" className="text-2xl">👥</span>
-          <h2 className="text-2xl font-bold text-gray-900">Multi-User System</h2>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Multi-User System</h2>
         </div>
         
         <ul className="space-y-4 ml-8 list-disc">
@@ -72,7 +72,7 @@ export default function AboutPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="calendar" className="text-2xl">🗓️</span>
-          <h2 className="text-2xl font-bold text-gray-900">Core Ride Scheduling Features</h2>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Core Ride Scheduling Features</h2>
         </div>
         
         <ul className="space-y-4 ml-8 list-disc">
@@ -111,7 +111,7 @@ export default function AboutPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="car" className="text-2xl">🚘</span>
-          <h2 className="text-2xl font-bold text-gray-900">Driver Management</h2>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Driver Management</h2>
         </div>
         
         <ul className="space-y-4 ml-8 list-disc">
@@ -157,7 +157,7 @@ export default function AboutPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="wrench" className="text-2xl">🛠️</span>
-          <h2 className="text-2xl font-bold text-gray-900">Administrative Features</h2>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Administrative Features</h2>
         </div>
         
         <ul className="space-y-4 ml-8 list-disc">
@@ -203,7 +203,7 @@ export default function AboutPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="mobile" className="text-2xl">📱</span>
-          <h2 className="text-2xl font-bold text-gray-900">Mobile App Integration</h2>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Mobile App Integration</h2>
         </div>
         
         <ul className="space-y-4 ml-8 list-disc">
@@ -235,7 +235,7 @@ export default function AboutPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="brain" className="text-2xl">🧠</span>
-          <h2 className="text-2xl font-bold text-gray-900">Summary</h2>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Summary</h2>
         </div>
         
         <p className="text-base ml-1">
