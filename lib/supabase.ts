@@ -217,6 +217,8 @@ export type Database = {
           status: 'active' | 'inactive' | 'on_break'
           completed_rides: number
           total_miles: number
+          total_stars: number
+          weekly_stars_count: number
           created_at: string
           updated_at: string
         }
@@ -225,6 +227,8 @@ export type Database = {
           status?: 'active' | 'inactive' | 'on_break'
           completed_rides?: number
           total_miles?: number
+          total_stars?: number
+          weekly_stars_count?: number
           created_at?: string
           updated_at?: string
         }
@@ -233,6 +237,8 @@ export type Database = {
           status?: 'active' | 'inactive' | 'on_break'
           completed_rides?: number
           total_miles?: number
+          total_stars?: number
+          weekly_stars_count?: number
           created_at?: string
           updated_at?: string
         }

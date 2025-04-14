@@ -17,11 +17,6 @@ const config: CapacitorConfig = {
       style: 'default',
       hideFormAccessoryBar: false,
       resizeOnFullScreen: true
-    },
-    StatusBar: {
-      backgroundColor: "#EF4444",
-      style: "light",
-      overlaysWebView: false
     }
   },
   server: {
@@ -35,8 +30,7 @@ const config: CapacitorConfig = {
     preferredContentMode: 'mobile',
     allowsLinkPreview: false,
     scheme: 'BeLovedRides',
-    limitsNavigationsToAppBoundDomains: true,
-    backgroundColor: "#EF4444"
+    limitsNavigationsToAppBoundDomains: true
   }
 };
 

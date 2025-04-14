@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { Star } from 'lucide-react';
+import { Star, Award } from 'lucide-react';
 import { cn } from "@/lib/utils";
 import {
   AlertDialog,
@@ -22,6 +22,7 @@ interface CrewCarwashCheckinProps {
 export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
   const { toast } = useToast();
   const [completedStars, setCompletedStars] = useState(0);
+  const [totalStarsCount, setTotalStarsCount] = useState(0);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,7 +31,32 @@ export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
   useEffect(() => {
     console.log('CrewCarwashCheckin mounted with driverId:', driverId);
     fetchCarwashCheckins();
+    fetchDriverStats();
   }, [driverId]);
+
+  const fetchDriverStats = async () => {
+    try {
+      console.log('Fetching driver stats for driver:', driverId);
+      const { data, error } = await supabase
+        .from('driver_profiles')
+        .select('total_stars, weekly_stars_count')
+        .eq('id', driverId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching driver stats:', error);
+        return;
+      }
+
+      console.log('Driver stats data:', data);
+      if (data) {
+        setTotalStarsCount(data.total_stars || 0);
+        setCompletedStars(data.weekly_stars_count || 0);
+      }
+    } catch (err) {
+      console.error('Unexpected error fetching driver stats:', err);
+    }
+  };
 
   const fetchCarwashCheckins = async () => {
     try {
@@ -58,7 +84,10 @@ export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
       }
 
       console.log('Carwash checkins data:', data);
-      setCompletedStars(data?.length || 0);
+      // If we got data from the weekly checkins but not from driver_profile
+      if (data && data.length > 0 && completedStars === 0) {
+        setCompletedStars(data.length);
+      }
       setError(null);
     } catch (err) {
       console.error('Unexpected error:', err);
@@ -100,6 +129,7 @@ export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
 
       console.log('Successfully recorded carwash checkin');
       setCompletedStars(prev => Math.min(prev + 1, totalStars));
+      setTotalStarsCount(prev => prev + 1);
       setError(null);
       toast({
         title: "Success",
@@ -147,8 +177,18 @@ export function CrewCarwashCheckin({ driverId }: CrewCarwashCheckinProps) {
         ))}
       </div>
       
-      <p className="text-sm text-gray-500">
-        {completedStars} of {totalStars} weekly car washes completed
+      <div className="flex justify-between items-center">
+        <p className="text-sm text-gray-500">
+          {completedStars} of {totalStars} weekly car washes completed
+        </p>
+        <div className="flex items-center gap-1">
+          <Award className="w-5 h-5 text-blue-500" />
+          <p className="text-sm font-medium text-blue-600">{totalStarsCount} total stars</p>
+        </div>
+      </div>
+
+      <p className="text-xs text-gray-400">
+        Weekly stars reset every Sunday at midnight. Your total stars are accumulated for your entire career.
       </p>
 
       {error && (

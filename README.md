@@ -198,3 +198,31 @@ supabase gen types typescript --project-id your-project-id > types/supabase.ts
 - Verify production environment variables
 - Check build logs in Vercel
 - Ensure all dependencies are installed 
+
+## Crew Carwash Stars Feature
+
+The application includes a feature for tracking driver check-ins at Crew Carwash. This feature:
+
+- Allows drivers to check in up to 5 times per week
+- Tracks weekly stars (resets every Sunday at midnight)
+- Maintains a cumulative total stars count for the driver's career
+- Displays both weekly and total stars on the driver's dashboard
+
+### Implementation Details
+
+- Weekly stars are stored in the `weekly_stars_count` field in the `driver_profiles` table
+- Total lifetime stars are stored in the `total_stars` field
+- A database trigger automatically increments both weekly and total stars when a new check-in is recorded
+- A Supabase Edge Function resets the weekly stars count every Sunday at midnight
+
+### Deployment
+
+To deploy the Edge Function and set up the weekly reset job:
+
+```bash
+# Make the script executable
+chmod +x supabase/scripts/deploy-edge-function.sh
+
+# Run the deployment script
+./supabase/scripts/deploy-edge-function.sh
+``` 

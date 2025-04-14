@@ -6,6 +6,7 @@ import { useAuth } from '@/app/contexts/auth-context'
 import { UserNav } from '../components/user-nav'
 import { DriverDashboard } from '../components/driver-dashboard'
 import Image from 'next/image'
+import { Star } from 'lucide-react'
 
 export default function DriverDashboardPage() {
   const { isLoggedIn, isDriver, isInitialized } = useAuth()
@@ -59,6 +60,18 @@ export default function DriverDashboardPage() {
           <h1 className="text-4xl font-bold">Driver Dashboard</h1>
         </div>
         <UserNav />
+      </div>
+      
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-100 p-2 rounded-full">
+            <Star className="h-5 w-5 text-blue-600" />
+          </div>
+          <div>
+            <h3 className="text-lg font-medium text-blue-800">Crew Carwash Stars</h3>
+            <p className="text-sm text-blue-600">Remember to visit Crew Carwash 5 times per week! Track your stars in your profile.</p>
+          </div>
+        </div>
       </div>
       
       <DriverDashboard />
