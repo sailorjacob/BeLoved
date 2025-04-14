@@ -232,8 +232,9 @@ export default function AboutPage() {
         </p>
         
         <div className="my-6 border rounded-lg overflow-hidden shadow-sm">
+          <div className="p-3 bg-white border-b text-base font-medium">BeLoved Analytics Dashboard</div>
           <img 
-            src="/images/dashboard-preview.svg" 
+            src="/images/dashboard-preview.png" 
             alt="BeLoved Analytics Dashboard"
             className="w-full h-auto" 
           />
