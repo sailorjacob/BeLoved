@@ -225,4 +225,8 @@ chmod +x supabase/scripts/deploy-edge-function.sh
 
 # Run the deployment script
 ./supabase/scripts/deploy-edge-function.sh
-``` 
+```
+
+## Test Update
+
+This line was added to test GitHub pushing functionality. 
