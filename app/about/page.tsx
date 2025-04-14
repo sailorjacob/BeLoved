@@ -231,6 +231,17 @@ export default function AboutPage() {
           BeLoved is starting small, with a pilot program in Bloomington, Indiana while investing in fleets of self-driving electric vehicles and working closely with state Medicaid, brokering, and health insurance sectors to provide safe and reliable non-emergency medical transport.
         </p>
         
+        <div className="my-6 border rounded-lg overflow-hidden shadow-sm">
+          <img 
+            src="/images/dashboard-preview.svg" 
+            alt="BeLoved Analytics Dashboard"
+            className="w-full h-auto" 
+          />
+          <div className="bg-gray-50 p-3 text-xs text-gray-500 text-center">
+            Analytics Dashboard for Transportation Service Management
+          </div>
+        </div>
+        
         <ul className="space-y-2 ml-8 list-disc mt-4">
           <li className="pl-1">
             <div>
