@@ -218,6 +218,45 @@ export default function AboutPage() {
           This platform is tailored for transportation services, especially in healthcare, where members (patients) need reliable transport to and from appointments. With a solid architecture, security-first approach, and well-separated concerns, the system is scalable and production-ready. <span role="img" aria-label="check">✅</span>
         </p>
       </div>
+      
+      <div className="border-t border-gray-200 my-8"></div>
+      
+      <div className="mb-10">
+        <div className="flex items-center gap-3 mb-4">
+          <span role="img" aria-label="rocket" className="text-2xl">🚀</span>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Current Status & Future Vision</h2>
+        </div>
+        
+        <p className="text-base ml-1">
+          BeLoved is starting small, with a pilot program in Bloomington, Indiana while investing in fleets of self-driving electric vehicles and working closely with state Medicaid, brokering, and health insurance sectors to provide safe and reliable non-emergency medical transport.
+        </p>
+        
+        <ul className="space-y-2 ml-8 list-disc mt-4">
+          <li className="pl-1">
+            <div>
+              <strong>Pilot Location:</strong> Bloomington, Indiana service area
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Future Fleet:</strong> Investing in self-driving electric vehicles
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Healthcare Partners:</strong> Collaborating with Medicaid, brokers, and insurance providers
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Mission:</strong> Providing safe, reliable non-emergency medical transportation
+            </div>
+          </li>
+        </ul>
+      </div>
     </main>
   )
 } 
