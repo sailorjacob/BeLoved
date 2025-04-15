@@ -65,10 +65,47 @@ import {
   Legend,
   ResponsiveContainer
 } from 'recharts'
-import { format } from 'date-fns'
+import { format, startOfDay, endOfDay, subDays } from 'date-fns'
+
+interface DashboardStats {
+  total_providers: number
+  active_providers: number
+  total_admins: number
+  total_drivers: number
+  active_drivers: number
+  total_rides: number
+  rides_today: number
+  completed_rides: number
+  cancelled_rides: number
+  total_revenue: number
+  revenue_today: number
+  pending_support_tickets: number
+  average_ride_cost: number
+  total_providers_revenue: number
+  total_drivers_earnings: number
+  insurance_claims_amount: number
+  pending_payouts: number
+  monthly_growth_rate: number
+  driver_utilization_rate: number
+  average_response_time: number
+  customer_satisfaction_rate: number
+}
+
+interface RevenueData {
+  date: string
+  revenue: number
+  rides: number
+  provider_revenue: number
+  driver_earnings: number
+}
+
+interface RideStatus {
+  name: string
+  value: number
+}
 
 // Mockup stats with realistic data
-const demoStats = {
+const demoStats: DashboardStats = {
   total_providers: 26,
   active_providers: 18,
   total_admins: 12,
@@ -119,10 +156,10 @@ const generateLastThirtyDaysData = () => {
   return data;
 };
 
-const demoRevenueData = generateLastThirtyDaysData();
+const demoRevenueData: RevenueData[] = generateLastThirtyDaysData();
 
 // Mockup ride status distribution
-const demoRideStatuses = [
+const demoRideStatuses: RideStatus[] = [
   { name: "Completed", value: 1284 },
   { name: "In Progress", value: 87 },
   { name: "Scheduled", value: 47 },
@@ -149,14 +186,32 @@ const demoSupportTickets = [
   { id: "TKT-2360", title: "Driver feedback submission", status: "closed", priority: "low", created_at: "2023-11-20T14:03:00" }
 ]
 
+function GeographicNodes() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Geographic Distribution</CardTitle>
+        <CardDescription>Service areas and ride density map</CardDescription>
+      </CardHeader>
+      <CardContent className="h-[300px] flex items-center justify-center bg-slate-50">
+        <div className="text-center p-8">
+          <MapPin className="h-8 w-8 text-slate-400 mx-auto mb-4" />
+          <p className="text-slate-500">Geographic map visualization would appear here</p>
+          <p className="text-sm text-slate-400 mt-2">Preview mode - actual map not available</p>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
 export default function PreviewDashboardPage() {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState(null)
   const [isMounted, setIsMounted] = useState(false)
-  const [stats, setStats] = useState(null)
-  const [revenueData, setRevenueData] = useState([])
-  const [rideStatuses, setRideStatuses] = useState([])
+  const [stats, setStats] = useState<DashboardStats | null>(null)
+  const [revenueData, setRevenueData] = useState<RevenueData[]>([])
+  const [rideStatuses, setRideStatuses] = useState<RideStatus[]>([])
   
   // Set mounted state after initial render and load demo data
   useEffect(() => {
@@ -253,11 +308,13 @@ export default function PreviewDashboardPage() {
               <p className="text-muted-foreground">System-wide analytics and management</p>
             </div>
             <div className="flex space-x-4">
-              <Button variant="destructive" asChild>
-                <a href="#" onClick={(e) => e.preventDefault()}>
-                  Manage Providers
-                </a>
-              </Button>
+              <a 
+                href="#" 
+                className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+                onClick={(e) => e.preventDefault()}
+              >
+                Manage Providers
+              </a>
               <Button variant="destructive" asChild>
                 <a href="#" onClick={(e) => e.preventDefault()}>
                   Members Directory
@@ -538,6 +595,73 @@ export default function PreviewDashboardPage() {
                 </Card>
               </div>
 
+              {/* Financial Details */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Financial Summary</CardTitle>
+                  <CardDescription>Detailed breakdown of revenue and expenses</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Revenue Breakdown</h4>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex justify-between">
+                            <span>Gross Revenue</span>
+                            <span className="font-medium">${stats?.total_revenue.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Provider Fees</span>
+                            <span className="font-medium">${stats?.total_providers_revenue.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Driver Earnings</span>
+                            <span className="font-medium">${stats?.total_drivers_earnings.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Key Metrics</h4>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex justify-between">
+                            <span>Avg. Ride Cost</span>
+                            <span className="font-medium">${stats?.average_ride_cost.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Completed Rides</span>
+                            <span className="font-medium">{stats?.completed_rides}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Cancelled Rides</span>
+                            <span className="font-medium">{stats?.cancelled_rides}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-medium text-muted-foreground">Insurance & Claims</h4>
+                        <div className="mt-2 space-y-2">
+                          <div className="flex justify-between">
+                            <span>Total Claims</span>
+                            <span className="font-medium">${stats?.insurance_claims_amount.toFixed(2)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Claims Ratio</span>
+                            <span className="font-medium">
+                              {((stats?.insurance_claims_amount || 0) / (stats?.total_revenue || 1) * 100).toFixed(1)}%
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Pending Payouts</span>
+                            <span className="font-medium">${stats?.pending_payouts.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Support and Alerts Section */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                 <Card>
@@ -555,7 +679,7 @@ export default function PreviewDashboardPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {/* Demo support tickets */}
+                        {/* To be implemented with support system */}
                         <TableRow>
                           <TableCell colSpan={4} className="text-center text-muted-foreground">
                             Support ticket system coming soon
@@ -581,6 +705,7 @@ export default function PreviewDashboardPage() {
                           </p>
                         </div>
                       </div>
+                      {/* Add more system alerts as needed */}
                     </div>
                   </CardContent>
                 </Card>
@@ -814,6 +939,106 @@ export default function PreviewDashboardPage() {
                 </Card>
               </div>
 
+              {/* Quick Access Section */}
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl">Quick Access</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                    <Link href="#" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors" onClick={(e) => e.preventDefault()}>
+                      <Users className="h-6 w-6 text-primary" />
+                      <span className="text-sm text-center">Members</span>
+                    </Link>
+                    
+                    <Link href="#" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors" onClick={(e) => e.preventDefault()}>
+                      <Car className="h-6 w-6 text-primary" />
+                      <span className="text-sm text-center">Drivers</span>
+                    </Link>
+                    
+                    <Link href="#" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors" onClick={(e) => e.preventDefault()}>
+                      <Building2 className="h-6 w-6 text-primary" />
+                      <span className="text-sm text-center">Providers</span>
+                    </Link>
+
+                    <Link href="#" className="flex flex-col items-center gap-2 p-3 rounded-lg bg-primary/5 hover:bg-primary/10 transition-colors" onClick={(e) => e.preventDefault()}>
+                      <Calendar className="h-6 w-6 text-primary" />
+                      <span className="text-sm text-center">Ride Requests</span>
+                    </Link>
+
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <BookOpen className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Information Base</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Clock className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Pending Acceptance</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Calendar className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Schedule</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <TableIcon className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Pickboard</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <FileText className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Manifest</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <DollarSign className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Invoicing</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <History className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">History</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Ban className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Exclude Member</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Target className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Counties</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Users className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Calendar</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Car className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Vehicles</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <ClipboardList className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Compliance</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Activity className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Upload Trips</span>
+                    </div>
+                    
+                    <div className="flex flex-col items-center p-4 border rounded-md hover:bg-slate-50 transition-colors cursor-pointer">
+                      <Cog className="h-6 w-6 text-red-500 mb-2" />
+                      <span className="text-center text-sm">Account</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Stats Dashboard */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <Card>
@@ -942,20 +1167,7 @@ export default function PreviewDashboardPage() {
                 </Card>
               </div>
 
-              {/* GeographicNodes placeholder */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Geographic Distribution</CardTitle>
-                  <CardDescription>Service areas and ride density map</CardDescription>
-                </CardHeader>
-                <CardContent className="h-[300px] flex items-center justify-center bg-slate-50">
-                  <div className="text-center p-8">
-                    <MapPin className="h-8 w-8 text-slate-400 mx-auto mb-4" />
-                    <p className="text-slate-500">Geographic map visualization would appear here</p>
-                    <p className="text-sm text-slate-400 mt-2">Preview mode - actual map not available</p>
-                  </div>
-                </CardContent>
-              </Card>
+              <GeographicNodes />
             </TabsContent>
           </Tabs>
         </div>
