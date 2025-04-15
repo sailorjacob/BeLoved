@@ -3,6 +3,7 @@
 import { ArrowLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useRouter } from 'next/navigation'
+import Image from 'next/image'
 
 export default function AboutPage() {
   const router = useRouter()
@@ -233,10 +234,13 @@ export default function AboutPage() {
         
         <div className="my-6 border rounded-lg overflow-hidden shadow-sm">
           <div className="p-3 bg-white border-b text-base font-medium">BeLoved Analytics Dashboard</div>
-          <img 
+          <Image 
             src="/images/about-preview.png" 
             alt="BeLoved Analytics Dashboard"
+            width={1000}
+            height={600}
             className="w-full h-auto" 
+            priority
           />
           <div className="bg-gray-50 p-3 text-xs text-gray-500 text-center">
             Analytics Dashboard for Transportation Service Management
