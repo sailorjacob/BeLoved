@@ -232,12 +232,71 @@ export default function AboutPage() {
           BeLoved is starting small, with a pilot program in Bloomington, Indiana while investing in fleets of self-driving electric vehicles and working closely with state Medicaid, brokering, and health insurance sectors to provide safe and reliable non-emergency medical transport.
         </p>
         
-        <div className="my-6">
-          <img 
-            src="/images/about-preview.png" 
-            alt="BeLoved Analytics Dashboard"
-            className="w-full h-auto rounded-lg" 
-          />
+        <div className="my-6 flex justify-center">
+          <svg className="w-full max-w-lg h-auto rounded-lg shadow-md" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="1200" height="800" fill="#f8fafc" />
+            
+            {/* Header */}
+            <rect width="1200" height="80" fill="#f3f4f6" />
+            <text x="30" y="45" fontFamily="Arial" fontSize="24" fill="#333">BeLoved Admin Dashboard</text>
+            <circle cx="1150" cy="40" r="20" fill="#d1d5db" />
+            
+            {/* Main content area */}
+            <rect x="30" y="100" width="550" height="300" rx="8" fill="white" stroke="#e5e7eb" />
+            <text x="50" y="130" fontFamily="Arial" fontSize="18" fill="#333">Revenue & Earnings</text>
+            <path d="M50,300 Q150,200 250,350 T450,250" stroke="#ef4444" strokeWidth="3" fill="none" />
+            <path d="M50,350 Q150,300 250,250 T450,300" stroke="#ec4899" strokeWidth="3" fill="none" />
+            
+            {/* Chart area */}
+            <rect x="620" y="100" width="550" height="300" rx="8" fill="white" stroke="#e5e7eb" />
+            <text x="640" y="130" fontFamily="Arial" fontSize="18" fill="#333">Distribution</text>
+            <circle cx="900" cy="250" r="100" fill="none" stroke="#e5e7eb" strokeWidth="30" />
+            <path d="M900,250 L900,150 A100,100 0 0,1 985,303 z" fill="#ec4899" />
+            <path d="M900,250 L985,303 A100,100 0 0,1 815,303 z" fill="#f97316" />
+            <path d="M900,250 L815,303 A100,100 0 0,1 900,150 z" fill="#8b5cf6" />
+            
+            {/* Data tables */}
+            <rect x="30" y="420" width="1140" height="350" rx="8" fill="white" stroke="#e5e7eb" />
+            <text x="50" y="450" fontFamily="Arial" fontSize="18" fill="#333">Transportation Summary</text>
+            <line x1="50" y1="470" x2="1150" y2="470" stroke="#e5e7eb" strokeWidth="2" />
+            
+            {/* Table rows */}
+            <rect x="50" y="490" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="270" y="490" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="490" y="490" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="710" y="490" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="930" y="490" width="200" height="30" fill="#f3f4f6" rx="4" />
+            
+            <rect x="50" y="530" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="270" y="530" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="490" y="530" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="710" y="530" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="930" y="530" width="200" height="30" fill="#f8fafc" rx="4" />
+            
+            <rect x="50" y="570" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="270" y="570" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="490" y="570" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="710" y="570" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="930" y="570" width="200" height="30" fill="#f3f4f6" rx="4" />
+            
+            <rect x="50" y="610" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="270" y="610" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="490" y="610" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="710" y="610" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="930" y="610" width="200" height="30" fill="#f8fafc" rx="4" />
+            
+            <rect x="50" y="650" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="270" y="650" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="490" y="650" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="710" y="650" width="200" height="30" fill="#f3f4f6" rx="4" />
+            <rect x="930" y="650" width="200" height="30" fill="#f3f4f6" rx="4" />
+            
+            <rect x="50" y="690" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="270" y="690" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="490" y="690" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="710" y="690" width="200" height="30" fill="#f8fafc" rx="4" />
+            <rect x="930" y="690" width="200" height="30" fill="#f8fafc" rx="4" />
+          </svg>
         </div>
         
         <ul className="space-y-2 ml-8 list-disc mt-4">
