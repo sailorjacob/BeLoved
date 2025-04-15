@@ -250,10 +250,10 @@ export default function AboutPage() {
             {/* Chart area */}
             <rect x="620" y="100" width="550" height="300" rx="8" fill="white" stroke="#e5e7eb" />
             <text x="640" y="130" fontFamily="Arial" fontSize="18" fill="#333">Distribution</text>
-            <circle cx="900" cy="250" r="100" fill="none" stroke="#e5e7eb" strokeWidth="30" />
-            <path d="M900,250 L900,150 A100,100 0 0,1 985,303 z" fill="#ec4899" />
-            <path d="M900,250 L985,303 A100,100 0 0,1 815,303 z" fill="#f97316" />
-            <path d="M900,250 L815,303 A100,100 0 0,1 900,150 z" fill="#8b5cf6" />
+            <circle cx="900" cy="250" r="100" fill="none" stroke="#f3f4f6" strokeWidth="30" />
+            <path d="M900,250 L900,150 A100,100 0 0,1 985,303 z" fill="#ffffff" />
+            <path d="M900,250 L985,303 A100,100 0 0,1 815,303 z" fill="#f9fafb" />
+            <path d="M900,250 L815,303 A100,100 0 0,1 900,150 z" fill="#f3f4f6" />
             
             {/* Data tables */}
             <rect x="30" y="420" width="1140" height="350" rx="8" fill="white" stroke="#e5e7eb" />
