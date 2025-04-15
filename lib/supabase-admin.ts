@@ -21,6 +21,8 @@ export const supabaseAdmin = createClient<Database>(
   }
 )
 
+// Function to ensure a user profile exists
+// This function is used in auth-service.ts to create profiles for new users
 export async function ensureUserProfile(userId: string) {
   try {
     // Check if profile exists
