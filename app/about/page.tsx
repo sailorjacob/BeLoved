@@ -27,6 +27,18 @@ export default function AboutPage() {
         <p className="text-lg font-medium tracking-tight text-gray-600 mt-2">
           A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
         </p>
+        
+        <div className="mt-4 px-3 py-2 bg-blue-50 border border-blue-100 rounded-md">
+          <p className="text-blue-800 text-sm">
+            <strong>BeLoved is live and in action!</strong> Our pilot program is currently running in Bloomington, Indiana.
+            <a href="/preview-dashboard" className="ml-3 inline-flex items-center px-3 py-1 text-xs font-medium bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-50 transition-colors">
+              Preview Dashboard
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
+              </svg>
+            </a>
+          </p>
+        </div>
       </div>
       
       <div className="border-t border-gray-200 my-8"></div>
