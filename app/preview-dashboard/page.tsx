@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ArrowLeft } from 'lucide-react'
@@ -28,19 +28,44 @@ import {
   Car,
   Calendar,
   DollarSign,
-  PhoneCall,
   AlertTriangle,
   CheckCircle2,
   Clock,
   TrendingUp,
   Activity,
   Star,
-  BarChart3,
   Headphones,
   UserPlus,
-  MapPin,
   FileText,
+  TableIcon,
+  BookOpen,
+  History,
+  Ban,
+  Target,
+  Cog,
+  ClipboardList,
+  PhoneCall,
+  MapPin,
+  BarChart3,
 } from 'lucide-react'
+import {
+  LineChart,
+  Line,
+  AreaChart,
+  Area,
+  BarChart,
+  Bar,
+  PieChart,
+  Pie,
+  Cell,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer
+} from 'recharts'
+import { format } from 'date-fns'
 
 // Mockup stats with realistic data
 const demoStats = {
@@ -67,30 +92,41 @@ const demoStats = {
   customer_satisfaction_rate: 94.6
 }
 
-// Mockup revenue trend data
-const demoRevenueData = [
-  { date: "Jan 1", revenue: 2100, rides: 22, provider_revenue: 970, driver_earnings: 840, insurance_claims: 330 },
-  { date: "Jan 2", revenue: 2340, rides: 24, provider_revenue: 1080, driver_earnings: 940, insurance_claims: 365 },
-  { date: "Jan 3", revenue: 2280, rides: 23, provider_revenue: 1050, driver_earnings: 910, insurance_claims: 356 },
-  { date: "Jan 4", revenue: 2560, rides: 26, provider_revenue: 1180, driver_earnings: 1020, insurance_claims: 397 },
-  { date: "Jan 5", revenue: 2680, rides: 27, provider_revenue: 1240, driver_earnings: 1070, insurance_claims: 417 },
-  { date: "Jan 6", revenue: 2430, rides: 25, provider_revenue: 1120, driver_earnings: 970, insurance_claims: 378 },
-  { date: "Jan 7", revenue: 2790, rides: 28, provider_revenue: 1290, driver_earnings: 1120, insurance_claims: 434 },
-  { date: "Jan 8", revenue: 2950, rides: 30, provider_revenue: 1360, driver_earnings: 1180, insurance_claims: 458 },
-  { date: "Jan 9", revenue: 2840, rides: 29, provider_revenue: 1310, driver_earnings: 1140, insurance_claims: 442 },
-  { date: "Jan 10", revenue: 3100, rides: 31, provider_revenue: 1430, driver_earnings: 1240, insurance_claims: 481 },
-  { date: "Jan 11", revenue: 3260, rides: 33, provider_revenue: 1500, driver_earnings: 1300, insurance_claims: 508 },
-  { date: "Jan 12", revenue: 3140, rides: 32, provider_revenue: 1450, driver_earnings: 1260, insurance_claims: 490 },
-  { date: "Jan 13", revenue: 3470, rides: 35, provider_revenue: 1600, driver_earnings: 1390, insurance_claims: 539 },
-  { date: "Jan 14", revenue: 3380, rides: 34, provider_revenue: 1560, driver_earnings: 1350, insurance_claims: 525 }
-]
+// Generate last 30 days of mock revenue data
+const generateLastThirtyDaysData = () => {
+  const data = [];
+  const today = new Date();
+  
+  for (let i = 29; i >= 0; i--) {
+    const date = new Date();
+    date.setDate(today.getDate() - i);
+    
+    // Random values but with a realistic pattern
+    const rides = Math.floor(Math.random() * 20) + 40;
+    const revenue = Math.floor(Math.random() * 1000) + 2500;
+    const provider_revenue = Math.round(revenue * 0.46);
+    const driver_earnings = Math.round(revenue * 0.4);
+    
+    data.push({
+      date: date.toISOString().split('T')[0],
+      revenue: revenue,
+      provider_revenue: provider_revenue,
+      driver_earnings: driver_earnings,
+      rides: rides
+    });
+  }
+  
+  return data;
+};
+
+const demoRevenueData = generateLastThirtyDaysData();
 
 // Mockup ride status distribution
-const demoRideStatusData = [
-  { status: "completed", count: 1284 },
-  { status: "in_progress", count: 87 },
-  { status: "scheduled", count: 47 },
-  { status: "cancelled", count: 64 }
+const demoRideStatuses = [
+  { name: "Completed", value: 1284 },
+  { name: "In Progress", value: 87 },
+  { name: "Scheduled", value: 47 },
+  { name: "Cancelled", value: 64 }
 ]
 
 // Mockup recent rides
@@ -115,12 +151,26 @@ const demoSupportTickets = [
 
 export default function PreviewDashboardPage() {
   const router = useRouter()
-  const [activeTab, setActiveTab] = useState('overview')
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
   const [isMounted, setIsMounted] = useState(false)
+  const [stats, setStats] = useState(null)
+  const [revenueData, setRevenueData] = useState([])
+  const [rideStatuses, setRideStatuses] = useState([])
   
-  // Set mounted state after initial render
+  // Set mounted state after initial render and load demo data
   useEffect(() => {
     setIsMounted(true)
+    
+    // Simulate loading
+    const timer = setTimeout(() => {
+      setIsLoading(false)
+      setStats(demoStats)
+      setRevenueData(demoRevenueData)
+      setRideStatuses(demoRideStatuses)
+    }, 1500);
+    
+    return () => clearTimeout(timer);
   }, [])
 
   const getStatusColor = (status: string) => {
@@ -159,13 +209,13 @@ export default function PreviewDashboardPage() {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Demo notification */}
+      {/* Demo notification banner */}
       <div className="bg-yellow-50 border-b border-yellow-200">
         <div className="max-w-7xl mx-auto py-2 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
             <p className="text-yellow-700 text-sm font-medium">
               <span className="md:hidden">Demo preview - non-functional</span>
-              <span className="hidden md:inline">This is a non-functional preview of the BeLoved admin dashboard. All data shown is fictional.</span>
+              <span className="hidden md:inline">This is a non-functional preview of the BeLoved super admin dashboard. All data shown is fictional.</span>
             </p>
             <Button 
               variant="outline" 
@@ -188,326 +238,765 @@ export default function PreviewDashboardPage() {
               <span className="flex-shrink-0 bg-red-100 p-2 rounded-md text-red-600 mr-3">
                 <Building2 className="h-5 w-5" />
               </span>
-              BeLoved Admin Dashboard
+              BeLoved Super Admin Dashboard
               <span className="ml-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">Preview</span>
             </h1>
           </div>
         </div>
       </header>
       
-      {/* Tab navigation */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {['overview', 'rides', 'drivers', 'members', 'providers', 'support'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`${
-                  activeTab === tab
-                    ? 'border-red-500 text-red-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                } whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm capitalize`}
-              >
-                {tab}
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-      
       {/* Main content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-          <TabsContent value="overview" className="space-y-4">
-            {/* Key Stats Cards */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-                  <DollarSign className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{formatCurrency(demoStats.total_revenue)}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatCurrency(demoStats.revenue_today)} today
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Completed Rides</CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{demoStats.completed_rides}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {demoStats.rides_today} rides today
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
-                  <Car className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{demoStats.active_drivers}</div>
-                  <p className="text-xs text-muted-foreground">
-                    {Math.round(demoStats.driver_utilization_rate)}% utilization rate
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Support Tickets</CardTitle>
-                  <Headphones className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{demoStats.pending_support_tickets}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Open tickets requiring attention
-                  </p>
-                </CardContent>
-              </Card>
+        <div className="space-y-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-muted-foreground">System-wide analytics and management</p>
             </div>
-
-            {/* Secondary Stats Cards */}
-            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Members</CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">284</div>
-                  <div className="mt-1 flex items-center space-x-2">
-                    <span className="text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full flex items-center">
-                      <TrendingUp className="h-3 w-3 mr-1" />
-                      +8.2%
-                    </span>
-                    <span className="text-xs text-muted-foreground">
-                      this month
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Providers</CardTitle>
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{demoStats.total_providers}</div>
-                  <div className="mt-1 flex items-center space-x-2">
-                    <span className="text-xs text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full">
-                      {demoStats.active_providers} active
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
-                  <Activity className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{demoStats.monthly_growth_rate}%</div>
-                  <div className="mt-1 flex items-center space-x-2">
-                    <span className="text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full flex items-center">
-                      MoM
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
+            <div className="flex space-x-4">
+              <Button variant="destructive" asChild>
+                <a href="#" onClick={(e) => e.preventDefault()}>
+                  Manage Providers
+                </a>
+              </Button>
+              <Button variant="destructive" asChild>
+                <a href="#" onClick={(e) => e.preventDefault()}>
+                  Members Directory
+                </a>
+              </Button>
+              <Button className="bg-purple-600 hover:bg-purple-700 text-white" asChild>
+                <a href="#" onClick={(e) => e.preventDefault()}>
+                  AI Support
+                </a>
+              </Button>
             </div>
+          </div>
 
-            {/* Chart Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle>Revenue Trend</CardTitle>
-                <CardDescription>Daily revenue for the past 14 days</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="h-[300px]">
-                  {isMounted && (
-                    <div className="w-full h-full">
-                      <div className="w-full h-[300px] relative">
-                        {/* Placeholder chart */}
-                        <div className="absolute inset-0">
-                          <svg className="w-full h-full" viewBox="0 0 1000 300">
-                            {/* X and Y axes */}
-                            <line x1="50" y1="250" x2="950" y2="250" stroke="#e5e7eb" strokeWidth="2" />
-                            <line x1="50" y1="250" x2="50" y2="50" stroke="#e5e7eb" strokeWidth="2" />
-                            
-                            {/* Y axis labels */}
-                            <text x="20" y="250" fontSize="12" fill="#6b7280" textAnchor="end">$0</text>
-                            <text x="20" y="200" fontSize="12" fill="#6b7280" textAnchor="end">$1,000</text>
-                            <text x="20" y="150" fontSize="12" fill="#6b7280" textAnchor="end">$2,000</text>
-                            <text x="20" y="100" fontSize="12" fill="#6b7280" textAnchor="end">$3,000</text>
-                            <text x="20" y="50" fontSize="12" fill="#6b7280" textAnchor="end">$4,000</text>
-                            
-                            {/* X axis labels - every other day to avoid clutter */}
-                            <text x="100" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 1</text>
-                            <text x="200" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 3</text>
-                            <text x="300" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 5</text>
-                            <text x="400" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 7</text>
-                            <text x="500" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 9</text>
-                            <text x="600" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 11</text>
-                            <text x="700" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 13</text>
-                            
-                            {/* Revenue Line */}
-                            <path 
-                              d="M100,200 L150,185 L200,190 L250,175 L300,165 L350,180 L400,160 L450,150 L500,155 L550,140 L600,130 L650,135 L700,120 L750,125" 
-                              fill="none" 
-                              stroke="#ef4444" 
-                              strokeWidth="3" 
-                              strokeLinecap="round" 
-                              strokeLinejoin="round" 
-                            />
-                            
-                            {/* Area under Revenue Line */}
-                            <path 
-                              d="M100,200 L150,185 L200,190 L250,175 L300,165 L350,180 L400,160 L450,150 L500,155 L550,140 L600,130 L650,135 L700,120 L750,125 L750,250 L100,250 Z" 
-                              fill="url(#revenueGradient)" 
-                            />
-                            
-                            {/* Data points */}
-                            <circle cx="100" cy="200" r="4" fill="#ef4444" />
-                            <circle cx="150" cy="185" r="4" fill="#ef4444" />
-                            <circle cx="200" cy="190" r="4" fill="#ef4444" />
-                            <circle cx="250" cy="175" r="4" fill="#ef4444" />
-                            <circle cx="300" cy="165" r="4" fill="#ef4444" />
-                            <circle cx="350" cy="180" r="4" fill="#ef4444" />
-                            <circle cx="400" cy="160" r="4" fill="#ef4444" />
-                            <circle cx="450" cy="150" r="4" fill="#ef4444" />
-                            <circle cx="500" cy="155" r="4" fill="#ef4444" />
-                            <circle cx="550" cy="140" r="4" fill="#ef4444" />
-                            <circle cx="600" cy="130" r="4" fill="#ef4444" />
-                            <circle cx="650" cy="135" r="4" fill="#ef4444" />
-                            <circle cx="700" cy="120" r="4" fill="#ef4444" />
-                            <circle cx="750" cy="125" r="4" fill="#ef4444" />
-                            
-                            {/* Revenue gradient */}
-                            <defs>
-                              <linearGradient id="revenueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                                <stop offset="0%" stopColor="rgba(239, 68, 68, 0.3)" />
-                                <stop offset="100%" stopColor="rgba(239, 68, 68, 0)" />
-                              </linearGradient>
-                            </defs>
-                          </svg>
+          <Tabs value="overview" className="space-y-4">
+            <TabsContent value="overview" className="space-y-4">
+              {/* Key Stats Cards */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(demoStats.total_revenue)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {formatCurrency(demoStats.revenue_today)} today
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Completed Rides</CardTitle>
+                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{demoStats.completed_rides}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {demoStats.rides_today} rides today
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Active Drivers</CardTitle>
+                    <Car className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{demoStats.active_drivers}</div>
+                    <p className="text-xs text-muted-foreground">
+                      {Math.round(demoStats.driver_utilization_rate)}% utilization rate
+                    </p>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Support Tickets</CardTitle>
+                    <Headphones className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{demoStats.pending_support_tickets}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Open tickets requiring attention
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Secondary Stats Cards */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Members</CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">284</div>
+                    <div className="mt-1 flex items-center space-x-2">
+                      <span className="text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full flex items-center">
+                        <TrendingUp className="h-3 w-3 mr-1" />
+                        +8.2%
+                      </span>
+                      <span className="text-xs text-muted-foreground">
+                        this month
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Providers</CardTitle>
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{demoStats.total_providers}</div>
+                    <div className="mt-1 flex items-center space-x-2">
+                      <span className="text-xs text-blue-700 bg-blue-100 px-1.5 py-0.5 rounded-full">
+                        {demoStats.active_providers} active
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Growth Rate</CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{demoStats.monthly_growth_rate}%</div>
+                    <div className="mt-1 flex items-center space-x-2">
+                      <span className="text-xs text-green-700 bg-green-100 px-1.5 py-0.5 rounded-full flex items-center">
+                        MoM
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Chart Card */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Revenue Trend</CardTitle>
+                  <CardDescription>Daily revenue for the past 14 days</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="h-[300px]">
+                    {isMounted && (
+                      <div className="w-full h-full">
+                        <div className="w-full h-[300px] relative">
+                          {/* Placeholder chart */}
+                          <div className="absolute inset-0">
+                            <svg className="w-full h-full" viewBox="0 0 1000 300">
+                              {/* X and Y axes */}
+                              <line x1="50" y1="250" x2="950" y2="250" stroke="#e5e7eb" strokeWidth="2" />
+                              <line x1="50" y1="250" x2="50" y2="50" stroke="#e5e7eb" strokeWidth="2" />
+                              
+                              {/* Y axis labels */}
+                              <text x="20" y="250" fontSize="12" fill="#6b7280" textAnchor="end">$0</text>
+                              <text x="20" y="200" fontSize="12" fill="#6b7280" textAnchor="end">$1,000</text>
+                              <text x="20" y="150" fontSize="12" fill="#6b7280" textAnchor="end">$2,000</text>
+                              <text x="20" y="100" fontSize="12" fill="#6b7280" textAnchor="end">$3,000</text>
+                              <text x="20" y="50" fontSize="12" fill="#6b7280" textAnchor="end">$4,000</text>
+                              
+                              {/* X axis labels - every other day to avoid clutter */}
+                              <text x="100" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 1</text>
+                              <text x="200" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 3</text>
+                              <text x="300" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 5</text>
+                              <text x="400" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 7</text>
+                              <text x="500" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 9</text>
+                              <text x="600" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 11</text>
+                              <text x="700" y="270" fontSize="12" fill="#6b7280" textAnchor="middle">Jan 13</text>
+                              
+                              {/* Revenue Line */}
+                              <path 
+                                d="M100,200 L150,185 L200,190 L250,175 L300,165 L350,180 L400,160 L450,150 L500,155 L550,140 L600,130 L650,135 L700,120 L750,125" 
+                                fill="none" 
+                                stroke="#ef4444" 
+                                strokeWidth="3" 
+                                strokeLinecap="round" 
+                                strokeLinejoin="round" 
+                              />
+                              
+                              {/* Area under Revenue Line */}
+                              <path 
+                                d="M100,200 L150,185 L200,190 L250,175 L300,165 L350,180 L400,160 L450,150 L500,155 L550,140 L600,130 L650,135 L700,120 L750,125 L750,250 L100,250 Z" 
+                                fill="url(#revenueGradient)" 
+                              />
+                              
+                              {/* Data points */}
+                              <circle cx="100" cy="200" r="4" fill="#ef4444" />
+                              <circle cx="150" cy="185" r="4" fill="#ef4444" />
+                              <circle cx="200" cy="190" r="4" fill="#ef4444" />
+                              <circle cx="250" cy="175" r="4" fill="#ef4444" />
+                              <circle cx="300" cy="165" r="4" fill="#ef4444" />
+                              <circle cx="350" cy="180" r="4" fill="#ef4444" />
+                              <circle cx="400" cy="160" r="4" fill="#ef4444" />
+                              <circle cx="450" cy="150" r="4" fill="#ef4444" />
+                              <circle cx="500" cy="155" r="4" fill="#ef4444" />
+                              <circle cx="550" cy="140" r="4" fill="#ef4444" />
+                              <circle cx="600" cy="130" r="4" fill="#ef4444" />
+                              <circle cx="650" cy="135" r="4" fill="#ef4444" />
+                              <circle cx="700" cy="120" r="4" fill="#ef4444" />
+                              <circle cx="750" cy="125" r="4" fill="#ef4444" />
+                              
+                              {/* Revenue gradient */}
+                              <defs>
+                                <linearGradient id="revenueGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                  <stop offset="0%" stopColor="rgba(239, 68, 68, 0.3)" />
+                                  <stop offset="100%" stopColor="rgba(239, 68, 68, 0)" />
+                                </linearGradient>
+                              </defs>
+                            </svg>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Tables Row */}
+              <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                {/* Recent Rides */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Rides</CardTitle>
+                    <CardDescription>Latest ride activity across the platform</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Time</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {demoRecentRides.map((ride) => (
+                          <TableRow key={ride.id}>
+                            <TableCell className="font-medium">{ride.id}</TableCell>
+                            <TableCell>{formatDate(ride.created_at)}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={getStatusColor(ride.status)}>
+                                {ride.status.replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-right">{formatCurrency(ride.cost)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                {/* Support Tickets */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Support Tickets</CardTitle>
+                    <CardDescription>Latest customer support requests</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Issue</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Priority</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {demoSupportTickets.map((ticket) => (
+                          <TableRow key={ticket.id}>
+                            <TableCell className="font-medium">{ticket.id}</TableCell>
+                            <TableCell className="max-w-[150px] truncate" title={ticket.title}>
+                              {ticket.title}
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={getStatusColor(ticket.status)}>
+                                {ticket.status.replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={
+                                ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
+                                ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-blue-100 text-blue-800'
+                              }>
+                                {ticket.priority}
+                              </Badge>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Support and Alerts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Recent Support Tickets</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>ID</TableHead>
+                          <TableHead>Issue</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead>Created</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {/* Demo support tickets */}
+                        <TableRow>
+                          <TableCell colSpan={4} className="text-center text-muted-foreground">
+                            Support ticket system coming soon
+                          </TableCell>
+                        </TableRow>
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>System Alerts</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-4 rounded-md border p-4">
+                        <CheckCircle2 className="h-5 w-5 text-green-500" />
+                        <div className="flex-1 space-y-1">
+                          <p className="text-sm font-medium">All Systems Operational</p>
+                          <p className="text-sm text-muted-foreground">
+                            Last checked: {format(new Date(), 'PPp')}
+                          </p>
                         </div>
                       </div>
                     </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Tables Row */}
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-              {/* Recent Rides */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Recent Rides</CardTitle>
-                  <CardDescription>Latest ride activity across the platform</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Time</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Amount</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {demoRecentRides.map((ride) => (
-                        <TableRow key={ride.id}>
-                          <TableCell className="font-medium">{ride.id}</TableCell>
-                          <TableCell>{formatDate(ride.created_at)}</TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getStatusColor(ride.status)}>
-                              {ride.status.replace('_', ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-right">{formatCurrency(ride.cost)}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-
-              {/* Support Tickets */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Support Tickets</CardTitle>
-                  <CardDescription>Latest customer support requests</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>ID</TableHead>
-                        <TableHead>Issue</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Priority</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {demoSupportTickets.map((ticket) => (
-                        <TableRow key={ticket.id}>
-                          <TableCell className="font-medium">{ticket.id}</TableCell>
-                          <TableCell className="max-w-[150px] truncate" title={ticket.title}>
-                            {ticket.title}
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={getStatusColor(ticket.status)}>
-                              {ticket.status.replace('_', ' ')}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline" className={
-                              ticket.priority === 'high' ? 'bg-red-100 text-red-800' :
-                              ticket.priority === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                              'bg-blue-100 text-blue-800'
-                            }>
-                              {ticket.priority}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
-            </div>
-          </TabsContent>
-          
-          {/* Other Tabs (Just placeholders) */}
-          {['rides', 'drivers', 'members', 'providers', 'support'].map((tab) => (
-            <TabsContent key={tab} value={tab} className="h-[600px] flex items-center justify-center">
-              <div className="text-center p-8 max-w-md">
-                <div className="mx-auto mb-4 w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center">
-                  {tab === 'rides' && <Calendar className="h-6 w-6 text-gray-500" />}
-                  {tab === 'drivers' && <Car className="h-6 w-6 text-gray-500" />}
-                  {tab === 'members' && <Users className="h-6 w-6 text-gray-500" />}
-                  {tab === 'providers' && <Building2 className="h-6 w-6 text-gray-500" />}
-                  {tab === 'support' && <Headphones className="h-6 w-6 text-gray-500" />}
-                </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2 capitalize">{tab} Management</h3>
-                <p className="text-gray-500 mb-4">
-                  This is a preview of the {tab} management tab. In the actual dashboard, this would show detailed {tab} data and management options.
-                </p>
-                <Badge className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                  Preview Only
-                </Badge>
+                  </CardContent>
+                </Card>
               </div>
+
+              {/* Charts Section */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+                  <CardHeader className="border-b bg-slate-50/50">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <CardTitle className="text-lg font-bold text-slate-800">Revenue & Earnings Trend</CardTitle>
+                        <CardDescription className="text-slate-500">Last 30 days of financial activity</CardDescription>
+                      </div>
+                      <div className="flex items-center text-xs space-x-3">
+                        <div className="flex items-center">
+                          <div className="h-3 w-3 rounded-full bg-red-500 mr-1"></div>
+                          <span>Revenue</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="h-3 w-3 rounded-full bg-pink-400 mr-1"></div>
+                          <span>Provider</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="h-3 w-3 rounded-full bg-rose-300 mr-1"></div>
+                          <span>Driver</span>
+                        </div>
+                        <div className="flex items-center">
+                          <div className="h-3 w-3 rounded-full bg-red-300 mr-1"></div>
+                          <span>Rides</span>
+                        </div>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="h-[320px]">
+                      {isMounted && (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <LineChart data={revenueData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                            <defs>
+                              <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#8884d8" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#8884d8" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorProvider" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#4ade80" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#4ade80" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorDriver" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#fbbf24" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#fbbf24" stopOpacity={0}/>
+                              </linearGradient>
+                              <linearGradient id="colorRides" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#60a5fa" stopOpacity={0.8}/>
+                                <stop offset="95%" stopColor="#60a5fa" stopOpacity={0}/>
+                              </linearGradient>
+                            </defs>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                            <XAxis 
+                              dataKey="date" 
+                              tickFormatter={(value) => format(new Date(value), 'MMM d')}
+                              tick={{ fontSize: 12, fill: '#6b7280' }}
+                              axisLine={{ stroke: '#e5e7eb' }}
+                              tickLine={{ stroke: '#e5e7eb' }}
+                            />
+                            <YAxis 
+                              yAxisId="money" 
+                              tick={{ fontSize: 12, fill: '#6b7280' }}
+                              axisLine={{ stroke: '#e5e7eb' }}
+                              tickLine={{ stroke: '#e5e7eb' }}
+                              tickFormatter={(value) => `$${value}`}
+                              domain={[0, 'dataMax + 100']}
+                            />
+                            <YAxis 
+                              yAxisId="rides" 
+                              orientation="right" 
+                              tick={{ fontSize: 12, fill: '#6b7280' }}
+                              axisLine={{ stroke: '#e5e7eb' }}
+                              tickLine={{ stroke: '#e5e7eb' }}
+                              domain={[0, 'dataMax + 5']}
+                            />
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'white', 
+                                border: 'none', 
+                                borderRadius: '8px', 
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                              }}
+                              formatter={(value, name) => {
+                                if (name === 'Number of Rides') return [value, name];
+                                return [`$${typeof value === 'number' ? value.toFixed(2) : value}`, name];
+                              }}
+                              labelFormatter={(label) => format(new Date(label), 'MMM d, yyyy')}
+                            />
+                            <Line
+                              yAxisId="money"
+                              type="monotone"
+                              dataKey="revenue"
+                              stroke="#ef4444"
+                              strokeWidth={3}
+                              name="Total Revenue ($)"
+                              dot={false}
+                              activeDot={{ r: 6, stroke: '#ef4444', strokeWidth: 2, fill: 'white' }}
+                            />
+                            <Line
+                              yAxisId="money"
+                              type="monotone"
+                              dataKey="provider_revenue"
+                              stroke="#f472b6"
+                              strokeWidth={3}
+                              name="Provider Revenue ($)"
+                              dot={false}
+                              activeDot={{ r: 6, stroke: '#f472b6', strokeWidth: 2, fill: 'white' }}
+                            />
+                            <Line
+                              yAxisId="money"
+                              type="monotone"
+                              dataKey="driver_earnings"
+                              stroke="#fda4af"
+                              strokeWidth={3}
+                              name="Driver Earnings ($)"
+                              dot={false}
+                              activeDot={{ r: 6, stroke: '#fda4af', strokeWidth: 2, fill: 'white' }}
+                            />
+                            <Line
+                              yAxisId="rides"
+                              type="monotone"
+                              dataKey="rides"
+                              stroke="#fca5a5"
+                              strokeWidth={3}
+                              name="Number of Rides"
+                              dot={false}
+                              activeDot={{ r: 6, stroke: '#fca5a5', strokeWidth: 2, fill: 'white' }}
+                            />
+                          </LineChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-white to-slate-50">
+                  <CardHeader className="border-b bg-slate-50/50">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <CardTitle className="text-lg font-bold text-slate-800">Revenue Distribution</CardTitle>
+                        <CardDescription className="text-slate-500">Breakdown of revenue allocation</CardDescription>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-6">
+                    <div className="h-[250px] mb-8">
+                      {isMounted && (
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <defs>
+                              <linearGradient id="colorPie1" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#f472b6" stopOpacity={1}/>
+                                <stop offset="100%" stopColor="#f9a8d4" stopOpacity={1}/>
+                              </linearGradient>
+                              <linearGradient id="colorPie2" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#fda4af" stopOpacity={1}/>
+                                <stop offset="100%" stopColor="#fecdd3" stopOpacity={1}/>
+                              </linearGradient>
+                              <linearGradient id="colorPie3" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
+                                <stop offset="100%" stopColor="#fca5a5" stopOpacity={1}/>
+                              </linearGradient>
+                            </defs>
+                            <Pie
+                              data={[
+                                {
+                                  name: 'Provider Revenue',
+                                  value: stats?.total_providers_revenue || 0
+                                },
+                                {
+                                  name: 'Driver Earnings',
+                                  value: stats?.total_drivers_earnings || 0
+                                },
+                                {
+                                  name: 'Insurance Claims',
+                                  value: stats?.insurance_claims_amount || 0
+                                }
+                              ]}
+                              dataKey="value"
+                              nameKey="name"
+                              cx="50%"
+                              cy="50%"
+                              innerRadius={70}
+                              outerRadius={100}
+                              paddingAngle={2}
+                              cornerRadius={6}
+                              label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
+                              labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+                            >
+                              <Cell fill="url(#colorPie1)" />
+                              <Cell fill="url(#colorPie2)" />
+                              <Cell fill="url(#colorPie3)" />
+                            </Pie>
+                            <Tooltip 
+                              contentStyle={{ 
+                                backgroundColor: 'white', 
+                                border: 'none', 
+                                borderRadius: '8px', 
+                                boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
+                              }}
+                              formatter={(value) => [
+                                `$${typeof value === 'number' ? value.toFixed(2) : value}`, 
+                                'Amount'
+                              ]}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      )}
+                    </div>
+                    <div className="flex justify-center space-x-6 pt-2 pb-2">
+                      <div className="flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-pink-400 mr-2"></div>
+                        <span className="text-sm">Provider Revenue</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-rose-300 mr-2"></div>
+                        <span className="text-sm">Driver Earnings</span>
+                      </div>
+                      <div className="flex items-center">
+                        <div className="h-3 w-3 rounded-full bg-red-500 mr-2"></div>
+                        <span className="text-sm">Insurance Claims</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Stats Dashboard */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Total Revenue
+                    </CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${stats?.total_revenue.toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      +${stats?.revenue_today.toFixed(2)} today
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Provider Revenue
+                    </CardTitle>
+                    <Building2 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${(stats?.total_providers_revenue || 0).toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      ${((stats?.total_providers_revenue || 0) / (stats?.total_providers || 1)).toFixed(2)} avg/provider
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Driver Earnings
+                    </CardTitle>
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${(stats?.total_drivers_earnings || 0).toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      ${((stats?.total_drivers_earnings || 0) / (stats?.total_drivers || 1)).toFixed(2)} avg/driver
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Insurance Claims
+                    </CardTitle>
+                    <AlertTriangle className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${(stats?.insurance_claims_amount || 0).toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      ${((stats?.insurance_claims_amount || 0) / (stats?.total_rides || 1)).toFixed(2)} avg/ride
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Performance Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Monthly Growth
+                    </CardTitle>
+                    <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.monthly_growth_rate.toFixed(1)}%</div>
+                    <p className="text-xs text-muted-foreground">
+                      Month over month revenue growth
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Driver Utilization
+                    </CardTitle>
+                    <Activity className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{stats?.driver_utilization_rate.toFixed(1)}%</div>
+                    <p className="text-xs text-muted-foreground">
+                      Average rides per active driver
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Avg. Revenue/Ride
+                    </CardTitle>
+                    <DollarSign className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">${stats?.average_ride_cost.toFixed(2)}</div>
+                    <p className="text-xs text-muted-foreground">
+                      Average revenue per completed ride
+                    </p>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Completion Rate
+                    </CardTitle>
+                    <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">
+                      {stats ? ((stats.completed_rides / stats.total_rides) * 100).toFixed(1) : 0}%
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Percentage of completed rides
+                    </p>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* GeographicNodes placeholder */}
+              <Card>
+                <CardHeader>
+                  <CardTitle>Geographic Distribution</CardTitle>
+                  <CardDescription>Service areas and ride density map</CardDescription>
+                </CardHeader>
+                <CardContent className="h-[300px] flex items-center justify-center bg-slate-50">
+                  <div className="text-center p-8">
+                    <MapPin className="h-8 w-8 text-slate-400 mx-auto mb-4" />
+                    <p className="text-slate-500">Geographic map visualization would appear here</p>
+                    <p className="text-sm text-slate-400 mt-2">Preview mode - actual map not available</p>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
-          ))}
-        </Tabs>
+          </Tabs>
+        </div>
+
+        {isLoading ? (
+          <div className="flex justify-center items-center min-h-[200px]">
+            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
+            <span className="ml-2">Loading dashboard data...</span>
+          </div>
+        ) : (
+          <>
+            {error && (
+              <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg p-4 mb-6">
+                <h3 className="font-medium mb-2">Dashboard Error</h3>
+                <p>Failed to fetch dashboard data. Using demo data instead.</p>
+                <div className="mt-3 flex space-x-4">
+                  <Button 
+                    size="sm" 
+                    variant="destructive" 
+                    onClick={() => {
+                      setIsLoading(true);
+                      setTimeout(() => {
+                        setIsLoading(false);
+                        setError(null);
+                      }, 1500);
+                    }}
+                  >
+                    Retry
+                  </Button>
+                  <a 
+                    href="#" 
+                    className="inline-flex items-center justify-center text-sm font-medium border border-input bg-background hover:bg-accent hover:text-accent-foreground rounded-md h-9 px-3"
+                    onClick={(e) => e.preventDefault()}
+                  >
+                    Go to Provider Management
+                  </a>
+                </div>
+              </div>
+            )}
+          </>
+        )}
       </main>
     </div>
   )
