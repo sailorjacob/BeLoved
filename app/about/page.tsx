@@ -233,13 +233,10 @@ export default function AboutPage() {
         </p>
         
         <div className="my-6">
-          <Image 
+          <img 
             src="/images/about-preview.png" 
             alt="BeLoved Analytics Dashboard"
-            width={1000}
-            height={600}
             className="w-full h-auto rounded-lg" 
-            priority
           />
         </div>
         
