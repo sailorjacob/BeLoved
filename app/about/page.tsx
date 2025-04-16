@@ -73,6 +73,13 @@ export default function AboutPage() {
             <text x="30" y="45" fontFamily="Arial" fontSize="24" fill="#333">BeLoved Admin Dashboard</text>
             <circle cx="1150" cy="40" r="20" fill="#d1d5db" />
             
+            {/* Action buttons */}
+            <rect x="990" y="100" width="180" height="45" rx="6" fill="#f1f5f9" stroke="#e2e8f0" />
+            <text x="1025" y="130" fontFamily="Arial" fontSize="14" fill="#64748b">Manage Providers</text>
+            
+            <rect x="990" y="155" width="180" height="45" rx="6" fill="#f1f5f9" stroke="#e2e8f0" />
+            <text x="1025" y="185" fontFamily="Arial" fontSize="14" fill="#64748b">Members Directory</text>
+            
             {/* Main content area */}
             <rect x="30" y="100" width="550" height="300" rx="8" fill="white" stroke="#e5e7eb" />
             <text x="50" y="130" fontFamily="Arial" fontSize="18" fill="#333">Revenue & Earnings</text>
@@ -82,10 +89,10 @@ export default function AboutPage() {
             {/* Chart area */}
             <rect x="620" y="100" width="550" height="300" rx="8" fill="white" stroke="#e5e7eb" />
             <text x="640" y="130" fontFamily="Arial" fontSize="18" fill="#333">Distribution</text>
-            <circle cx="900" cy="250" r="100" fill="none" stroke="#f3f4f6" strokeWidth="30" />
+            <circle cx="900" cy="250" r="100" fill="none" stroke="#f8fafc" strokeWidth="30" />
             <path d="M900,250 L900,150 A100,100 0 0,1 985,303 z" fill="#ffffff" />
-            <path d="M900,250 L985,303 A100,100 0 0,1 815,303 z" fill="#f9fafb" />
-            <path d="M900,250 L815,303 A100,100 0 0,1 900,150 z" fill="#f3f4f6" />
+            <path d="M900,250 L985,303 A100,100 0 0,1 815,303 z" fill="#f8fafc" />
+            <path d="M900,250 L815,303 A100,100 0 0,1 900,150 z" fill="#f1f5f9" />
             
             {/* Data tables */}
             <rect x="30" y="420" width="1140" height="350" rx="8" fill="white" stroke="#e5e7eb" />
