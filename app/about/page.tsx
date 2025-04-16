@@ -22,16 +22,16 @@ export default function AboutPage() {
       <div className="mb-14">
         <div className="mb-3 flex items-center gap-3">
           <span role="img" aria-label="van" className="text-3xl">🚐</span>
-          <h1 className="text-[32px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved <span role="img" aria-label="heart" className="text-red-500">❤️</span></h1>
+          <h1 className="text-[36px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved <span role="img" aria-label="heart" className="text-red-500">❤️</span></h1>
         </div>
-        <p className="text-lg font-medium tracking-tight text-gray-600 mt-2">
+        <p className="text-lg font-medium tracking-tight text-gray-600 mt-3 ml-1">
           A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
         </p>
         
-        <div className="mt-4 px-3 py-2 bg-blue-50 border border-blue-100 rounded-md">
-          <p className="text-blue-800 text-sm">
+        <div className="mt-4 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
+          <p className="text-gray-800 text-sm">
             <strong>BeLoved is live and in action!</strong> Our pilot program is currently running in Bloomington, Indiana.
-            <a href="/preview-dashboard" className="ml-3 inline-flex items-center px-3 py-1 text-xs font-medium bg-white border border-blue-300 text-blue-700 rounded hover:bg-blue-50 transition-colors">
+            <a href="/preview-dashboard" className="ml-3 inline-flex items-center px-3 py-1 text-xs font-medium bg-white border border-gray-300 text-gray-700 rounded hover:bg-gray-50 transition-colors">
               Preview Dashboard
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
@@ -46,7 +46,7 @@ export default function AboutPage() {
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="rocket" className="text-2xl">🚀</span>
-          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Future Vision</h2>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Future Vision:</h2>
         </div>
         
         <p className="text-base ml-1">
