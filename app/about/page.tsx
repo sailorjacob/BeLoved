@@ -33,11 +33,8 @@ export default function AboutPage() {
       <div className="mb-14">
         <div className="mb-3 flex items-center gap-3">
           <span role="img" aria-label="van" className="text-3xl">🚐</span>
-          <h1 className="text-[42px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved <span role="img" aria-label="heart" className="text-red-500">❤️</span></h1>
+          <h1 className="text-[42px] font-bold leading-10 text-[rgb(13,13,13)]">BeLoved <span role="img" aria-label="heart" className="text-red-500">❤️</span></h1>
         </div>
-        <p className="text-base font-medium tracking-tight text-gray-600 mt-3 mx-auto px-4 max-w-2xl">
-          A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
-        </p>
         
         <div className="mt-4 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
           <p className="text-gray-800 text-sm">
@@ -50,6 +47,10 @@ export default function AboutPage() {
             </a>
           </p>
         </div>
+        
+        <p className="text-base font-medium tracking-tight text-gray-600 mt-4 mx-auto px-4 max-w-2xl">
+          A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
+        </p>
       </div>
       
       <div className="border-t border-gray-200 my-8"></div>
