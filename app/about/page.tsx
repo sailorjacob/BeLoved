@@ -400,38 +400,6 @@ export default function AboutPage() {
           />
         </div>
       </div>
-
-      {/* Summary Section */}
-      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-extrabold text-center mb-8 text-gray-900 dark:text-white">
-          Why Choose BeLoved
-        </h2>
-        <div className="prose prose-lg max-w-none text-gray-600 dark:text-gray-300">
-          <p>
-            BeLoved is more than just a ride scheduling platform—it's a
-            community-driven solution designed to make transportation accessible,
-            reliable, and stress-free for everyone. With our intuitive interface,
-            dedicated driver network, and commitment to excellent service, we're
-            changing the way people think about scheduled rides.
-          </p>
-        </div>
-      </div>
-
-      {/* iOS App Preview Section */}
-      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
-        <h2 className="text-3xl font-extrabold text-center mb-8 text-gray-900 dark:text-white">
-          iOS App Preview
-        </h2>
-        <div className="flex justify-center">
-          <img 
-            src="https://twejikjgxkzmphocbvpt.supabase.co/storage/v1/object/public/images//iosapppreview.PNG" 
-            alt="BeLoved iOS App Preview" 
-            width={500}
-            height={300}
-            className="rounded-lg shadow-lg"
-          />
-        </div>
-      </div>
     </main>
   )
 } 
