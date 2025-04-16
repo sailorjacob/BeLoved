@@ -204,25 +204,19 @@ export default function AboutPage() {
         <ul className="space-y-2 ml-8 list-disc">
           <li className="pl-1">
             <div>
-              <strong>AI Voice Support:</strong> Natural language customer service with voice recognition
+              Natural language customer service with voice recognition
             </div>
           </li>
           
           <li className="pl-1">
             <div>
-              <strong>Smart Scheduling:</strong> AI-powered ride optimization and routing
+              AI-powered ride optimization and routing
             </div>
           </li>
           
           <li className="pl-1">
             <div>
-              <strong>Predictive Analytics:</strong> Forecasting demand patterns and service needs
-            </div>
-          </li>
-          
-          <li className="pl-1">
-            <div>
-              <strong>Intelligent Dispatch:</strong> Automated driver assignment based on location and availability
+              Forecasting demand patterns and service needs
             </div>
           </li>
         </ul>
