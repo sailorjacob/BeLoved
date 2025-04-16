@@ -191,12 +191,6 @@ export default function AboutPage() {
               <strong>Intelligent Dispatch:</strong> Automated driver assignment based on location and availability
             </div>
           </li>
-
-          <li className="pl-1">
-            <div>
-              <strong>24/7 Assistance:</strong> Always-on virtual support through chat and voice interfaces
-            </div>
-          </li>
         </ul>
       </div>
       
@@ -389,6 +383,54 @@ export default function AboutPage() {
         <p className="text-base ml-1">
           This platform is tailored for transportation services, especially in healthcare, where members (patients) need reliable transport to and from appointments. With a solid architecture, security-first approach, and well-separated concerns, the system is scalable and production-ready.
         </p>
+      </div>
+      
+      <div className="border-t border-gray-200 my-8"></div>
+      
+      <div className="mb-10">
+        <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)] mb-4">iOS App Preview</h2>
+        
+        <div className="flex justify-center">
+          <Image 
+            src="https://twejikjgxkzmphocbvpt.supabase.co/storage/v1/object/public/images//iosapppreview.PNG"
+            alt="BeLoved iOS App Preview"
+            width={500}
+            height={300}
+            className="rounded-lg shadow-md"
+          />
+        </div>
+      </div>
+
+      {/* Summary Section */}
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-extrabold text-center mb-8 text-gray-900 dark:text-white">
+          Why Choose BeLoved
+        </h2>
+        <div className="prose prose-lg max-w-none text-gray-600 dark:text-gray-300">
+          <p>
+            BeLoved is more than just a ride scheduling platform—it's a
+            community-driven solution designed to make transportation accessible,
+            reliable, and stress-free for everyone. With our intuitive interface,
+            dedicated driver network, and commitment to excellent service, we're
+            changing the way people think about scheduled rides.
+          </p>
+        </div>
+      </div>
+
+      {/* iOS App Preview Section */}
+      <div className="max-w-4xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
+        <h2 className="text-3xl font-extrabold text-center mb-8 text-gray-900 dark:text-white">
+          iOS App Preview
+        </h2>
+        <div className="flex justify-center">
+          <img 
+            src="https://twejikjgxkzmphocbvpt.supabase.co/storage/v1/object/public/images//iosapppreview.PNG" 
+            alt="BeLoved iOS App Preview" 
+            width={500}
+            height={300}
+            className="rounded-lg shadow-lg"
+          />
+        </div>
       </div>
     </main>
   )
