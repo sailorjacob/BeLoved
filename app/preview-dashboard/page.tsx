@@ -275,8 +275,8 @@ export default function PreviewDashboard() {
               Return to About
             </Button>
             <p className="text-gray-700 text-sm font-medium">
-              <span className="md:hidden">Demo preview - non-functional</span>
-              <span className="hidden md:inline">This is a non-functional preview of the BeLoved super admin dashboard. All data shown is fictional.</span>
+              <span className="md:hidden">Preview dashboard</span>
+              <span className="hidden md:inline">This is a preview of the super admin dashboard. All data shown is fictional.</span>
             </p>
           </div>
         </div>
@@ -285,13 +285,12 @@ export default function PreviewDashboard() {
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
         {/* Header - Updated to match real dashboard with logo */}
         <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-4">
-            <div className="relative h-10 w-10">
-              <Image 
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png" 
-                alt="BeLoved Logo" 
-                width={40} 
-                height={40}
+          <div className="flex items-center gap-2">
+            <div className="relative w-12 h-12">
+              <Image
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png"
+                alt="BeLoved Logo"
+                fill
                 className="object-contain"
                 priority
               />

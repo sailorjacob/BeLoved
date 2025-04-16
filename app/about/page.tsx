@@ -33,7 +33,7 @@ export default function AboutPage() {
       <div className="mb-14">
         <div className="mb-3 flex items-center gap-3">
           <span role="img" aria-label="heart" className="text-red-500 text-3xl">❤️</span>
-          <h1 className="text-[42px] font-bold leading-10 text-[rgb(13,13,13)]">BeLoved <span role="img" aria-label="wheel" className="text-3xl">🛞</span></h1>
+          <h1 className="text-[42px] font-bold leading-10 text-[rgb(13,13,13)]">BeLoved</h1>
         </div>
         
         <div className="mt-4 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
@@ -258,7 +258,7 @@ export default function AboutPage() {
           
           <li className="pl-1">
             <div>
-              Carwash check-in system (Crew Carwash) with <span role="img" aria-label="star">⭐</span> rewards
+              Carwash check-in system with <span role="img" aria-label="star">⭐</span> rewards
             </div>
           </li>
           
