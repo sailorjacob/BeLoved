@@ -33,7 +33,7 @@ export default function AboutPage() {
       <div className="mb-14">
         <div className="mb-3 flex items-center gap-3">
           <span role="img" aria-label="heart" className="text-red-500 text-3xl">❤️</span>
-          <h1 className="text-[42px] font-bold leading-10 text-[rgb(13,13,13)]">BeLoved Transportation</h1>
+          <h1 className="text-[42px] font-bold leading-10 text-[rgb(13,13,13)]">BeLoved</h1>
         </div>
         
         <div className="mt-4 px-3 py-2 bg-gray-50 border border-gray-200 rounded-md">
@@ -154,6 +154,47 @@ export default function AboutPage() {
           <li className="pl-1">
             <div>
               <strong>Mission:</strong> Providing safe, reliable non-emergency medical transportation
+            </div>
+          </li>
+        </ul>
+      </div>
+      
+      <div className="border-t border-gray-200 my-8"></div>
+      
+      <div className="mb-10">
+        <div className="flex items-center gap-3 mb-4">
+          <span role="img" aria-label="crystal-ball" className="text-2xl">🔮</span>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Magic AI</h2>
+        </div>
+        
+        <ul className="space-y-2 ml-8 list-disc">
+          <li className="pl-1">
+            <div>
+              <strong>AI Voice Support:</strong> Natural language customer service with voice recognition
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Smart Scheduling:</strong> AI-powered ride optimization and routing
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Predictive Analytics:</strong> Forecasting demand patterns and service needs
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Intelligent Dispatch:</strong> Automated driver assignment based on location and availability
+            </div>
+          </li>
+
+          <li className="pl-1">
+            <div>
+              <strong>24/7 Assistance:</strong> Always-on virtual support through chat and voice interfaces
             </div>
           </li>
         </ul>
