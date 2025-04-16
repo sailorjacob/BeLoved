@@ -10,21 +10,32 @@ export default function AboutPage() {
   
   return (
     <main className="container mx-auto py-16 px-4 max-w-3xl">
-      <Button 
-        variant="ghost" 
-        className="flex items-center gap-2 mb-6"
-        onClick={() => router.back()}
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Back
-      </Button>
+      <div className="flex justify-between items-center mb-6">
+        <Button 
+          variant="ghost" 
+          className="flex items-center gap-2"
+          onClick={() => router.back()}
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Back
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="text-gray-700 hover:bg-gray-50 border-gray-300 rounded-full px-6"
+          onClick={() => router.push('/login')}
+        >
+          Login
+        </Button>
+      </div>
       
       <div className="mb-14">
         <div className="mb-3 flex items-center gap-3">
           <span role="img" aria-label="van" className="text-3xl">🚐</span>
-          <h1 className="text-[36px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved <span role="img" aria-label="heart" className="text-red-500">❤️</span></h1>
+          <h1 className="text-[42px] font-semibold leading-10 text-[rgb(13,13,13)]">BeLoved <span role="img" aria-label="heart" className="text-red-500">❤️</span></h1>
         </div>
-        <p className="text-lg font-medium tracking-tight text-gray-600 mt-3 ml-1">
+        <p className="text-base font-medium tracking-tight text-gray-600 mt-3 mx-auto px-4 max-w-2xl">
           A comprehensive <strong>ride scheduling platform</strong> with both <strong>web and mobile components</strong>, built using <strong>Next.js</strong>, <strong>Supabase</strong>, and <strong>TypeScript</strong>.
         </p>
         
