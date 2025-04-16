@@ -57,7 +57,6 @@ export default function AboutPage() {
       
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
-          <span role="img" aria-label="rocket" className="text-2xl">🚀</span>
           <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Future Vision:</h2>
         </div>
         
