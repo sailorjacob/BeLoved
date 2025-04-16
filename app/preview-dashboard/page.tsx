@@ -29,6 +29,7 @@ import {
 } from 'recharts'
 import { format, subDays } from 'date-fns'
 import { Button } from '@/components/ui/button'
+import Image from 'next/image'
 
 export default function PreviewDashboard() {
   const router = useRouter()
@@ -46,20 +47,21 @@ export default function PreviewDashboard() {
   
   // Statistics data
   const stats = {
-    totalRevenue: 15780.50,
-    todayRevenue: 780.25,
-    providerRevenue: 9468.30,
-    driverEarnings: 4734.15,
-    insuranceClaims: 1578.05,
-    avgRideCost: 44.08,
-    completedRides: 320,
-    cancelledRides: 38,
-    pendingPayouts: 3156.10,
-    monthlyGrowth: 8.5,
-    driverUtilization: 71.1,
-    claimsRatio: 10.0, 
-    activeDrivers: 32,
-    totalProviders: 12
+    totalRevenue: 146870.00,
+    todayRevenue: 2456.00,
+    completedRides: 1284,
+    ridesToday: 47,
+    activeDrivers: 68,
+    utilizationRate: 82,
+    supportTickets: 8,
+    members: 284,
+    membersGrowth: 8.2,
+    providers: 26,
+    activeProviders: 18,
+    growthRate: 8.7,
+    providerRevenue: 67580,
+    driverEarnings: 58748,
+    insuranceClaims: 22842,
   }
   
   // Generate revenue trend data
@@ -67,10 +69,10 @@ export default function PreviewDashboard() {
     const data = []
     for (let i = 0; i < 30; i++) {
       const date = format(subDays(new Date(), 29 - i), 'yyyy-MM-dd')
-      const revenue = Math.floor(600 + Math.random() * 500)
-      const providerRevenue = Math.round(revenue * 0.6)
-      const driverEarnings = Math.round(revenue * 0.3)
-      const rides = Math.floor(8 + Math.random() * 12)
+      const revenue = Math.floor(1800 + Math.random() * 2000)
+      const providerRevenue = Math.round(revenue * 0.45)
+      const driverEarnings = Math.round(revenue * 0.4)
+      const rides = Math.floor(40 + Math.random() * 24)
       
       data.push({
         date,
@@ -87,25 +89,190 @@ export default function PreviewDashboard() {
   
   // Revenue distribution data
   const distributionData = [
-    { name: 'Provider', value: 60 },
-    { name: 'Driver', value: 30 },
-    { name: 'Insurance', value: 10 }
+    { name: 'Provider', value: 45.3 },
+    { name: 'Driver', value: 39.4 },
+    { name: 'Insurance', value: 15.3 }
   ]
+  
+  // Define GeographicNodes component for enhanced map display
+  function GeographicNodes() {
+    const [mousePos, setMousePos] = useState({ x: 0, y: 0 })
+    const [hoveredNode, setHoveredNode] = useState<number | null>(null)
+    const [nodes, setNodes] = useState([
+      { id: 1, baseX: 300, baseY: 150, x: 300, y: 150, animClass: 'animate-pulse-dot-1', location: 'Bloomington' },
+      { id: 2, baseX: 400, baseY: 150, x: 400, y: 150, animClass: 'animate-pulse-dot-2', location: 'Indianapolis' },
+      { id: 3, baseX: 500, baseY: 150, x: 500, y: 150, animClass: 'animate-pulse-dot-3', location: 'Carmel' },
+      { id: 4, baseX: 300, baseY: 250, x: 300, y: 250, animClass: 'animate-pulse-dot-2', location: 'Fishers' },
+      { id: 5, baseX: 400, baseY: 250, x: 400, y: 250, animClass: 'animate-pulse-dot-3', location: 'Noblesville' },
+      { id: 6, baseX: 500, baseY: 250, x: 500, y: 250, animClass: 'animate-pulse-dot-1', location: 'Westfield' }
+    ])
+
+    const handleMouseMove = (event: React.MouseEvent<SVGSVGElement>) => {
+      const svgRect = event.currentTarget.getBoundingClientRect()
+      const x = event.clientX - svgRect.left
+      const y = event.clientY - svgRect.top
+      setMousePos({ x, y })
+
+      // Update node positions with enhanced floating and mouse repulsion
+      setNodes(nodes.map(node => {
+        const dx = x - node.x
+        const dy = y - node.y
+        const distance = Math.sqrt(dx * dx + dy * dy)
+        const maxDistance = 150
+        const repelStrength = 0.6
+
+        // Calculate mouse repulsion
+        let newX = node.x
+        let newY = node.y
+        
+        if (distance < maxDistance) {
+          const force = (1 - distance / maxDistance) * repelStrength
+          const angle = Math.atan2(dy, dx)
+          newX = node.x - Math.cos(angle) * force * 40
+          newY = node.y - Math.sin(angle) * force * 40
+        }
+
+        // Add smooth return to base position
+        const returnStrength = 0.05
+        newX = newX + (node.baseX - newX) * returnStrength
+        newY = newY + (node.baseY - newY) * returnStrength
+
+        return {
+          ...node,
+          x: newX,
+          y: newY
+        }
+      }))
+    }
+
+    // Create 3D grid pattern
+    const gridSize = 100
+    const gridLines = []
+    
+    // Generate horizontal grid lines
+    for (let i = 0; i <= 2; i++) {
+      const y = 150 + i * gridSize
+      gridLines.push({
+        path: `M 250,${y} L 550,${y}`,
+        transform: `scale(1, 0.7) rotate(-30 400 ${y})`
+      })
+    }
+    
+    // Generate vertical grid lines
+    for (let i = 0; i <= 2; i++) {
+      const x = 250 + i * 150
+      gridLines.push({
+        path: `M ${x},150 L ${x},350`,
+        transform: `scale(1, 0.7) rotate(-30 ${x} 250)`
+      })
+    }
+
+    return (
+      <div className="relative w-full h-[400px] bg-white rounded-lg shadow-md p-4">
+        <h3 className="text-lg font-semibold mb-2">Geographic Distribution</h3>
+        <svg
+          className="w-full h-full"
+          onMouseMove={handleMouseMove}
+          style={{ 
+            perspective: '1000px',
+            transform: 'rotateX(45deg)'
+          }}
+        >
+          {/* Background for depth */}
+          <rect
+            x="200"
+            y="100"
+            width="400"
+            height="300"
+            fill="#f8fafc"
+            transform="scale(1, 0.7) rotate(-30 400 250)"
+          />
+
+          {/* 3D Grid */}
+          {gridLines.map((line, index) => (
+            <path
+              key={`grid-${index}`}
+              d={line.path}
+              stroke="#e2e8f0"
+              strokeWidth="1.5"
+              fill="none"
+              transform={line.transform}
+            />
+          ))}
+
+          {/* Floating Nodes */}
+          {nodes.map((node) => (
+            <g 
+              key={node.id} 
+              transform={`translate(${node.x},${node.y})`}
+              style={{ 
+                transition: 'transform 0.3s ease-out',
+                filter: 'drop-shadow(0 4px 6px rgba(0,0,0,0.1))'
+              }}
+              onMouseEnter={() => node.location && setHoveredNode(node.id)}
+              onMouseLeave={() => setHoveredNode(null)}
+            >
+              {/* Node glow effect */}
+              <circle
+                r="15"
+                className="animate-pulse-ring"
+                fill="rgba(239, 68, 68, 0.15)"
+              />
+              {/* Main node */}
+              <circle
+                r="6"
+                className={node.animClass}
+                fill="#ef4444"
+                filter="drop-shadow(0 2px 4px rgba(239, 68, 68, 0.3))"
+              />
+              {/* Location tooltip */}
+              {hoveredNode === node.id && node.location && (
+                <g transform="translate(0, -25)">
+                  <rect
+                    x="-40"
+                    y="-20"
+                    width="80"
+                    height="24"
+                    rx="4"
+                    fill="white"
+                    filter="drop-shadow(0 2px 4px rgba(0,0,0,0.1))"
+                  />
+                  <text
+                    x="0"
+                    y="-2"
+                    textAnchor="middle"
+                    fill="#374151"
+                    style={{
+                      fontSize: '12px',
+                      fontFamily: 'system-ui',
+                      fontWeight: 500
+                    }}
+                  >
+                    {node.location}
+                  </text>
+                </g>
+              )}
+            </g>
+          ))}
+        </svg>
+      </div>
+    )
+  }
   
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Demo notification banner */}
-      <div className="bg-yellow-50 border-b border-yellow-200">
+      {/* Demo notification banner - changed from yellow to grey */}
+      <div className="bg-gray-100 border-b border-gray-200">
         <div className="max-w-7xl mx-auto py-2 px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between">
-            <p className="text-yellow-700 text-sm font-medium">
+            <p className="text-gray-700 text-sm font-medium">
               <span className="md:hidden">Demo preview - non-functional</span>
               <span className="hidden md:inline">This is a non-functional preview of the BeLoved super admin dashboard. All data shown is fictional.</span>
             </p>
             <Button 
               variant="outline" 
               size="sm" 
-              className="text-yellow-700 bg-white hover:bg-yellow-50 border-yellow-300"
+              className="text-gray-700 bg-white hover:bg-gray-50 border-gray-300"
               onClick={() => router.push('/about')}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
@@ -116,16 +283,11 @@ export default function PreviewDashboard() {
       </div>
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="flex-shrink-0">
-            <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M20 35.2C27.8 35.2 34.2 28.8 34.2 21C34.2 13.2 27.8 6.8 20 6.8C12.2 6.8 5.8 13.2 5.8 21C5.8 28.8 12.2 35.2 20 35.2Z" fill="#F4E1E2"/>
-              <path d="M27.8 16.2C26.7 14.2 24.3 13 22 14C20.1 14.8 19.4 16.5 19.1 18.3C18.8 20.6 19.1 22.8 19.8 25C19.9 25.3 19.9 25.5 19.7 25.7C18.9 27.2 17.7 28.4 16.3 29.4C15.6 29.9 14.8 30.2 14 30.2C12.7 30.2 11.6 29.7 10.6 28.7C10.5 28.6 10.3 28.6 10.2 28.7C9.8 29.1 9.5 29.6 9.5 30.2C9.5 31 9.9 31.4 10.5 31.9C11.9 32.9 13.6 33.2 15.4 32.8C18.1 32.2 20.2 30.6 22 28.6C22.2 28.4 22.4 28.4 22.7 28.5C24.7 29.1 26.8 29.2 28.8 28.5C31.1 27.7 32.8 26.1 33.3 23.7C33.8 20.9 31.9 18.3 29.2 17.5C28.7 17.4 28.2 17.3 27.7 17.3C27.7 16.9 27.8 16.5 27.8 16.2Z" fill="#EF4444"/>
-            </svg>
+        {/* Header - Updated to match real dashboard */}
+        <div className="flex justify-between items-center mb-8">
+          <div className="flex items-center gap-2">
+            <h1 className="text-4xl font-bold">Super Admin Dashboard</h1>
           </div>
-          <h1 className="text-2xl font-bold">Super Admin Dashboard</h1>
-          <span className="ml-2 px-2 py-1 text-xs font-medium bg-purple-100 text-purple-800 rounded-full">Preview</span>
         </div>
         
         {/* Subtitle and action buttons */}
@@ -147,12 +309,13 @@ export default function PreviewDashboard() {
         {/* Loading state */}
         {loading ? (
           <div className="bg-white rounded-lg shadow p-8 flex justify-center items-center h-64">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-red-500"></div>
-            <span className="ml-3">Loading dashboard data...</span>
+            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-red-600 mb-4"></div>
+            <p className="text-lg text-gray-600 ml-3">Loading dashboard data...</p>
+            <p className="text-sm text-gray-500 mt-2">Preparing content...</p>
           </div>
         ) : (
           <div className="space-y-6">
-            {/* Charts Section */}
+            {/* Charts Section - Moved to top */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* Revenue & Earnings Trend */}
               <div className="bg-white rounded-lg shadow overflow-hidden">
@@ -312,6 +475,53 @@ export default function PreviewDashboard() {
               </div>
             </div>
             
+            {/* Key Stats Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="bg-white rounded-lg shadow p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
+                  <DollarSign className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
+                <p className="text-xs text-gray-500">
+                  +${stats.todayRevenue.toFixed(2)} today
+                </p>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium text-gray-500">Completed Rides</h3>
+                  <CheckCircle2 className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="text-2xl font-bold">{stats.completedRides}</div>
+                <p className="text-xs text-gray-500">
+                  {stats.ridesToday} rides today
+                </p>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium text-gray-500">Active Drivers</h3>
+                  <Car className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="text-2xl font-bold">{stats.activeDrivers}</div>
+                <p className="text-xs text-gray-500">
+                  {stats.utilizationRate}% utilization rate
+                </p>
+              </div>
+
+              <div className="bg-white rounded-lg shadow p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-sm font-medium text-gray-500">Support Tickets</h3>
+                  <Activity className="h-4 w-4 text-gray-400" />
+                </div>
+                <div className="text-2xl font-bold">{stats.supportTickets}</div>
+                <p className="text-xs text-gray-500">
+                  Open tickets requiring attention
+                </p>
+              </div>
+            </div>
+            
             {/* Financial Summary */}
             <div className="bg-white rounded-lg shadow overflow-hidden">
               <div className="border-b px-6 py-4">
@@ -343,7 +553,7 @@ export default function PreviewDashboard() {
                     <div className="space-y-3">
                       <div className="flex justify-between">
                         <span className="text-sm">Avg. Ride Cost</span>
-                        <span className="font-medium">${stats.avgRideCost.toFixed(2)}</span>
+                        <span className="font-medium">${(stats.totalRevenue / stats.completedRides).toFixed(2)}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Completed Rides</span>
@@ -351,7 +561,7 @@ export default function PreviewDashboard() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Cancelled Rides</span>
-                        <span className="font-medium">{stats.cancelledRides}</span>
+                        <span className="font-medium">64</span>
                       </div>
                     </div>
                   </div>
@@ -365,11 +575,11 @@ export default function PreviewDashboard() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Claims Ratio</span>
-                        <span className="font-medium">{stats.claimsRatio.toFixed(1)}%</span>
+                        <span className="font-medium">{(stats.insuranceClaims / stats.totalRevenue * 100).toFixed(1)}%</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-sm">Pending Payouts</span>
-                        <span className="font-medium">${stats.pendingPayouts.toFixed(2)}</span>
+                        <span className="font-medium">$4,780.00</span>
                       </div>
                     </div>
                   </div>
@@ -377,153 +587,22 @@ export default function PreviewDashboard() {
               </div>
             </div>
             
-            {/* Key Statistics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Total Revenue</h3>
-                  <DollarSign className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">${stats.totalRevenue.toFixed(2)}</div>
-                <p className="text-xs text-gray-500">
-                  +${stats.todayRevenue.toFixed(2)} today
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Provider Revenue</h3>
-                  <Building2 className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">${stats.providerRevenue.toFixed(2)}</div>
-                <p className="text-xs text-gray-500">
-                  ${(stats.providerRevenue / stats.totalProviders).toFixed(2)} avg/provider
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Driver Earnings</h3>
-                  <Users className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">${stats.driverEarnings.toFixed(2)}</div>
-                <p className="text-xs text-gray-500">
-                  ${(stats.driverEarnings / stats.activeDrivers).toFixed(2)} avg/driver
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Insurance Claims</h3>
-                  <AlertTriangle className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">${stats.insuranceClaims.toFixed(2)}</div>
-                <p className="text-xs text-gray-500">
-                  ${(stats.insuranceClaims / (stats.completedRides + stats.cancelledRides)).toFixed(2)} avg/ride
-                </p>
-              </div>
-            </div>
+            {/* Geographic Distribution - Updated to match real dashboard */}
+            <GeographicNodes />
             
-            {/* Performance Metrics */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Monthly Growth</h3>
-                  <TrendingUp className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">{stats.monthlyGrowth.toFixed(1)}%</div>
-                <p className="text-xs text-gray-500">
-                  Month over month revenue growth
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Driver Utilization</h3>
-                  <Activity className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">{stats.driverUtilization.toFixed(1)}%</div>
-                <p className="text-xs text-gray-500">
-                  Average rides per active driver
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Avg. Revenue/Ride</h3>
-                  <DollarSign className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">${stats.avgRideCost.toFixed(2)}</div>
-                <p className="text-xs text-gray-500">
-                  Average revenue per completed ride
-                </p>
-              </div>
-              
-              <div className="bg-white rounded-lg shadow p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <h3 className="text-sm font-medium text-gray-500">Completion Rate</h3>
-                  <CheckCircle2 className="h-4 w-4 text-gray-400" />
-                </div>
-                <div className="text-2xl font-bold">
-                  {((stats.completedRides / (stats.completedRides + stats.cancelledRides)) * 100).toFixed(1)}%
-                </div>
-                <p className="text-xs text-gray-500">
-                  Percentage of completed rides
-                </p>
-              </div>
-            </div>
-            
-            {/* Geographic Distribution */}
-            <div className="bg-white rounded-lg shadow overflow-hidden">
-              <div className="border-b px-6 py-4">
-                <h2 className="text-lg font-semibold">Geographic Distribution</h2>
-                <p className="text-sm text-gray-500">Service areas and ride density map</p>
-              </div>
-              <div className="p-6 h-[400px] flex items-center justify-center">
-                <div className="text-center">
-                  <MapSVG />
-                  <p className="text-sm text-gray-500 mt-4">Interactive geographic distribution map</p>
-                  <p className="text-xs text-gray-400">Current service areas: Bloomington, Indianapolis</p>
-                </div>
+            {/* Added footer similar to real dashboard */}
+            <div className="flex justify-between items-center pt-6 border-t border-gray-200 text-sm text-gray-500">
+              <div>© 2023 BeLoved Transportation. All rights reserved.</div>
+              <div className="flex gap-4">
+                <button className="hover:text-gray-800" onClick={() => router.push('/about')}>About</button>
+                <button className="hover:text-gray-800">Support</button>
+                <button className="hover:text-gray-800">Terms of Service</button>
+                <button className="hover:text-gray-800">Privacy Policy</button>
               </div>
             </div>
           </div>
         )}
       </div>
     </div>
-  )
-}
-
-// Simple Map SVG component
-function MapSVG() {
-  return (
-    <svg width="600" height="300" viewBox="0 0 600 300" className="mx-auto">
-      <rect x="0" y="0" width="600" height="300" fill="#f8fafc" />
-      
-      {/* Grid lines */}
-      <g transform="translate(50, 50)">
-        <path d="M 0,0 L 500,0 M 0,50 L 500,50 M 0,100 L 500,100 M 0,150 L 500,150 M 0,200 L 500,200" 
-              stroke="#e2e8f0" strokeWidth="1" fill="none" />
-        <path d="M 0,0 L 0,200 M 100,0 L 100,200 M 200,0 L 200,200 M 300,0 L 300,200 M 400,0 L 400,200 M 500,0 L 500,200" 
-              stroke="#e2e8f0" strokeWidth="1" fill="none" />
-      </g>
-      
-      {/* City dots */}
-      <g>
-        <circle cx="150" cy="100" r="15" fill="rgba(239, 68, 68, 0.1)" className="animate-pulse" />
-        <circle cx="150" cy="100" r="6" fill="#ef4444" />
-        <text x="150" y="80" textAnchor="middle" fontSize="12" fill="#374151">Bloomington</text>
-        
-        <circle cx="350" cy="120" r="15" fill="rgba(239, 68, 68, 0.1)" className="animate-pulse" />
-        <circle cx="350" cy="120" r="6" fill="#ef4444" />
-        <text x="350" y="100" textAnchor="middle" fontSize="12" fill="#374151">Indianapolis</text>
-        
-        <circle cx="250" cy="180" r="15" fill="rgba(239, 68, 68, 0.1)" className="animate-pulse" />
-        <circle cx="250" cy="180" r="6" fill="#ef4444" />
-        
-        <circle cx="450" cy="150" r="15" fill="rgba(239, 68, 68, 0.1)" className="animate-pulse" />
-        <circle cx="450" cy="150" r="6" fill="#ef4444" />
-      </g>
-    </svg>
   )
 } 
