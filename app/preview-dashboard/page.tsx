@@ -89,7 +89,7 @@ export default function PreviewDashboard() {
   
   // Revenue distribution data
   const distributionData = [
-    { name: 'Provider', value: 45.3 },
+    { name: 'Provider', value: 45.3, legendPosition: 'top' },
     { name: 'Driver', value: 39.4 },
     { name: 'Insurance', value: 15.3 }
   ]
@@ -264,28 +264,38 @@ export default function PreviewDashboard() {
       {/* Demo notification banner - changed from yellow to grey */}
       <div className="bg-gray-100 border-b border-gray-200">
         <div className="max-w-7xl mx-auto py-2 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between">
-            <p className="text-gray-700 text-sm font-medium">
-              <span className="md:hidden">Demo preview - non-functional</span>
-              <span className="hidden md:inline">This is a non-functional preview of the BeLoved super admin dashboard. All data shown is fictional.</span>
-            </p>
+          <div className="flex items-center">
             <Button 
               variant="outline" 
               size="sm" 
-              className="text-gray-700 bg-white hover:bg-gray-50 border-gray-300"
+              className="text-gray-700 bg-white hover:bg-gray-50 border-gray-300 mr-4"
               onClick={() => router.push('/about')}
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Return to About
             </Button>
+            <p className="text-gray-700 text-sm font-medium">
+              <span className="md:hidden">Demo preview - non-functional</span>
+              <span className="hidden md:inline">This is a non-functional preview of the BeLoved super admin dashboard. All data shown is fictional.</span>
+            </p>
           </div>
         </div>
       </div>
       
       <div className="max-w-7xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
-        {/* Header - Updated to match real dashboard */}
+        {/* Header - Updated to match real dashboard with logo */}
         <div className="flex justify-between items-center mb-8">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <div className="relative h-10 w-10">
+              <Image 
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/bloved-uM125dOkkSEXgRuEs8A8fnIfjsczvI.png" 
+                alt="BeLoved Logo" 
+                width={40} 
+                height={40}
+                className="object-contain"
+                priority
+              />
+            </div>
             <h1 className="text-4xl font-bold">Super Admin Dashboard</h1>
           </div>
         </div>
@@ -445,8 +455,29 @@ export default function PreviewDashboard() {
                             outerRadius={100}
                             paddingAngle={2}
                             dataKey="value"
-                            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(1)}%`}
-                            labelLine={{ stroke: '#9ca3af', strokeWidth: 1 }}
+                            label={({ name, percent, cx, cy, midAngle, innerRadius, outerRadius }) => {
+                              const RADIAN = Math.PI / 180;
+                              const radius = outerRadius * 1.2;
+                              const x = cx + radius * Math.cos(-midAngle * RADIAN);
+                              const y = cy + radius * Math.sin(-midAngle * RADIAN);
+                              
+                              return (
+                                <text 
+                                  x={x} 
+                                  y={y} 
+                                  textAnchor={x > cx ? 'start' : 'end'} 
+                                  dominantBaseline="central"
+                                  fill="#374151"
+                                  style={{ fontSize: '12px' }}
+                                >
+                                  {`${name}: ${(percent * 100).toFixed(1)}%`}
+                                </text>
+                              );
+                            }}
+                            labelLine={{
+                              stroke: '#9ca3af',
+                              strokeWidth: 1
+                            }}
                           >
                             <Cell fill="#f472b6" />
                             <Cell fill="#fda4af" />
