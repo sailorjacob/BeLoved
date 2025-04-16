@@ -162,41 +162,6 @@ export default function AboutPage() {
       
       <div className="mb-10">
         <div className="flex items-center gap-3 mb-4">
-          <span role="img" aria-label="crystal-ball" className="text-2xl">🔮</span>
-          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Magic AI</h2>
-        </div>
-        
-        <ul className="space-y-2 ml-8 list-disc">
-          <li className="pl-1">
-            <div>
-              <strong>AI Voice Support:</strong> Natural language customer service with voice recognition
-            </div>
-          </li>
-          
-          <li className="pl-1">
-            <div>
-              <strong>Smart Scheduling:</strong> AI-powered ride optimization and routing
-            </div>
-          </li>
-          
-          <li className="pl-1">
-            <div>
-              <strong>Predictive Analytics:</strong> Forecasting demand patterns and service needs
-            </div>
-          </li>
-          
-          <li className="pl-1">
-            <div>
-              <strong>Intelligent Dispatch:</strong> Automated driver assignment based on location and availability
-            </div>
-          </li>
-        </ul>
-      </div>
-      
-      <div className="border-t border-gray-200 my-8"></div>
-      
-      <div className="mb-10">
-        <div className="flex items-center gap-3 mb-4">
           <span role="img" aria-label="people" className="text-2xl">👥</span>
           <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">Multi-User System</h2>
         </div>
@@ -223,6 +188,41 @@ export default function AboutPage() {
           <li className="pl-1">
             <div>
               <strong>Super-Admins:</strong> Oversee and manage the entire system
+            </div>
+          </li>
+        </ul>
+      </div>
+      
+      <div className="border-t border-gray-200 my-8"></div>
+      
+      <div className="mb-10">
+        <div className="flex items-center gap-3 mb-4">
+          <span role="img" aria-label="crystal-ball" className="text-2xl">🔮</span>
+          <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)]">AI Support</h2>
+        </div>
+        
+        <ul className="space-y-2 ml-8 list-disc">
+          <li className="pl-1">
+            <div>
+              <strong>AI Voice Support:</strong> Natural language customer service with voice recognition
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Smart Scheduling:</strong> AI-powered ride optimization and routing
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Predictive Analytics:</strong> Forecasting demand patterns and service needs
+            </div>
+          </li>
+          
+          <li className="pl-1">
+            <div>
+              <strong>Intelligent Dispatch:</strong> Automated driver assignment based on location and availability
             </div>
           </li>
         </ul>
