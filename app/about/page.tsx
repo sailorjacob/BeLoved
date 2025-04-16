@@ -388,7 +388,7 @@ export default function AboutPage() {
       <div className="border-t border-gray-200 my-8"></div>
       
       <div className="mb-10">
-        <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)] mb-4">iOS App Preview</h2>
+        <h2 className="text-[24px] font-semibold leading-8 text-[rgb(13,13,13)] mb-4">iOS App:</h2>
         
         <div className="flex justify-center">
           <Image 
