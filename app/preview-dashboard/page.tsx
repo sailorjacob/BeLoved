@@ -303,10 +303,10 @@ export default function PreviewDashboard() {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8">
           <p className="text-gray-500 mb-4 sm:mb-0">System-wide analytics and management</p>
           <div className="flex flex-wrap gap-2">
-            <button className="bg-red-500 hover:bg-red-600 text-white font-medium rounded-md px-4 py-2 text-sm">
+            <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md px-4 py-2 text-sm">
               Manage Providers
             </button>
-            <button className="bg-red-500 hover:bg-red-600 text-white font-medium rounded-md px-4 py-2 text-sm">
+            <button className="bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium rounded-md px-4 py-2 text-sm">
               Members Directory
             </button>
             <button className="bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-md px-4 py-2 text-sm">
@@ -478,9 +478,9 @@ export default function PreviewDashboard() {
                               strokeWidth: 1
                             }}
                           >
-                            <Cell fill="#f472b6" />
-                            <Cell fill="#fda4af" />
-                            <Cell fill="#ef4444" />
+                            <Cell fill="#e5e7eb" />
+                            <Cell fill="#f3f4f6" />
+                            <Cell fill="#d1d5db" />
                           </Pie>
                           <Tooltip formatter={(value) => [`${value}%`, 'Percent']} />
                         </PieChart>
@@ -489,15 +489,15 @@ export default function PreviewDashboard() {
                   </div>
                   <div className="flex justify-center gap-6 mt-4">
                     <div className="flex items-center">
-                      <div className="h-3 w-3 rounded-full bg-pink-400 mr-2"></div>
+                      <div className="h-3 w-3 rounded-full bg-gray-200 mr-2"></div>
                       <span className="text-sm">Provider Revenue</span>
                     </div>
                     <div className="flex items-center">
-                      <div className="h-3 w-3 rounded-full bg-rose-300 mr-2"></div>
+                      <div className="h-3 w-3 rounded-full bg-gray-100 mr-2"></div>
                       <span className="text-sm">Driver Earnings</span>
                     </div>
                     <div className="flex items-center">
-                      <div className="h-3 w-3 rounded-full bg-red-500 mr-2"></div>
+                      <div className="h-3 w-3 rounded-full bg-gray-300 mr-2"></div>
                       <span className="text-sm">Insurance Claims</span>
                     </div>
                   </div>
