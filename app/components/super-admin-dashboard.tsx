@@ -969,16 +969,16 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                 <PieChart>
                   <defs>
                     <linearGradient id="colorPie1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f472b6" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#f9a8d4" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#ef4444" stopOpacity={0.9}/>
+                      <stop offset="100%" stopColor="#ef4444" stopOpacity={0.7}/>
                     </linearGradient>
                     <linearGradient id="colorPie2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#fda4af" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#fecdd3" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#f472b6" stopOpacity={0.9}/>
+                      <stop offset="100%" stopColor="#f472b6" stopOpacity={0.7}/>
                     </linearGradient>
                     <linearGradient id="colorPie3" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#ef4444" stopOpacity={1}/>
-                      <stop offset="100%" stopColor="#fca5a5" stopOpacity={1}/>
+                      <stop offset="0%" stopColor="#fda4af" stopOpacity={0.9}/>
+                      <stop offset="100%" stopColor="#fda4af" stopOpacity={0.7}/>
                     </linearGradient>
                   </defs>
                   <Pie
@@ -1028,15 +1028,15 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             </div>
             <div className="flex justify-center space-x-6 pt-2 pb-2">
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-pink-400 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-red-500 mr-2"></div>
                 <span className="text-sm">Provider Revenue</span>
               </div>
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-rose-300 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-pink-400 mr-2"></div>
                 <span className="text-sm">Driver Earnings</span>
               </div>
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-red-500 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-rose-300 mr-2"></div>
                 <span className="text-sm">Insurance Claims</span>
               </div>
             </div>
