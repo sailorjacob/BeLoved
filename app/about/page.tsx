@@ -24,7 +24,7 @@ export default function AboutPage() {
           variant="outline" 
           size="sm"
           className="text-gray-700 hover:bg-gray-50 border-gray-300 rounded-full px-6"
-          onClick={() => window.location.href = "https://be-loved.app/login"}
+          onClick={() => window.location.href = "https://be-loved.app/"}
         >
           Login
         </Button>
