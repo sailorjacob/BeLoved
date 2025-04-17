@@ -775,14 +775,14 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
         <div className="flex space-x-4">
           <a 
             href="/providers-dashboard" 
-            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-destructive text-destructive-foreground hover:bg-destructive/90 h-10 px-4 py-2"
+            className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-gray-200 text-gray-700 hover:bg-gray-300 h-10 px-4 py-2"
             onClick={() => {
               console.log('[SuperAdminDashboard] Navigating to providers dashboard page')
             }}
           >
             Manage Providers
           </a>
-          <Button variant="destructive" asChild>
+          <Button variant="outline" className="bg-gray-200 text-gray-700 hover:bg-gray-300 border-0" asChild>
             <Link href="/super-admin-dashboard/members">
               Members Directory
             </Link>
@@ -969,16 +969,16 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
                 <PieChart>
                   <defs>
                     <linearGradient id="colorPie1" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#ef4444" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#ef4444" stopOpacity={0.7}/>
+                      <stop offset="0%" stopColor="#e5e7eb" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#e5e7eb" stopOpacity={0.8}/>
                     </linearGradient>
                     <linearGradient id="colorPie2" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#f472b6" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#f472b6" stopOpacity={0.7}/>
+                      <stop offset="0%" stopColor="#f3f4f6" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#f3f4f6" stopOpacity={0.8}/>
                     </linearGradient>
                     <linearGradient id="colorPie3" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#fda4af" stopOpacity={0.9}/>
-                      <stop offset="100%" stopColor="#fda4af" stopOpacity={0.7}/>
+                      <stop offset="0%" stopColor="#d1d5db" stopOpacity={1}/>
+                      <stop offset="100%" stopColor="#d1d5db" stopOpacity={0.8}/>
                     </linearGradient>
                   </defs>
                   <Pie
@@ -1028,15 +1028,15 @@ export function SuperAdminDashboard({ isDebugMode = false }: { isDebugMode?: boo
             </div>
             <div className="flex justify-center space-x-6 pt-2 pb-2">
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-red-500 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-gray-200 mr-2"></div>
                 <span className="text-sm">Provider Revenue</span>
               </div>
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-pink-400 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-gray-100 mr-2"></div>
                 <span className="text-sm">Driver Earnings</span>
               </div>
               <div className="flex items-center">
-                <div className="h-3 w-3 rounded-full bg-rose-300 mr-2"></div>
+                <div className="h-3 w-3 rounded-full bg-gray-300 mr-2"></div>
                 <span className="text-sm">Insurance Claims</span>
               </div>
             </div>
