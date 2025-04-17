@@ -379,18 +379,6 @@ export default function AboutPage() {
       </div>
       
       <div className="border-t border-gray-200 my-8"></div>
-      
-      <div className="mb-10">
-        <div className="flex justify-center">
-          <Image 
-            src="https://twejikjgxkzmphocbvpt.supabase.co/storage/v1/object/public/images//iosapppreview.PNG"
-            alt="BeLoved iOS App Preview"
-            width={500}
-            height={300}
-            className="rounded-lg shadow-md"
-          />
-        </div>
-      </div>
     </main>
   )
 } 
