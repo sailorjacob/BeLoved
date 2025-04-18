@@ -619,17 +619,6 @@ export default function PreviewDashboard() {
             
             {/* Geographic Distribution - Updated to match real dashboard */}
             <GeographicNodes />
-            
-            {/* Added footer similar to real dashboard */}
-            <div className="flex justify-between items-center pt-6 border-t border-gray-200 text-sm text-gray-500">
-              <div>© 2023 BeLoved Transportation. All rights reserved.</div>
-              <div className="flex gap-4">
-                <button className="hover:text-gray-800" onClick={() => router.push('/about')}>About</button>
-                <button className="hover:text-gray-800">Support</button>
-                <button className="hover:text-gray-800">Terms of Service</button>
-                <button className="hover:text-gray-800">Privacy Policy</button>
-              </div>
-            </div>
           </div>
         )}
       </div>
